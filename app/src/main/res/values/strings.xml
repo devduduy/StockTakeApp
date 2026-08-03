@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hero Stock Take</string>
+    <string name="login_title">Mobile Stock Take System</string>
+    <string name="authorized_only">Authorized personnel only.</string>
+    <string name="username">Username / Employee ID</string>
+    <string name="password">Password</string>
+    <string name="login">LOGIN</string>
+    <string name="demo_hint">Prototype login: isi username dan password apa saja</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="schedules">Schedules</string>
+    <string name="scanner">Scanner</string>
+    <string name="drafts">Drafts</string>
+    <string name="profile">Profile</string>
+    <string name="start_stock_take">Start Stock Take</string>
+    <string name="continue_draft">Continue Draft</string>
+    <string name="scan_barcode">Scan Barcode</string>
+    <string name="submit_data">Submit Data</string>
+    <string name="add_quantity">ADD QUANTITY</string>
+    <string name="cancel">CANCEL</string>
+</resources>
+

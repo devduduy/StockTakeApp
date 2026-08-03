@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Final Quantity Edit Modal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Courier+Prime:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b5c5f9",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e6",
+                      "on-primary-container": "#8393c5",
+                      "secondary": "#bb0014",
+                      "on-secondary-fixed": "#410002",
+                      "secondary-container": "#e41f25",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf8fd",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdad6",
+                      "surface-dim": "#dbd9dd",
+                      "surface-container-low": "#f5f3f7",
+                      "surface-container-high": "#e9e7ec",
+                      "on-secondary-fixed-variant": "#93000d",
+                      "tertiary-fixed-dim": "#f6ba88",
+                      "inverse-surface": "#303034",
+                      "on-primary-fixed-variant": "#354572",
+                      "on-primary-fixed": "#051944",
+                      "tertiary-container": "#472400",
+                      "tertiary-fixed": "#ffdcc1",
+                      "on-secondary-container": "#fffbff",
+                      "outline-variant": "#c5c6d0",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "on-background": "#1b1b1f",
+                      "primary": "#021541",
+                      "surface-container-highest": "#e4e2e6",
+                      "surface-bright": "#fbf8fd",
+                      "inverse-primary": "#b5c5f9",
+                      "outline": "#757680",
+                      "on-tertiary-fixed-variant": "#663d16",
+                      "on-tertiary-container": "#bf895b",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#dae1ff",
+                      "on-surface-variant": "#45464f",
+                      "inverse-on-surface": "#f2f0f4",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fbf8fd",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a2b56",
+                      "tertiary": "#291300",
+                      "on-tertiary-fixed": "#2e1500",
+                      "surface-tint": "#4d5d8b",
+                      "surface-container": "#efedf1",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#1b1b1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "lg": "24px",
+                      "xxl": "48px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "mono-data": [
+                              "Courier Prime"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "mono-data": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="h-full bg-background font-body-md text-on-surface flex flex-col antialiased">
+<!-- Top Navigation (Generated from JSON as an Anchor) -->
+<header class="flex justify-between items-center px-md py-sm w-full sticky top-0 z-50 bg-primary text-on-primary docked full-width top-0 border-b border-outline-variant flat no shadows">
+<div class="flex items-center gap-md">
+<button class="hover:bg-primary-container/20 p-xs rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary">HERO INVENTORY</h1>
+</div>
+<button class="hover:bg-primary-container/20 p-xs rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- Side Navigation (Web) -->
+<nav class="fixed left-0 top-0 h-screen z-40 hidden md:flex flex-col bg-surface-container-low text-primary h-full w-72 border-r border-outline-variant flat no shadows transition-all duration-200 ease-in-out pt-[64px]">
+<div class="p-lg flex items-center gap-md border-b border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">Hero Supermarket</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Central Control</p>
+<p class="font-label-sm text-label-sm text-outline mt-xs">v4.2.0</p>
+</div>
+</div>
+<ul class="flex flex-col flex-1 py-md overflow-y-auto">
+<li>
+<a class="flex items-center gap-md px-lg py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary" href="#">
+<span class="material-symbols-outlined">speed</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-lg py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary" href="#">
+<span class="material-symbols-outlined">event_note</span>
+<span class="font-label-md text-label-md">Schedule Management</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-lg py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-md text-label-md">Rack Monitoring</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-lg py-sm text-primary font-bold border-l-4 border-secondary bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-md text-label-md">Scan Data</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-lg py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-primary" href="#">
+<span class="material-symbols-outlined">difference</span>
+<span class="font-label-md text-label-md">Reconciliation</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-72 flex flex-col bg-surface relative z-0">
+<!-- Simulated Background Content (Scan Monitoring Table) -->
+<div class="p-lg flex-1 overflow-auto opacity-40 select-none pointer-events-none">
+<h2 class="font-headline-lg text-headline-lg mb-lg text-primary">Scan Monitoring</h2>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant">Barcode</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant">Product</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant text-right">Qty</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant">
+<td class="p-sm font-mono-data text-mono-data text-on-surface">8990128374619</td>
+<td class="p-sm font-body-sm text-body-sm text-on-surface">Apple Fuji 500g</td>
+<td class="p-sm font-mono-data text-mono-data text-on-surface text-right">12</td>
+<td class="p-sm font-body-sm text-body-sm"><span class="px-sm py-xs rounded bg-error-container text-on-error-container text-label-sm font-label-sm">Variance</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Modal Overlay -->
+<div class="absolute inset-0 z-50 flex items-center justify-center p-md bg-on-background/40 backdrop-blur-sm">
+<!-- Modal Container (Level 2 Elevation) -->
+<div class="bg-surface-container-lowest w-full max-w-lg rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-outline-variant flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<!-- Modal Header -->
+<div class="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h3 class="font-headline-md text-headline-md text-primary">Edit Final Quantity</h3>
+<button aria-label="Close" class="text-on-surface-variant hover:text-on-surface p-xs rounded hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<div class="p-lg flex flex-col gap-lg">
+<!-- Product Info Card -->
+<div class="bg-surface rounded-lg p-md border border-outline-variant flex items-start gap-md">
+<div class="w-12 h-12 bg-surface-variant rounded flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-outline">inventory_2</span>
+</div>
+<div class="flex-1">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Product Details</p>
+<h4 class="font-headline-md text-headline-md text-on-surface leading-tight mb-xs">Apple Fuji 500g</h4>
+<div class="flex flex-wrap gap-x-md gap-y-xs">
+<span class="font-mono-data text-mono-data text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">barcode_scanner</span> 8990128374619
+                                    </span>
+<span class="font-mono-data text-mono-data text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">tag</span> PLU 100234
+                                    </span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Original Scan Qty (Read-only) -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Original SCAN_QTY</label>
+<div class="px-md py-sm bg-surface-variant text-on-surface-variant rounded-md font-mono-data text-mono-data border border-transparent cursor-not-allowed">
+                                    12
+                                </div>
+</div>
+<!-- New Final Qty (Input) -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold" for="final-qty">New FINAL_QTY</label>
+<input class="px-md py-sm bg-surface-container-lowest text-on-surface rounded-md font-mono-data text-mono-data border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary outline-none transition-all w-full" id="final-qty" type="number" value="10"/>
+</div>
+</div>
+<!-- Reason Dropdown -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold" for="reason">Reason</label>
+<div class="relative">
+<select class="appearance-none w-full px-md py-sm pr-xl bg-surface-container-lowest text-on-surface rounded-md font-body-md text-body-md border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary outline-none transition-all" id="reason">
+<option disabled="" value="">Select a reason...</option>
+<option selected="" value="miscount">Miscount correction</option>
+<option value="damaged">Damaged stock</option>
+<option value="expired">Expired product</option>
+<option value="system_error">System discrepancy</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-sm text-on-surface-variant">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Remark Textarea -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-sm text-label-sm text-on-surface font-semibold" for="remark">Remark</label>
+<textarea class="px-md py-sm bg-surface-container-lowest text-on-surface rounded-md font-body-md text-body-md border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary outline-none transition-all w-full resize-none" id="remark" placeholder="Add any additional context..." rows="3"></textarea>
+</div>
+<!-- Audit Note -->
+<div class="bg-surface-container-low p-sm rounded-md flex items-start gap-sm border border-outline-variant">
+<span class="material-symbols-outlined text-outline mt-[2px] text-[18px]">info</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Original scan data will be preserved for audit trail.</p>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-lg py-md border-t border-outline-variant flex justify-end gap-md bg-surface-container-low">
+<button class="px-lg py-sm rounded-md font-label-md text-label-md bg-surface-container-lowest border border-primary text-primary hover:bg-surface-variant transition-colors">
+                            Cancel
+                        </button>
+<button class="px-lg py-sm rounded-md font-label-md text-label-md bg-primary text-on-primary hover:bg-primary-container transition-colors shadow-sm">
+                            Save Changes
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

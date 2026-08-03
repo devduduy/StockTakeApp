@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Scanner View</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Courier+Prime&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b5c5f9",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e6",
+                      "on-primary-container": "#8393c5",
+                      "secondary": "#bb0014",
+                      "on-secondary-fixed": "#410002",
+                      "secondary-container": "#e41f25",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf8fd",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdad6",
+                      "surface-dim": "#dbd9dd",
+                      "surface-container-low": "#f5f3f7",
+                      "surface-container-high": "#e9e7ec",
+                      "on-secondary-fixed-variant": "#93000d",
+                      "tertiary-fixed-dim": "#f6ba88",
+                      "inverse-surface": "#303034",
+                      "on-primary-fixed-variant": "#354572",
+                      "on-primary-fixed": "#051944",
+                      "tertiary-container": "#472400",
+                      "tertiary-fixed": "#ffdcc1",
+                      "on-secondary-container": "#fffbff",
+                      "outline-variant": "#c5c6d0",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "on-background": "#1b1b1f",
+                      "primary": "#021541",
+                      "surface-container-highest": "#e4e2e6",
+                      "surface-bright": "#fbf8fd",
+                      "inverse-primary": "#b5c5f9",
+                      "outline": "#757680",
+                      "on-tertiary-fixed-variant": "#663d16",
+                      "on-tertiary-container": "#bf895b",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#dae1ff",
+                      "on-surface-variant": "#45464f",
+                      "inverse-on-surface": "#f2f0f4",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fbf8fd",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a2b56",
+                      "tertiary": "#291300",
+                      "on-tertiary-fixed": "#2e1500",
+                      "surface-tint": "#4d5d8b",
+                      "surface-container": "#efedf1",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#1b1b1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "lg": "24px",
+                      "xxl": "48px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "mono-data": [
+                              "Courier Prime"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "mono-data": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface w-full h-screen overflow-hidden font-body-md text-body-md flex flex-col antialiased">
+<!-- App Bar (Hidden on Mobile) -->
+<header class="bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-headline-md text-headline-md border-b border-outline-variant flex justify-between items-center px-md py-sm w-full sticky top-0 z-50 hidden md:flex">
+<div class="flex items-center gap-sm">
+<button class="p-xs text-on-primary hover:bg-primary-container/20 rounded-full transition-transform">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary">HERO INVENTORY</h1>
+</div>
+<div class="flex items-center gap-md">
+<!-- Nav Links -->
+</div>
+<div>
+<button class="p-xs text-on-primary hover:bg-primary-container/20 rounded-full transition-transform">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</div>
+</header>
+<!-- Navigation Drawer (Desktop) -->
+<aside class="bg-surface-container-low dark:bg-inverse-surface text-primary dark:text-primary-fixed font-label-md text-label-md h-full w-72 border-r border-outline-variant fixed left-0 top-0 h-screen z-40 hidden md:flex flex-col pt-16">
+<div class="p-md border-b border-outline-variant">
+<h2 class="font-headline-lg text-headline-lg text-secondary">Hero Supermarket</h2>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Central Control</p>
+<p class="text-on-surface-variant text-xs mt-1">v4.2.0</p>
+</div>
+<nav class="flex-1 overflow-y-auto py-sm">
+<ul class="flex flex-col gap-1 px-sm">
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="speed">speed</span> Dashboard</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="event_note">event_note</span> Schedule Management</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="grid_view">grid_view</span> Rack Monitoring</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-primary font-bold border-l-4 border-secondary bg-surface-container-highest transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="analytics" data-weight="fill" style="font-variation-settings: 'FILL' 1;">analytics</span> Scan Data</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="difference">difference</span> Reconciliation</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="assessment">assessment</span> Reports</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="settings_ethernet">settings_ethernet</span> ERP</a></li>
+<li><a class="flex items-center gap-md px-md py-sm rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-all duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" data-icon="database">database</span> Master Data</a></li>
+</ul>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 relative md:ml-72 flex flex-col bg-surface-container-lowest">
+<!-- Viewfinder Background -->
+<!-- Dialog Overlay -->
+<div class="flex-1 flex flex-col items-center justify-start p-md md:p-lg bg-surface overflow-y-auto">
+<div class="w-full max-w-md flex flex-col p-lg">
+<!-- Header -->
+<div class="flex items-start justify-between mb-md">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-semibold">Apple Fuji 500g</h2>
+<div class="flex gap-sm mt-xs">
+<span class="inline-flex items-center gap-1 bg-[#10B981]/10 text-[#10B981] px-2 py-1 rounded-full font-label-sm text-label-sm border border-[#10B981]/20">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                 Valid
+                             </span>
+</div>
+</div>
+</div>
+<!-- Product Details -->
+<div class="mb-lg flex flex-col"><label class="font-label-md text-label-md text-on-surface-variant mb-xs" for="barcode-input">Scan Barcode</label><div class="relative w-full"><input aria-label="Barcode Input" autofocus="" class="w-full h-16 px-md font-mono-data text-headline-md text-on-surface bg-surface-container-lowest border-2 border-primary rounded focus:ring-2 focus:ring-primary outline-none transition-shadow" id="barcode-input" placeholder="Waiting for scan..." type="text"/><span class="material-symbols-outlined absolute right-md top-1/2 -translate-y-1/2 text-primary" data-icon="barcode_scanner">barcode_scanner</span></div></div><div class="grid grid-cols-2 gap-sm mb-lg bg-surface-container-low p-sm rounded border border-outline-variant/50">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">PLU</span>
+<span class="font-mono-data text-mono-data text-on-surface">100234</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Barcode</span>
+<span class="font-mono-data text-mono-data text-on-surface">8990123456789</span>
+</div>
+</div>
+<!-- Quantity Input -->
+<div class="mb-lg flex flex-col items-center"><label class="font-label-md text-label-md text-on-surface-variant mb-xs self-start">Quantity</label><div class="flex items-center justify-between w-full bg-surface-container-low rounded-lg p-xs border border-outline-variant"><button class="w-16 h-16 flex items-center justify-center bg-surface-container-lowest text-primary rounded-lg border border-outline-variant hover:bg-surface-variant transition-colors"><span class="material-symbols-outlined" data-icon="remove">remove</span></button><span class="font-headline-xl text-headline-xl text-on-surface">1</span><button class="w-16 h-16 flex items-center justify-center bg-primary text-on-primary rounded-lg hover:bg-primary-container transition-colors"><span class="material-symbols-outlined" data-icon="add">add</span></button></div></div>
+<!-- Actions -->
+<div class="flex flex-col gap-sm">
+<button class="w-full bg-primary text-on-primary py-sm px-md rounded font-label-md text-label-md hover:bg-primary-container transition-colors min-h-[48px] shadow-sm">
+                        ADD QUANTITY
+                    </button>
+<button class="w-full mt-2 text-on-surface-variant py-sm px-md rounded font-label-md text-label-md hover:bg-surface-variant transition-colors min-h-[48px]">
+                        CANCEL
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-md pb-safe bg-surface border-t border-outline-variant md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-sm text-label-sm">Schedules</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-lg py-xs transition-opacity duration-150" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="barcode_scanner" data-weight="fill" style="font-variation-settings: 'FILL' 1;">barcode_scanner</span>
+<span class="font-label-sm text-label-sm">Scanner</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="drafts">drafts</span>
+<span class="font-label-sm text-label-sm">Drafts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<style>
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        /* Mobile safe area padding for bottom nav */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+    </style>
+</body></html>

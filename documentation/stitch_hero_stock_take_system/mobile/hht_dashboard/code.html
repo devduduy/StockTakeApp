@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard - Hero Inventory</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b5c5f9",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e6",
+                      "on-primary-container": "#8393c5",
+                      "secondary": "#bb0014",
+                      "on-secondary-fixed": "#410002",
+                      "secondary-container": "#e41f25",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf8fd",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdad6",
+                      "surface-dim": "#dbd9dd",
+                      "surface-container-low": "#f5f3f7",
+                      "surface-container-high": "#e9e7ec",
+                      "on-secondary-fixed-variant": "#93000d",
+                      "tertiary-fixed-dim": "#f6ba88",
+                      "inverse-surface": "#303034",
+                      "on-primary-fixed-variant": "#354572",
+                      "on-primary-fixed": "#051944",
+                      "tertiary-container": "#472400",
+                      "tertiary-fixed": "#ffdcc1",
+                      "on-secondary-container": "#fffbff",
+                      "outline-variant": "#c5c6d0",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "on-background": "#1b1b1f",
+                      "primary": "#021541",
+                      "surface-container-highest": "#e4e2e6",
+                      "surface-bright": "#fbf8fd",
+                      "inverse-primary": "#b5c5f9",
+                      "outline": "#757680",
+                      "on-tertiary-fixed-variant": "#663d16",
+                      "on-tertiary-container": "#bf895b",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#dae1ff",
+                      "on-surface-variant": "#45464f",
+                      "inverse-on-surface": "#f2f0f4",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fbf8fd",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a2b56",
+                      "tertiary": "#291300",
+                      "on-tertiary-fixed": "#2e1500",
+                      "surface-tint": "#4d5d8b",
+                      "surface-container": "#efedf1",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#1b1b1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "lg": "24px",
+                      "xxl": "48px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "mono-data": [
+                              "Courier Prime"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "mono-data": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-[80px]"> <!-- Added pb to account for fixed bottom nav -->
+<!-- Header Section -->
+<header class="bg-surface-container-low px-margin-mobile py-md flex flex-col gap-sm border-b border-outline-variant/50 sticky top-0 z-40 shadow-sm backdrop-blur-md">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md text-label-md shrink-0">
+                JD
+            </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Logged in as</span>
+<span class="font-body-sm text-body-sm font-semibold">John Doe <span class="font-normal text-on-surface-variant">(Scanner)</span></span>
+</div>
+</div>
+<div class="flex items-center gap-sm text-primary">
+<span class="material-symbols-outlined text-[18px]">storefront</span>
+<span class="font-label-md text-label-md font-semibold">Store: HERO - Kemang</span>
+</div>
+</header>
+<main class="p-margin-mobile flex flex-col gap-lg max-w-2xl mx-auto">
+<!-- Active Schedule Card -->
+<section class="bg-surface rounded-xl border border-outline-variant p-md flex flex-col gap-md shadow-sm relative overflow-hidden">
+<!-- Decorative accent -->
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary-container"></div>
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active Schedule</span>
+<span class="font-mono-data text-mono-data font-bold text-primary">#ST-20231024-01</span>
+</div>
+<!-- Status Badge -->
+<div class="bg-emerald-500/10 text-emerald-700 px-sm py-xs rounded flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+<span class="font-label-sm text-label-sm font-bold">IN_PROGRESS</span>
+</div>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span>24 Oct 2023</span>
+</div>
+</section>
+<!-- KPI Row -->
+<section class="grid grid-cols-2 gap-sm">
+<!-- Scanned KPI -->
+<div class="bg-surface rounded-xl border border-outline-variant p-md flex flex-col items-center justify-center text-center gap-xs shadow-sm">
+<span class="material-symbols-outlined text-primary text-[28px] mb-xs">barcode_scanner</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">1,240</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Scanned Items</span>
+</div>
+<!-- Drafts KPI -->
+<div class="bg-surface rounded-xl border border-outline-variant p-md flex flex-col items-center justify-center text-center gap-xs shadow-sm relative">
+<div class="absolute top-sm right-sm w-3 h-3 bg-secondary rounded-full animate-pulse"></div>
+<span class="material-symbols-outlined text-secondary text-[28px] mb-xs">drafts</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary font-bold">5</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending Drafts</span>
+</div>
+</section>
+<!-- Action Buttons -->
+<section class="flex flex-col gap-md mt-sm">
+<button class="w-full min-h-[56px] bg-primary text-on-primary rounded-xl font-label-md text-label-md font-bold flex items-center justify-center gap-sm shadow-md active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                Start Stock Take
+            </button>
+<button class="w-full min-h-[56px] bg-surface text-secondary border-2 border-secondary rounded-xl font-label-md text-label-md font-bold flex items-center justify-center gap-sm active:bg-secondary/5 transition-colors">
+<span class="material-symbols-outlined">edit_document</span>
+                Continue Draft
+            </button>
+<button class="w-full min-h-[48px] bg-transparent text-primary font-label-sm text-label-sm font-semibold flex items-center justify-center gap-sm mt-xs hover:bg-surface-container-low rounded-lg transition-colors py-sm">
+<span class="material-symbols-outlined text-[18px]">cloud_sync</span>
+                Sync Pending Draft (5)
+            </button>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Shared Component) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 flex justify-around items-center px-md pb-safe bg-surface border-t border-outline-variant/30 h-[80px] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<!-- Active: Dashboard -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-[64px]">
+<div class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-lg py-xs mb-1 w-16 transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+</div>
+<span class="font-label-sm text-label-sm font-bold text-on-surface">Dashboard</span>
+</button>
+<!-- Inactive: Schedules -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-[64px] hover:bg-surface-container-high rounded-xl transition-colors duration-200">
+<div class="flex flex-col items-center justify-center rounded-full px-lg py-xs mb-1 w-16">
+<span class="material-symbols-outlined text-[24px]">calendar_today</span>
+</div>
+<span class="font-label-sm text-label-sm">Schedules</span>
+</button>
+<!-- Inactive: Scanner -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-[64px] hover:bg-surface-container-high rounded-xl transition-colors duration-200">
+<div class="flex flex-col items-center justify-center rounded-full px-lg py-xs mb-1 w-16 relative">
+<div class="absolute inset-0 bg-primary/10 rounded-full scale-75 opacity-0 group-active:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined text-[24px]">barcode_scanner</span>
+</div>
+<span class="font-label-sm text-label-sm">Scanner</span>
+</button>
+<!-- Inactive: Drafts -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-[64px] hover:bg-surface-container-high rounded-xl transition-colors duration-200 relative">
+<div class="absolute top-1 right-2 w-2 h-2 bg-secondary rounded-full"></div>
+<div class="flex flex-col items-center justify-center rounded-full px-lg py-xs mb-1 w-16">
+<span class="material-symbols-outlined text-[24px]">drafts</span>
+</div>
+<span class="font-label-sm text-label-sm">Drafts</span>
+</button>
+<!-- Inactive: Profile -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-[64px] hover:bg-surface-container-high rounded-xl transition-colors duration-200">
+<div class="flex flex-col items-center justify-center rounded-full px-lg py-xs mb-1 w-16">
+<span class="material-symbols-outlined text-[24px]">person</span>
+</div>
+<span class="font-label-sm text-label-sm">Profile</span>
+</button>
+</nav>
+</body></html>

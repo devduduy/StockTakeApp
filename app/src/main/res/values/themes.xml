@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.HeroStockTake" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/hero_navy</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/hero_red</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSurface">@color/hero_surface</item>
+        <item name="colorOnSurface">@color/hero_text</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@color/hero_navy</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+
+    <style name="HeroHeadline">
+        <item name="android:textColor">@color/hero_navy</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">28sp</item>
+    </style>
+
+    <style name="HeroSectionTitle">
+        <item name="android:textColor">@color/hero_text</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="HeroSidebarItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">72dp</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:background">@drawable/bg_sidebar_item</item>
+        <item name="android:clickable">true</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:drawableTint">@color/white</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="HeroDrawerItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">54dp</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:background">@drawable/bg_drawer_item</item>
+        <item name="android:clickable">true</item>
+        <item name="android:drawablePadding">14dp</item>
+        <item name="android:drawableTint">@color/hero_navy</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:textColor">@color/hero_navy</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

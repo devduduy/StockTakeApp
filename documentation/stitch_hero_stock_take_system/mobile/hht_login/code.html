@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Hero Stock Take - Mobile Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b5c5f9",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e6",
+                      "on-primary-container": "#8393c5",
+                      "secondary": "#bb0014",
+                      "on-secondary-fixed": "#410002",
+                      "secondary-container": "#e41f25",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf8fd",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdad6",
+                      "surface-dim": "#dbd9dd",
+                      "surface-container-low": "#f5f3f7",
+                      "surface-container-high": "#e9e7ec",
+                      "on-secondary-fixed-variant": "#93000d",
+                      "tertiary-fixed-dim": "#f6ba88",
+                      "inverse-surface": "#303034",
+                      "on-primary-fixed-variant": "#354572",
+                      "on-primary-fixed": "#051944",
+                      "tertiary-container": "#472400",
+                      "tertiary-fixed": "#ffdcc1",
+                      "on-secondary-container": "#fffbff",
+                      "outline-variant": "#c5c6d0",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "on-background": "#1b1b1f",
+                      "primary": "#021541",
+                      "surface-container-highest": "#e4e2e6",
+                      "surface-bright": "#fbf8fd",
+                      "inverse-primary": "#b5c5f9",
+                      "outline": "#757680",
+                      "on-tertiary-fixed-variant": "#663d16",
+                      "on-tertiary-container": "#bf895b",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#dae1ff",
+                      "on-surface-variant": "#45464f",
+                      "inverse-on-surface": "#f2f0f4",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fbf8fd",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a2b56",
+                      "tertiary": "#291300",
+                      "on-tertiary-fixed": "#2e1500",
+                      "surface-tint": "#4d5d8b",
+                      "surface-container": "#efedf1",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#1b1b1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "lg": "24px",
+                      "xxl": "48px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-xl": ["Inter", "sans-serif"],
+                      "mono-data": ["Courier Prime", "monospace"],
+                      "headline-lg": ["Inter", "sans-serif"],
+                      "body-md": ["Inter", "sans-serif"],
+                      "body-lg": ["Inter", "sans-serif"],
+                      "headline-md": ["Inter", "sans-serif"],
+                      "body-sm": ["Inter", "sans-serif"],
+                      "label-sm": ["Inter", "sans-serif"],
+                      "label-md": ["Inter", "sans-serif"],
+                      "headline-lg-mobile": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Courier+Prime&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px theme('colors.primary');
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface min-h-screen flex flex-col font-body-md antialiased selection:bg-primary-fixed-dim selection:text-primary">
+<main class="flex-1 flex flex-col justify-center items-center px-margin-mobile w-full max-w-md mx-auto">
+<div class="w-full mb-xl flex flex-col items-center">
+<img alt="Hero Logo" class="w-48 mb-lg object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9ipw_xRo8CV_OiRrZ3dfWLNo_Y-GLjsyDKhELKIovzU7fX7ZjuLtSWGPlT55NkZjyl4atzokufAGc3s7qolmot8c5G_WLwlKnFbSid3Skg7n3DNBK8-BgTNEC5zQRXIYsZjubq40hSlgAeuAlmLz4N1ydFM8tiFUPioWaEkhFRnr9dW-KcTEojt1yLSJO1klAu4stiAYbgQd7js47GAwuK5cELHdv2Vmfs5g4I81K51s1HBVbtQA_J2DcqMmUYWV0oQ"/>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary text-center">Mobile Stock Take System</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-sm text-center">Authorized personnel only.</p>
+</div>
+<form class="w-full space-y-md" onsubmit="event.preventDefault(); window.location.href='#';">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface block" for="username">Username / Employee ID</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-sm flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<input class="w-full pl-xl pr-md py-sm bg-surface border border-outline-variant rounded focus:border-primary focus:ring-0 transition-colors h-[48px] font-body-md text-body-md" id="username" name="username" placeholder="Enter ID" required="" type="text"/>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface block" for="password">Password</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 pl-sm flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">lock</span>
+</div>
+<input class="w-full pl-xl pr-xl py-sm bg-surface border border-outline-variant rounded focus:border-primary focus:ring-0 transition-colors h-[48px] font-body-md text-body-md" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+<button class="absolute inset-y-0 right-0 pr-sm flex items-center text-outline hover:text-primary transition-colors" onclick="togglePassword()" type="button">
+<span class="material-symbols-outlined" id="visibility-icon">visibility_off</span>
+</button>
+</div>
+</div>
+<div class="flex items-center justify-between mt-sm mb-lg">
+<div class="flex items-center">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2" id="remember" type="checkbox"/>
+<label class="ml-2 font-body-sm text-body-sm text-on-surface-variant" for="remember">Remember me</label>
+</div>
+<a class="font-label-sm text-label-sm text-primary hover:underline" href="#">Need help?</a>
+</div>
+<button class="w-full h-[48px] bg-primary text-on-primary font-label-md text-label-md rounded flex justify-center items-center active:scale-[0.98] transition-transform shadow-sm" type="submit">
+                LOGIN
+                <span class="material-symbols-outlined ml-sm text-[20px]">arrow_forward</span>
+</button>
+</form>
+</main>
+<footer class="w-full py-md text-center border-t border-outline-variant/30 mt-auto">
+<p class="font-label-sm text-label-sm text-on-surface-variant flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span>
+            v4.2.0 | Retail Operations
+        </p>
+</footer>
+<script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const visibilityIcon = document.getElementById('visibility-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                visibilityIcon.textContent = 'visibility';
+            } else {
+                passwordInput.type = 'password';
+                visibilityIcon.textContent = 'visibility_off';
+            }
+        }
+    </script>
+</body></html>

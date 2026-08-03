@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hero_navy">#021541</color>
+    <color name="hero_navy_container">#1A2B56</color>
+    <color name="hero_red">#E41F25</color>
+    <color name="hero_green">#0BA36D</color>
+    <color name="hero_green_soft">#E1F6EF</color>
+    <color name="hero_amber">#B86900</color>
+    <color name="hero_surface">#FBF8FD</color>
+    <color name="hero_surface_low">#F5F3F7</color>
+    <color name="hero_outline">#C5C6D0</color>
+    <color name="hero_text">#1B1B1F</color>
+    <color name="hero_text_muted">#5C5D66</color>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+</resources>
+

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/hero_surface"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="132dp"
+        android:layout_height="132dp"
+        android:layout_marginTop="52dp"
+        android:background="@drawable/bg_chip_green"
+        android:gravity="center"
+        android:text="OK"
+        android:textColor="@color/hero_green"
+        android:textSize="42sp"
+        android:textStyle="bold" />
+
+    <TextView
+        style="@style/HeroHeadline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:gravity="center"
+        android:text="Submit Berhasil" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="Data scan sudah tersimpan ke server."
+        android:textColor="@color/hero_text_muted"
+        android:textSize="16sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ringkasan submit"
+            android:textColor="@color/hero_navy"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/submittedLines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Item terkirim: 0"
+            android:textColor="@color/hero_text" />
+
+        <TextView
+            android:id="@+id/submittedTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Waktu submit: --:--"
+            android:textColor="@color/hero_text" />
+    </LinearLayout>
+
+    <Space
+        android:layout_width="1dp"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/backToRackListButton"
+        android:layout_width="match_parent"
+        android:layout_height="58dp"
+        android:layout_marginBottom="20dp"
+        android:text="Kembali ke Rack List"
+        android:textStyle="bold"
+        app:backgroundTint="@color/hero_navy"
+        app:cornerRadius="16dp" />
+</LinearLayout>

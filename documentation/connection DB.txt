@@ -1,0 +1,5 @@
+SQL_SERVER=jdbc:sqlserver://20.247.188.228:1433;databaseName=MasterData;encrypt=false;trustServerCertificate=true
+SQL_PORT=1433
+SQL_DATABASE=STOCKTAKE
+SQL_USER=hrnsqladm
+SQL_PASSWORD="@4541_Azure_Psi#SQL"

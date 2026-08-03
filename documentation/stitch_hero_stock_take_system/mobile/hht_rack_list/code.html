@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Rack List - Fresh Food</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Courier+Prime&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#b5c5f9",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e6",
+                      "on-primary-container": "#8393c5",
+                      "secondary": "#bb0014",
+                      "on-secondary-fixed": "#410002",
+                      "secondary-container": "#e41f25",
+                      "error-container": "#ffdad6",
+                      "surface": "#fbf8fd",
+                      "error": "#ba1a1a",
+                      "secondary-fixed": "#ffdad6",
+                      "surface-dim": "#dbd9dd",
+                      "surface-container-low": "#f5f3f7",
+                      "surface-container-high": "#e9e7ec",
+                      "on-secondary-fixed-variant": "#93000d",
+                      "tertiary-fixed-dim": "#f6ba88",
+                      "inverse-surface": "#303034",
+                      "on-primary-fixed-variant": "#354572",
+                      "on-primary-fixed": "#051944",
+                      "tertiary-container": "#472400",
+                      "tertiary-fixed": "#ffdcc1",
+                      "on-secondary-container": "#fffbff",
+                      "outline-variant": "#c5c6d0",
+                      "secondary-fixed-dim": "#ffb4ab",
+                      "on-background": "#1b1b1f",
+                      "primary": "#021541",
+                      "surface-container-highest": "#e4e2e6",
+                      "surface-bright": "#fbf8fd",
+                      "inverse-primary": "#b5c5f9",
+                      "outline": "#757680",
+                      "on-tertiary-fixed-variant": "#663d16",
+                      "on-tertiary-container": "#bf895b",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#dae1ff",
+                      "on-surface-variant": "#45464f",
+                      "inverse-on-surface": "#f2f0f4",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fbf8fd",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a2b56",
+                      "tertiary": "#291300",
+                      "on-tertiary-fixed": "#2e1500",
+                      "surface-tint": "#4d5d8b",
+                      "surface-container": "#efedf1",
+                      "on-primary": "#ffffff",
+                      "on-surface": "#1b1b1f",
+                      
+                      // Semantic Status Colors (Added for specific use cases based on style guide)
+                      "status-success": "#10b981", // Emerald 500
+                      "status-success-bg": "rgba(16, 185, 129, 0.1)",
+                      "status-progress": "#3b82f6", // Blue 500
+                      "status-progress-bg": "rgba(59, 130, 246, 0.1)",
+                      "status-pending": "#6b7280", // Gray 500
+                      "status-pending-bg": "rgba(107, 114, 128, 0.1)"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem",
+                      "card": "12px"
+              },
+              "spacing": {
+                      "base": "4px",
+                      "lg": "24px",
+                      "xxl": "48px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "sm": "8px",
+                      "touch": "48px", // Minimum touch target size
+                      "safe-bottom": "env(safe-area-inset-bottom, 20px)"
+              },
+              "fontFamily": {
+                      "headline-xl": ["Inter", "sans-serif"],
+                      "mono-data": ["Courier Prime", "monospace"],
+                      "headline-lg": ["Inter", "sans-serif"],
+                      "body-md": ["Inter", "sans-serif"],
+                      "body-lg": ["Inter", "sans-serif"],
+                      "headline-md": ["Inter", "sans-serif"],
+                      "body-sm": ["Inter", "sans-serif"],
+                      "label-sm": ["Inter", "sans-serif"],
+                      "label-md": ["Inter", "sans-serif"],
+                      "headline-lg-mobile": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "mono-data": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                      "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+              },
+              "boxShadow": {
+                  "ambient": "0 4px 12px 0 rgba(0, 0, 0, 0.08)",
+                  "fab": "0 8px 16px -4px rgba(2, 21, 65, 0.2)"
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for web view if needed */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e4e2e6;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c5c6d0;
+        }
+        
+        /* Layout specific utilities */
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #fbf8fd;
+        }
+        
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 120px; /* Space for FAB and nav */
+        }
+        
+        /* Mobile specific hiding */
+        @media (max-width: 767px) {
+            .web-only { display: none !important; }
+        }
+        @media (min-width: 768px) {
+            .mobile-only { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased font-body-md page-container">
+<!-- TopAppBar (From JSON) -->
+<header class="bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container font-headline-md text-headline-md docked full-width top-0 border-b border-outline-variant flat no shadows flex justify-between items-center px-md py-sm w-full sticky top-0 z-50">
+<div class="flex items-center gap-md">
+<button aria-label="Menu" class="hover:bg-primary-container/20 p-sm rounded-full Active: scale-95 transition-transform flex items-center justify-center h-touch w-touch">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary tracking-tight">HERO INVENTORY</h1>
+</div>
+<button aria-label="Sync" class="hover:bg-primary-container/20 p-sm rounded-full Active: scale-95 transition-transform flex items-center justify-center h-touch w-touch">
+<span class="material-symbols-outlined">sync</span>
+</button>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- NavigationDrawer (Web Only - From JSON) -->
+<nav class="bg-surface-container-low dark:bg-inverse-surface text-primary dark:text-primary-fixed font-label-md text-label-md h-full w-72 border-r border-outline-variant flat no shadows fixed left-0 top-0 h-screen z-40 hidden md:flex flex-col pt-[72px]">
+<!-- Header Profile Area -->
+<div class="p-lg border-b border-outline-variant flex items-center gap-md">
+<div class="w-12 h-12 rounded-full bg-surface-container-high overflow-hidden shrink-0 flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-[24px]">storefront</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-lg text-headline-lg text-secondary !text-lg !leading-tight">Hero Supermarket</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Central Control</span>
+<span class="font-label-sm text-label-sm text-outline mt-1">v4.2.0</span>
+</div>
+</div>
+<!-- Nav Links -->
+<ul class="flex flex-col py-sm overflow-y-auto">
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">speed</span>
+<span>Dashboard</span>
+</a>
+</li>
+<li>
+<!-- Active State for Schedule Context -->
+<a class="text-primary font-bold border-l-4 border-secondary bg-surface-container-highest flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined icon-filled">event_note</span>
+<span>Schedule Management</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span>Rack Monitoring</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Scan Data</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">difference</span>
+<span>Reconciliation</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span>Reports</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">settings_ethernet</span>
+<span>ERP</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant hover:bg-surface-container-high hover:text-primary Transition-all duration-200 ease-in-out flex items-center gap-md px-lg py-md h-touch" href="#">
+<span class="material-symbols-outlined">database</span>
+<span>Master Data</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<main class="content-area md:ml-72 w-full">
+<!-- Page Header & Context -->
+<div class="px-margin-mobile md:px-margin-desktop py-lg border-b border-outline-variant bg-surface sticky top-0 z-30 shadow-sm">
+<div class="flex items-center gap-sm mb-sm md:hidden">
+<button class="text-primary p-xs rounded-full hover:bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active Schedule</span>
+</div>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md mb-md">
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary mb-xs">Rack List - Fresh Food</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+                            Scheduled for today • 3 Locations remaining
+                        </p>
+</div>
+<!-- Web: Quick Actions could go here, Mobile: Hidden -->
+<div class="hidden md:flex gap-sm">
+<button class="bg-surface-container border border-outline-variant text-primary font-label-md text-label-md px-lg h-touch rounded flex items-center justify-center gap-sm hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_horiz</span>
+                            Options
+                        </button>
+</div>
+</div>
+<!-- Search & Filters -->
+<div class="flex flex-col gap-md">
+<!-- Search Input -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full h-touch pl-xl pr-xl bg-surface-container-lowest border-2 border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-0 focus:outline-none transition-colors shadow-sm" placeholder="Search RACK_CODE..." type="text"/>
+<!-- Mobile Clear Button -->
+<button aria-label="Clear search" class="absolute right-md top-1/2 -translate-y-1/2 text-outline hover:text-primary flex items-center justify-center p-xs">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Filter Chips -->
+<div class="flex overflow-x-auto gap-sm pb-sm -mb-sm no-scrollbar scroll-smooth">
+<button class="shrink-0 h-10 px-md rounded-full bg-primary text-on-primary font-label-sm text-label-sm border border-primary flex items-center justify-center">
+                            All (3)
+                        </button>
+<button class="shrink-0 h-10 px-md rounded-full bg-surface text-on-surface-variant border border-outline-variant font-label-sm text-label-sm hover:bg-surface-container-low flex items-center justify-center transition-colors">
+                            In Progress (1)
+                        </button>
+<button class="shrink-0 h-10 px-md rounded-full bg-surface text-on-surface-variant border border-outline-variant font-label-sm text-label-sm hover:bg-surface-container-low flex items-center justify-center transition-colors">
+                            Submitted (1)
+                        </button>
+<button class="shrink-0 h-10 px-md rounded-full bg-surface text-on-surface-variant border border-outline-variant font-label-sm text-label-sm hover:bg-surface-container-low flex items-center justify-center transition-colors">
+                            Not Started (1)
+                        </button>
+</div>
+</div>
+</div>
+<!-- List Content Canvas -->
+<div class="p-margin-mobile md:p-margin-desktop bg-surface-container-lowest min-h-full">
+<!-- Card List Container -->
+<div class="flex flex-col gap-md max-w-4xl mx-auto">
+<!-- Card 1: Submitted (Green) -->
+<div class="bg-surface rounded-card border border-outline-variant shadow-sm hover:shadow-ambient transition-shadow p-0 flex flex-col md:flex-row overflow-hidden relative">
+<!-- Left Status Border Accent -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-success hidden md:block"></div>
+<!-- Header / Title Area -->
+<div class="p-md md:p-lg flex-1 border-b md:border-b-0 md:border-r border-outline-variant flex flex-col justify-center">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-headline-md text-headline-md text-primary font-bold tracking-tight">Rack A1-01</h3>
+<!-- Mobile Status Chip -->
+<span class="md:hidden bg-status-success-bg text-status-success font-label-sm text-label-sm px-sm py-xs rounded flex items-center gap-xs border border-status-success/20">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                    Submitted
+                                </span>
+</div>
+<div class="font-mono-data text-mono-data text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">barcode_scanner</span>
+                                CODE: RCK-FF-A101
+                            </div>
+</div>
+<!-- Stats Area -->
+<div class="p-md md:p-lg flex-1 flex flex-row items-center justify-between md:justify-around bg-surface-bright">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Last Scan</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">10:45 AM</span>
+</div>
+<div class="w-px h-8 bg-outline-variant mx-sm"></div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Items</span>
+<span class="font-body-md text-body-md text-on-surface font-medium flex items-center gap-xs">
+                                    42 
+                                    <span aria-label="No variance" class="text-status-success flex items-center">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</span>
+</span>
+</div>
+<!-- Web Status Chip -->
+<div class="hidden md:flex">
+<span class="bg-status-success-bg text-status-success font-label-sm text-label-sm px-md py-sm rounded-full flex items-center gap-xs border border-status-success/20">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+                                    Submitted
+                                </span>
+</div>
+</div>
+<!-- Action Area -->
+<div class="p-md flex items-center justify-end bg-surface-container-low border-t md:border-t-0 md:border-l border-outline-variant">
+<button class="text-primary hover:bg-surface-container p-sm rounded flex items-center justify-center gap-xs font-label-sm text-label-sm transition-colors w-full md:w-auto h-touch">
+<span class="material-symbols-outlined">visibility</span>
+<span class="md:hidden">View Details</span>
+</button>
+</div>
+</div>
+<!-- Card 2: In Progress (Blue) -->
+<div class="bg-surface rounded-card border-2 border-status-progress/30 shadow-ambient transition-shadow p-0 flex flex-col md:flex-row overflow-hidden relative">
+<!-- Left Status Border Accent -->
+<div class="absolute left-0 top-0 bottom-0 w-[6px] bg-status-progress"></div>
+<!-- Header / Title Area -->
+<div class="p-md md:p-lg flex-1 border-b md:border-b-0 md:border-r border-outline-variant flex flex-col justify-center pl-[18px] md:pl-lg">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-headline-md text-headline-md text-primary font-bold tracking-tight">Rack A1-02</h3>
+<!-- Mobile Status Chip -->
+<span class="md:hidden bg-status-progress-bg text-status-progress font-label-sm text-label-sm px-sm py-xs rounded flex items-center gap-xs border border-status-progress/20">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+                                    In Progress
+                                </span>
+</div>
+<div class="font-mono-data text-mono-data text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px] text-outline">barcode_scanner</span>
+                                CODE: RCK-FF-A102
+                            </div>
+</div>
+<!-- Stats Area -->
+<div class="p-md md:p-lg flex-1 flex flex-row items-center justify-between md:justify-around bg-surface-bright">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Last Scan</span>
+<span class="font-body-md text-body-md text-on-surface font-medium text-status-progress">Active now</span>
+</div>
+<div class="w-px h-8 bg-outline-variant mx-sm"></div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Items</span>
+<span class="font-body-md text-body-md text-on-surface font-medium flex items-center gap-xs">
+                                    18 / 50
+                                </span>
+</div>
+<!-- Web Status Chip -->
+<div class="hidden md:flex">
+<span class="bg-status-progress-bg text-status-progress font-label-sm text-label-sm px-md py-sm rounded-full flex items-center gap-xs border border-status-progress/20">
+<span class="material-symbols-outlined text-[16px] animate-spin" style="animation-duration: 3s;">sync</span>
+                                    In Progress
+                                </span>
+</div>
+</div>
+<!-- Action Area -->
+<div class="p-md flex items-center justify-end bg-surface-container-lowest border-t md:border-t-0 md:border-l border-outline-variant">
+<button class="bg-primary text-on-primary hover:bg-primary-container px-lg rounded flex items-center justify-center gap-sm font-label-md text-label-md transition-colors w-full md:w-auto h-touch shadow-sm">
+<span class="material-symbols-outlined">barcode_scanner</span>
+<span>Resume</span>
+</button>
+</div>
+</div>
+<!-- Card 3: Not Started (Gray) -->
+<div class="bg-surface rounded-card border border-outline-variant shadow-sm hover:shadow-ambient transition-shadow p-0 flex flex-col md:flex-row overflow-hidden relative opacity-75">
+<!-- Left Status Border Accent -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-outline-variant hidden md:block"></div>
+<!-- Header / Title Area -->
+<div class="p-md md:p-lg flex-1 border-b md:border-b-0 md:border-r border-outline-variant flex flex-col justify-center">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface-variant font-bold tracking-tight">Rack A1-03</h3>
+<!-- Mobile Status Chip -->
+<span class="md:hidden bg-status-pending-bg text-status-pending font-label-sm text-label-sm px-sm py-xs rounded flex items-center gap-xs border border-status-pending/20">
+<span class="material-symbols-outlined text-[14px]">pending</span>
+                                    Not Started
+                                </span>
+</div>
+<div class="font-mono-data text-mono-data text-outline flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">barcode_scanner</span>
+                                CODE: RCK-FF-A103
+                            </div>
+</div>
+<!-- Stats Area -->
+<div class="p-md md:p-lg flex-1 flex flex-row items-center justify-between md:justify-around bg-surface-bright">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-xs">Last Scan</span>
+<span class="font-body-md text-body-md text-outline italic">--:--</span>
+</div>
+<div class="w-px h-8 bg-outline-variant mx-sm"></div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-xs">Items</span>
+<span class="font-body-md text-body-md text-outline font-medium">
+                                    0
+                                </span>
+</div>
+<!-- Web Status Chip -->
+<div class="hidden md:flex">
+<span class="bg-status-pending-bg text-status-pending font-label-sm text-label-sm px-md py-sm rounded-full flex items-center gap-xs border border-status-pending/20">
+<span class="material-symbols-outlined text-[16px]">pending</span>
+                                    Not Started
+                                </span>
+</div>
+</div>
+<!-- Action Area -->
+<div class="p-md flex items-center justify-end bg-surface-container-low border-t md:border-t-0 md:border-l border-outline-variant">
+<button class="bg-surface border-2 border-primary text-primary hover:bg-surface-container px-lg rounded flex items-center justify-center gap-sm font-label-md text-label-md transition-colors w-full md:w-auto h-touch">
+<span class="material-symbols-outlined">play_arrow</span>
+<span>Start</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Action Button (FAB) -->
+<button aria-label="Start Scanning" class="fixed right-md md:right-xl bottom-[90px] md:bottom-xl bg-secondary-container text-on-secondary-container rounded-2xl w-14 h-14 md:w-16 md:h-16 flex items-center justify-center shadow-fab hover:-translate-y-1 hover:shadow-lg transition-all z-40">
+<span class="material-symbols-outlined icon-filled text-[28px] md:text-[32px]">barcode_scanner</span>
+</button>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only - From JSON) -->
+<!-- The prompt implies this is a focused task ("Rack List Screen for an active schedule"), 
+         but it's technically a sub-page of "Schedules". Following the strict logic:
+         "If the user is in a focused journey... hide the shell to prioritize the Canvas."
+         However, a "List Screen" often maintains global nav if it's top-level within a tab.
+         Given the instruction "You are only permitted to render the BottomNavBar... if the current screen represents a top-level destination",
+         I will include it but highlight "Schedules" as it represents the active context. -->
+<nav class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim font-label-sm text-label-sm font-headline-md text-headline-md text-primary docked full-width bottom-0 border-t border-outline-variant bg-surface flat no shadows fixed bottom-0 w-full z-50 flex justify-around items-center px-md pb-safe bg-surface md:hidden h-[72px]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="truncate text-[10px] w-full text-center">Dashboard</span>
+</a>
+<!-- Active: Schedules (Based on semantic intent: "active schedule") -->
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-lg py-xs Active: opacity-80 duration-150 h-10 gap-1 mt-1 mb-2 shadow-sm border border-secondary" href="#">
+<span class="material-symbols-outlined icon-filled">calendar_today</span>
+<span class="font-bold text-[10px] w-full text-center hidden">Schedules</span> <!-- Visually hidden text on active pill in material 3 style often -->
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined">barcode_scanner</span>
+<span class="truncate text-[10px] w-full text-center">Scanner</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined">drafts</span>
+<span class="truncate text-[10px] w-full text-center">Drafts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-xs w-16 h-full gap-1" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="truncate text-[10px] w-full text-center">Profile</span>
+</a>
+</nav>
+</body></html>

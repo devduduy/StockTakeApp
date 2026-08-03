@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_dashboard" android:icon="@drawable/ic_dashboard" android:title="@string/dashboard" />
+    <item android:id="@+id/nav_schedules" android:icon="@drawable/ic_calendar" android:title="@string/schedules" />
+    <item android:id="@+id/nav_scanner" android:icon="@drawable/ic_barcode" android:title="@string/scanner" />
+    <item android:id="@+id/nav_drafts" android:icon="@drawable/ic_draft" android:title="@string/drafts" />
+    <item android:id="@+id/nav_profile" android:icon="@drawable/ic_profile" android:title="@string/profile" />
+</menu>
+
