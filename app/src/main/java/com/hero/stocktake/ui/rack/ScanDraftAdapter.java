@@ -16,6 +16,17 @@ import java.util.List;
 
 public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Holder> {
     private final List<LocalScanDraft> items = new ArrayList<>();
+    private final OnDraftActionListener actionListener;
+    private boolean actionsEnabled = true;
+
+    public ScanDraftAdapter(OnDraftActionListener actionListener) {
+        this.actionListener = actionListener;
+    }
+
+    public void setActionsEnabled(boolean actionsEnabled) {
+        this.actionsEnabled = actionsEnabled;
+        notifyDataSetChanged();
+    }
 
     public void submitList(List<LocalScanDraft> drafts) {
         items.clear();
@@ -38,12 +49,23 @@ public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Hold
         holder.barcode.setText(draft.barcode + " - PLU " + draft.plu);
         holder.inputType.setText(draft.inputType + " - " + draft.syncStatus);
         holder.quantity.setText("x" + draft.scanQty);
+        holder.latestBadge.setText("Terbaru");
         holder.latestBadge.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
+        boolean editable = actionsEnabled && !"SYNCED".equalsIgnoreCase(draft.syncStatus);
+        holder.actions.setVisibility(editable ? View.VISIBLE : View.GONE);
+        holder.editQuantity.setOnClickListener(v -> actionListener.onEditQuantity(draft));
+        holder.deleteItem.setOnClickListener(v -> actionListener.onDelete(draft));
     }
 
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public interface OnDraftActionListener {
+        void onEditQuantity(LocalScanDraft draft);
+
+        void onDelete(LocalScanDraft draft);
     }
 
     static class Holder extends RecyclerView.ViewHolder {
@@ -52,6 +74,9 @@ public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Hold
         final TextView inputType;
         final TextView quantity;
         final TextView latestBadge;
+        final View actions;
+        final View editQuantity;
+        final View deleteItem;
 
         Holder(View view) {
             super(view);
@@ -60,6 +85,9 @@ public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Hold
             inputType = view.findViewById(R.id.inputType);
             quantity = view.findViewById(R.id.quantity);
             latestBadge = view.findViewById(R.id.latestBadge);
+            actions = view.findViewById(R.id.draftActions);
+            editQuantity = view.findViewById(R.id.editQuantityButton);
+            deleteItem = view.findViewById(R.id.deleteItemButton);
         }
     }
 }

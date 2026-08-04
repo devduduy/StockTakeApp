@@ -14,6 +14,8 @@ import com.hero.stocktake.data.remote.dto.LoginRequestDto;
 import com.hero.stocktake.data.remote.dto.LoginResponseDto;
 import com.hero.stocktake.data.remote.dto.RackDto;
 import com.hero.stocktake.data.remote.dto.RackListResponseDto;
+import com.hero.stocktake.data.remote.dto.RackScanDto;
+import com.hero.stocktake.data.remote.dto.RackScanListResponseDto;
 import com.hero.stocktake.data.remote.dto.ScanSubmitLineDto;
 import com.hero.stocktake.data.remote.dto.ScheduleDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansRequestDto;
@@ -192,6 +194,34 @@ public class NetworkRepository {
         });
     }
 
+    public void getRackScans(
+            String scheduleId,
+            String rackId,
+            ResultCallback<List<RackScanDto>> callback
+    ) {
+        String authorization = sessionManager.getAuthorizationHeader();
+        if (authorization == null) {
+            callback.onError("Sesi login tidak ditemukan. Silakan login ulang.");
+            return;
+        }
+        api.rackScans(authorization, scheduleId, rackId).enqueue(new Callback<>() {
+            @Override
+            public void onResponse(@NonNull Call<ApiEnvelope<RackScanListResponseDto>> call, @NonNull Response<ApiEnvelope<RackScanListResponseDto>> response) {
+                ApiEnvelope<RackScanListResponseDto> envelope = response.body();
+                if (response.isSuccessful() && envelope != null && envelope.data != null && envelope.data.scans != null) {
+                    callback.onSuccess(envelope.data.scans);
+                    return;
+                }
+                callback.onError(readError(response, "Gagal memuat item submitted."));
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiEnvelope<RackScanListResponseDto>> call, @NonNull Throwable throwable) {
+                callback.onError(networkError(throwable));
+            }
+        });
+    }
+
     private Schedule mapSchedule(ScheduleDto dto) {
         int totalRacks = dto.progress == null ? 0 : dto.progress.totalRack;
         int scannedRacks = dto.progress == null ? 0 : dto.progress.rackWithSubmittedScan;
@@ -227,7 +257,9 @@ public class NetworkRepository {
                 displayStatus(dto.status),
                 dto.localDraftCount + dto.submittedLineCount,
                 dto.submittedQuantity,
-                lastScan
+                dto.printed ? "Printed" : lastScan,
+                dto.submittedLineCount > 0,
+                dto.printed || dto.printedLineCount > 0
         );
     }
 

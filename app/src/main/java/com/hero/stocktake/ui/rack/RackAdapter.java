@@ -62,6 +62,9 @@ public class RackAdapter extends RecyclerView.Adapter<RackAdapter.Holder> {
     }
 
     private String resolveStatusLabel(Rack rack) {
+        if (rack.printed()) {
+            return "PRINTED";
+        }
         if (rack.itemCount() <= 0) {
             return rack.status();
         }

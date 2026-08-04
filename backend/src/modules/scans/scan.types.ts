@@ -29,3 +29,18 @@ export interface SubmitRackScansResponse {
   submittedQuantity: number;
   serverTime: string;
 }
+
+export interface RackScanLineResponse {
+  id: string;
+  clientScanId: string;
+  rackSeq: number;
+  barcode: string;
+  plu: string;
+  pluDescription: string;
+  scanQty: number;
+  inputType: "SCAN" | "MANUAL";
+  scanStatus: string;
+  printNo: string | null;
+  dateCreated: string;
+  dateModified: string | null;
+}

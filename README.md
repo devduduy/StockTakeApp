@@ -1,6 +1,10 @@
-# Hero Stock Take Mobile
+# Hero Stock Take Mobile & Web
 
 Prototype Android native untuk alur Stock Take Hero Supermarket berdasarkan PRD v2.1 dan desain Google Stitch di folder `documentation`.
+
+Web operasional Angular 18 standalone tersedia di folder [`frontend`](frontend/).
+Tahap awal web sudah mencakup login, dashboard live, schedule aktif, monitoring
+rack, serta detail item tersubmit melalui Backend API yang sama dengan mobile.
 
 ## Status prototype
 
@@ -81,6 +85,18 @@ Backend Express.js + TypeScript tersedia di folder [`backend`](backend/).
 Scope awalnya adalah login JWT, active schedule, dan rack list dengan dukungan
 SQL Server maupun dummy in-memory. Petunjuk konfigurasi dan endpoint ada di
 [`backend/README.md`](backend/README.md).
+
+## Web Frontend
+
+Jalankan backend dan web dari root project:
+
+```powershell
+npm.cmd --prefix backend run dev
+npm.cmd --prefix frontend start
+```
+
+Buka `http://127.0.0.1:4200/`. Petunjuk dan roadmap implementasi web ada di
+[`frontend/README.md`](frontend/README.md).
 
 Android debug membaca base URL dari `stocktake.apiBaseUrl` di `local.properties`.
 Untuk emulator gunakan `http://10.0.2.2:3000/`. Untuk device fisik seperti

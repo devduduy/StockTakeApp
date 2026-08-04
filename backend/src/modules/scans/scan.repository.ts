@@ -3,12 +3,138 @@ import { env } from "../../config/env.js";
 import { getSqlPool } from "../../db/sql.js";
 import { mockScanSubmissions } from "../../shared/mock-data.js";
 import type {
+  RackScanLineResponse,
   SubmitRackScansInput,
   SubmitRackScansResponse,
 } from "./scan.types.js";
 
 interface MergeActionRow {
   action: "INSERT" | "UPDATE";
+}
+
+interface ScanLineRow {
+  id: string | number;
+  client_scan_id: string;
+  rack_seq: number;
+  barcode: string;
+  plu: string | null;
+  plu_description: string | null;
+  scan_qty: number | string;
+  input_type: "SCAN" | "MANUAL";
+  scan_status: string;
+  print_no: string | null;
+  date_created: Date | string;
+  date_modified: Date | string | null;
+}
+
+function isoDateTime(value: Date | string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function mapScanLine(row: ScanLineRow): RackScanLineResponse {
+  return {
+    id: String(row.id),
+    clientScanId: row.client_scan_id,
+    rackSeq: Number(row.rack_seq),
+    barcode: row.barcode,
+    plu: row.plu ?? "",
+    pluDescription: row.plu_description ?? "",
+    scanQty: Number(row.scan_qty),
+    inputType: row.input_type,
+    scanStatus: row.scan_status,
+    printNo: row.print_no?.trim() || null,
+    dateCreated: isoDateTime(row.date_created) ?? new Date(0).toISOString(),
+    dateModified: isoDateTime(row.date_modified),
+  };
+}
+
+export async function listRackScans(
+  scheduleId: number,
+  rackId: number,
+): Promise<RackScanLineResponse[]> {
+  if (env.SQL_MODE === "mock") {
+    return mockScanSubmissions
+      .filter(
+        (scan) =>
+          Number(scan.scheduleId) === scheduleId &&
+          Number(scan.rackId) === rackId,
+      )
+      .map((scan, index) =>
+        mapScanLine({
+          id: index + 1,
+          client_scan_id: scan.clientScanId,
+          rack_seq: index + 1,
+          barcode: scan.barcode,
+          plu: scan.plu,
+          plu_description: scan.pluDescription,
+          scan_qty: scan.scanQty,
+          input_type: scan.inputType,
+          scan_status: scan.scanStatus,
+          print_no: scan.printNo ?? null,
+          date_created: scan.dateCreated,
+          date_modified: scan.dateModified ?? null,
+        }),
+      )
+      .sort((left, right) => right.rackSeq - left.rackSeq);
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("scheduleId", sql.BigInt, scheduleId)
+    .input("rackId", sql.BigInt, rackId)
+    .query<ScanLineRow>(`
+      SELECT
+        CAST(ID AS varchar(30)) AS id,
+        CLIENT_SCAN_ID AS client_scan_id,
+        RACK_SEQ AS rack_seq,
+        BARCODE AS barcode,
+        PLU AS plu,
+        PLU_DESCRIPTION AS plu_description,
+        SCAN_QTY AS scan_qty,
+        INPUT_TYPE AS input_type,
+        SCAN_STATUS AS scan_status,
+        PRINT_NO AS print_no,
+        DATE_CREATED AS date_created,
+        DATE_MODIFIED AS date_modified
+      FROM dbo.TR_STOCK_TAKE_SCAN
+      WHERE SCHEDULE_ID = @scheduleId
+        AND RACK_ID = @rackId
+        AND SCAN_STATUS = 'SYNCED'
+      ORDER BY RACK_SEQ DESC, ID DESC;
+    `);
+  return result.recordset.map(mapScanLine);
+}
+
+export async function isRackPrinted(
+  scheduleId: number,
+  rackId: number,
+): Promise<boolean> {
+  if (env.SQL_MODE === "mock") {
+    return mockScanSubmissions.some(
+      (scan) =>
+        Number(scan.scheduleId) === scheduleId &&
+        Number(scan.rackId) === rackId &&
+        Boolean(scan.printNo?.trim()),
+    );
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("scheduleId", sql.BigInt, scheduleId)
+    .input("rackId", sql.BigInt, rackId)
+    .query<{ printed_count: number }>(`
+      SELECT COUNT(1) AS printed_count
+      FROM dbo.TR_STOCK_TAKE_SCAN
+      WHERE SCHEDULE_ID = @scheduleId
+        AND RACK_ID = @rackId
+        AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NOT NULL;
+    `);
+  return Number(result.recordset[0]?.printed_count ?? 0) > 0;
 }
 
 export async function submitRackScans(

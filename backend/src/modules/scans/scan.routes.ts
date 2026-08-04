@@ -6,7 +6,7 @@ import { asyncHandler } from "../../shared/async-handler.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
 import { findRackById } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
-import { submitRackScans } from "./scan.repository.js";
+import { isRackPrinted, listRackScans, submitRackScans } from "./scan.repository.js";
 import type { CanonicalScanLine } from "./scan.types.js";
 
 const paramsSchema = z.object({
@@ -29,6 +29,44 @@ const bodySchema = z.object({
 });
 
 export const scanRouter = Router({ mergeParams: true });
+
+scanRouter.get(
+  "/:scheduleId/racks/:rackId/scans",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const schedule = await findScheduleLocation(scheduleId);
+    if (!schedule) {
+      throw new AppError(
+        404,
+        "Schedule tidak ditemukan.",
+        "SCHEDULE_NOT_FOUND",
+      );
+    }
+    if (request.auth?.locCode && request.auth.locCode !== schedule.locCode) {
+      throw new AppError(
+        403,
+        "User tidak memiliki akses ke lokasi schedule ini.",
+        "SCHEDULE_LOCATION_FORBIDDEN",
+      );
+    }
+
+    const rack = await findRackById(rackId);
+    if (!rack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    if (rack.locCode !== schedule.locCode) {
+      throw new AppError(
+        422,
+        "Rack tidak sesuai dengan lokasi schedule.",
+        "RACK_LOCATION_MISMATCH",
+      );
+    }
+
+    const scans = await listRackScans(scheduleId, rackId);
+    response.status(200).json({ data: { scans } });
+  }),
+);
 
 scanRouter.post(
   "/:scheduleId/racks/:rackId/scans/submit",
@@ -71,6 +109,13 @@ scanRouter.post(
         422,
         "Rack tidak sesuai dengan lokasi schedule.",
         "RACK_LOCATION_MISMATCH",
+      );
+    }
+    if (await isRackPrinted(scheduleId, rackId)) {
+      throw new AppError(
+        409,
+        "Rack sudah diprint. Scan tambahan tidak boleh disubmit.",
+        "RACK_ALREADY_PRINTED",
       );
     }
 

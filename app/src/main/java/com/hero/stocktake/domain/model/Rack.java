@@ -7,6 +7,8 @@ public record Rack(
         String status,
         int itemCount,
         int totalQuantity,
-        String lastScan
+        String lastScan,
+        boolean submitted,
+        boolean printed
 ) {
 }

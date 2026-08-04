@@ -1,0 +1,116 @@
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a routerLink="/schedules">Schedule</a>
+  <span class="material-symbols-outlined">chevron_right</span>
+  <span>{{ schedule()?.scheduleNo || scheduleLocation()?.scheduleNo || 'Monitoring Rack' }}</span>
+</nav>
+
+<section class="page-heading rack-heading">
+  <div>
+    <p class="eyebrow">MONITORING RACK</p>
+    <h1>{{ schedule()?.scheduleDesc || scheduleLocation()?.scheduleNo || 'Detail Schedule' }}</h1>
+    <p>
+      {{ schedule()?.location?.name || ('Lokasi ' + (scheduleLocation()?.locCode || '-')) }}
+      @if (schedule()?.scheduleDate) { · {{ schedule()?.scheduleDate | date:'dd MMMM yyyy' }} }
+    </p>
+  </div>
+  <div class="page-heading__actions">
+    @if (lastUpdated()) { <span class="last-updated">Auto-refresh 10 detik · {{ lastUpdated() | date:'HH:mm:ss' }}</span> }
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+      <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span> Perbarui
+    </button>
+  </div>
+</section>
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">cloud_off</span>
+    <div><strong>Monitoring tidak dapat dimuat</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="refresh()">Coba lagi</button>
+  </div>
+}
+
+@if (loading()) {
+  <div class="rack-summary-grid">@for (item of [1,2,3,4]; track item) { <div class="skeleton skeleton--summary"></div> }</div>
+  <div class="skeleton skeleton--panel"></div>
+} @else {
+  <div class="rack-summary-grid">
+    <article><span class="material-symbols-outlined">view_module</span><div><strong>{{ racks().length }}</strong><small>Total rack aktif</small></div></article>
+    <article><span class="material-symbols-outlined">task_alt</span><div><strong>{{ submittedCount() }}</strong><small>Rack sudah submit</small></div></article>
+    <article><span class="material-symbols-outlined">barcode_scanner</span><div><strong>{{ totalLines() | number }}</strong><small>Item terscan</small></div></article>
+    <article class="printed"><span class="material-symbols-outlined">print</span><div><strong>{{ printedCount() }}</strong><small>Rack terkunci print</small></div></article>
+  </div>
+
+  <section class="content-card rack-panel">
+    <div class="rack-toolbar">
+      <label class="search-control">
+        <span class="material-symbols-outlined">search</span>
+        <input type="search" placeholder="Cari nomor atau nama rack..." [value]="search()" (input)="search.set($any($event.target).value)" />
+        @if (search()) { <button type="button" aria-label="Hapus pencarian" (click)="search.set('')"><span class="material-symbols-outlined">close</span></button> }
+      </label>
+      <div class="segmented-control rack-filters">
+        <button type="button" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">Semua</button>
+        <button type="button" [class.active]="statusFilter() === 'EMPTY'" (click)="setStatusFilter('EMPTY')">Belum scan</button>
+        <button type="button" [class.active]="statusFilter() === 'SUBMITTED'" (click)="setStatusFilter('SUBMITTED')">Submit</button>
+        <button type="button" [class.active]="statusFilter() === 'PRINTED'" (click)="setStatusFilter('PRINTED')">Printed</button>
+      </div>
+      <span class="result-count">{{ filteredRacks().length }} rack</span>
+    </div>
+
+    <div class="rack-table-wrap">
+      <table class="data-table rack-table">
+        <thead><tr><th>Rack</th><th>Status</th><th class="number">Item terscan</th><th class="number">Total quantity</th><th>Print</th><th aria-label="Aksi"></th></tr></thead>
+        <tbody>
+          @for (rack of filteredRacks(); track rack.id) {
+            <tr (click)="selectRack(rack)" [class.selected]="selectedRack()?.id === rack.id">
+              <td><div class="rack-name"><span class="rack-code">{{ rack.rackCode }}</span><strong>{{ rack.rackName }}</strong></div></td>
+              <td><span class="rack-state" [class]="'rack-state rack-state--' + rackState(rack)"><i></i>{{ rackStateLabel(rack) }}</span></td>
+              <td class="number mono">{{ rack.submittedLineCount | number }}</td>
+              <td class="number mono">{{ rack.submittedQuantity | number }}</td>
+              <td>
+                @if (rack.printed) { <span class="print-lock"><span class="material-symbols-outlined">lock</span> Terkunci</span> }
+                @else { <span class="muted">Belum print</span> }
+              </td>
+              <td class="action"><button type="button" aria-label="Lihat detail rack"><span class="material-symbols-outlined">chevron_right</span></button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6"><div class="empty-state compact"><span class="material-symbols-outlined">inventory_2</span><h3>Rack tidak ditemukan</h3><p>Coba ubah pencarian atau filter status.</p></div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <footer class="table-footer"><span>{{ filteredRacks().length }} rack ditampilkan</span><strong>{{ totalQuantity() | number }} total quantity schedule</strong></footer>
+  </section>
+}
+
+@if (selectedRack(); as rack) {
+  <button type="button" class="drawer-backdrop" aria-label="Tutup detail" (click)="closeDetail()"></button>
+  <aside class="rack-drawer" aria-label="Detail rack">
+    <header class="rack-drawer__header">
+      <div><span>DETAIL RACK</span><h2>{{ rack.rackCode }}</h2><p>{{ rack.rackName }}</p></div>
+      <button type="button" aria-label="Tutup detail" (click)="closeDetail()"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div class="drawer-metrics">
+      <div><strong>{{ rack.submittedLineCount | number }}</strong><span>Item terscan</span></div>
+      <div><strong>{{ selectedQuantity() | number }}</strong><span>Total quantity</span></div>
+      <div><strong>{{ rackStateLabel(rack) }}</strong><span>Status rack</span></div>
+    </div>
+    <div class="drawer-section-title"><div><h3>Data item tersubmit</h3><span>{{ scans().length }} baris data</span></div>@if (rack.printed) { <span class="locked-badge"><span class="material-symbols-outlined">lock</span> Printed</span> }</div>
+
+    @if (scanErrorMessage()) { <div class="drawer-error">{{ scanErrorMessage() }}</div> }
+    <div class="scan-list">
+      @if (scansLoading()) {
+        @for (item of [1,2,3]; track item) { <div class="skeleton skeleton--scan"></div> }
+      } @else {
+        @for (scan of scans(); track scan.id) {
+          <article class="scan-row">
+            <div class="scan-row__main"><strong>{{ scan.pluDescription }}</strong><span class="mono">PLU {{ scan.plu }} · {{ scan.barcode }}</span></div>
+            <div class="scan-row__qty"><span>Qty</span><strong>{{ scan.scanQty | number }}</strong></div>
+            <div class="scan-row__meta"><span>{{ scan.dateCreated | date:'dd MMM yyyy, HH:mm' }}</span><i class="status-chip status-chip--active">{{ scan.scanStatus }}</i></div>
+          </article>
+        } @empty {
+          <div class="empty-state compact"><span class="material-symbols-outlined">barcode_scanner</span><h3>Belum ada item</h3><p>Data akan muncul setelah HHT melakukan submit.</p></div>
+        }
+      }
+    </div>
+  </aside>
+}

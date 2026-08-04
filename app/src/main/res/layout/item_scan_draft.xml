@@ -70,6 +70,39 @@
                 android:textColor="@color/hero_green"
                 android:textSize="12sp"
                 android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/draftActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/editQuantityButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_stat_card"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="Edit qty"
+                    android:textColor="@color/hero_navy"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/deleteItemButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_stat_card"
+                    android:gravity="center"
+                    android:paddingHorizontal="12dp"
+                    android:text="Hapus"
+                    android:textColor="@color/hero_red"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView

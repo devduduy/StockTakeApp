@@ -1,0 +1,97 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">STOCK TAKE</p>
+    <h1>Schedule Aktif</h1>
+    <p>Schedule tampil sesuai lokasi yang terhubung dengan akun Anda.</p>
+  </div>
+  <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+    <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
+    Perbarui data
+  </button>
+</section>
+
+<section class="filter-bar" aria-label="Filter schedule">
+  <label class="search-control">
+    <span class="material-symbols-outlined">search</span>
+    <input
+      type="search"
+      placeholder="Cari nomor, deskripsi, atau lokasi..."
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+    />
+    @if (search()) {
+      <button type="button" aria-label="Hapus pencarian" (click)="search.set('')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    }
+  </label>
+  <div class="segmented-control" aria-label="Filter tipe stock take">
+    <button type="button" [class.active]="typeFilter() === ''" (click)="setTypeFilter('')">Semua</button>
+    <button type="button" [class.active]="typeFilter() === 'ALL'" (click)="setTypeFilter('ALL')">ALL</button>
+    <button type="button" [class.active]="typeFilter() === 'PARTIAL'" (click)="setTypeFilter('PARTIAL')">PARTIAL</button>
+  </div>
+  <span class="result-count">{{ filteredSchedules().length }} schedule</span>
+</section>
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">cloud_off</span>
+    <div><strong>Schedule tidak dapat dimuat</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="refresh()">Coba lagi</button>
+  </div>
+}
+
+@if (loading()) {
+  <div class="schedule-grid">
+    @for (item of [1,2,3,4]; track item) { <div class="skeleton skeleton--schedule"></div> }
+  </div>
+} @else {
+  <div class="schedule-grid">
+    @for (schedule of filteredSchedules(); track schedule.id) {
+      <article class="schedule-card">
+        <div class="schedule-card__top">
+          <div>
+            <span class="schedule-number">{{ schedule.scheduleNo }}</span>
+            <span class="status-chip status-chip--active">{{ statusLabel(schedule.status) }}</span>
+          </div>
+          <span class="type-chip" [class.type-chip--partial]="stockTypeLabel(schedule) === 'PARTIAL'">
+            {{ stockTypeLabel(schedule) }}
+          </span>
+        </div>
+
+        <div class="schedule-card__body">
+          <h2>{{ schedule.scheduleDesc }}</h2>
+          <div class="metadata-row">
+            <span class="material-symbols-outlined">storefront</span>
+            <div><small>Lokasi</small><strong>{{ schedule.location.name }} ({{ schedule.locCode }})</strong></div>
+          </div>
+          <div class="metadata-row">
+            <span class="material-symbols-outlined">calendar_today</span>
+            <div><small>Tanggal & Waktu</small><strong>{{ schedule.scheduleDate | date:'dd MMMM yyyy' }} · {{ schedule.startTime ? (schedule.startTime | date:'HH:mm') : '--:--' }}</strong></div>
+          </div>
+          <div class="metadata-row">
+            <span class="material-symbols-outlined">category</span>
+            <div><small>Scope Kategori</small><strong>{{ categorySummary(schedule) }}</strong></div>
+          </div>
+        </div>
+
+        <div class="schedule-card__progress">
+          <div><span>Progres rack</span><strong>{{ schedule.progress.percentage }}%</strong></div>
+          <div class="progress-track"><span [style.width.%]="schedule.progress.percentage"></span></div>
+          <small>{{ schedule.progress.rackWithSubmittedScan }} dari {{ schedule.progress.totalRack }} rack sudah disubmit</small>
+        </div>
+
+        <a class="schedule-card__action" [routerLink]="['/schedules', schedule.id, 'racks']">
+          Buka monitoring rack <span class="material-symbols-outlined">arrow_forward</span>
+        </a>
+      </article>
+    } @empty {
+      <div class="empty-state schedule-empty">
+        <span class="material-symbols-outlined">event_busy</span>
+        <h3>Tidak ada schedule yang cocok</h3>
+        <p>Ubah kata pencarian atau filter tipe stock take.</p>
+        <button class="secondary-button" type="button" (click)="search.set(''); setTypeFilter('')">Reset filter</button>
+      </div>
+    }
+  </div>
+}

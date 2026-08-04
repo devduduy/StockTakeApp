@@ -11,10 +11,13 @@ import com.hero.stocktake.data.local.AppDatabase;
 import com.hero.stocktake.data.local.dao.ScanDraftDao;
 import com.hero.stocktake.data.local.entity.LocalScanDraft;
 import com.hero.stocktake.data.local.model.RackDraftSummary;
+import com.hero.stocktake.data.remote.dto.RackScanDto;
 import com.hero.stocktake.data.remote.dto.ScanSubmitLineDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansResponseDto;
 import com.hero.stocktake.domain.DraftRules;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +31,12 @@ public class DraftRepository {
 
     public interface SubmitCallback {
         void onSuccess(int submittedLines);
+
+        void onError(String message);
+    }
+
+    public interface ActionCallback {
+        void onSuccess();
 
         void onError(String message);
     }
@@ -83,6 +92,7 @@ public class DraftRepository {
                     12,
                     "SCAN",
                     "DRAFT",
+                    now,
                     now
             ));
             dao.insert(new LocalScanDraft(
@@ -96,6 +106,7 @@ public class DraftRepository {
                     24,
                     "MANUAL",
                     "DRAFT",
+                    now - 1000,
                     now - 1000
             ));
         });
@@ -105,6 +116,13 @@ public class DraftRepository {
         executor.execute(() -> {
             boolean exists = dao.getByKey(scheduleId, rackId, barcode) != null;
             mainHandler.post(() -> callback.onResult(exists));
+        });
+    }
+
+    public void isRackSubmitted(String scheduleId, String rackId, ResultCallback<Boolean> callback) {
+        executor.execute(() -> {
+            boolean submitted = dao.countSyncedForRack(scheduleId, rackId) > 0;
+            mainHandler.post(() -> callback.onResult(submitted));
         });
     }
 
@@ -137,6 +155,7 @@ public class DraftRepository {
                         quantity,
                         inputType,
                         "DRAFT",
+                        now,
                         now
                 );
                 saved.id = dao.insert(saved);
@@ -146,6 +165,7 @@ public class DraftRepository {
                 existing.pluDescription = description;
                 existing.inputType = inputType;
                 existing.syncStatus = "DRAFT";
+                existing.scannedAt = now;
                 existing.updatedAt = now;
                 dao.update(existing);
                 saved = existing;
@@ -177,7 +197,7 @@ public class DraftRepository {
                         draft.pluDescription == null ? "" : draft.pluDescription,
                         draft.scanQty,
                         draft.inputType == null ? "SCAN" : draft.inputType,
-                        draft.updatedAt
+                        draft.scannedAt
                 ));
             }
             mainHandler.post(() -> NetworkRepository.getInstance(appContext).submitRackScans(
@@ -199,6 +219,115 @@ public class DraftRepository {
                         }
                     }
             ));
+        });
+    }
+
+    public void refreshRackFromServer(String scheduleId, String rackId, ActionCallback callback) {
+        NetworkRepository.getInstance(appContext).getRackScans(scheduleId, rackId, new NetworkRepository.ResultCallback<>() {
+            @Override
+            public void onSuccess(List<RackScanDto> scans) {
+                executor.execute(() -> {
+                    for (RackScanDto scan : scans) {
+                        upsertSyncedScan(scheduleId, rackId, scan);
+                    }
+                    mainHandler.post(callback::onSuccess);
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                callback.onError(message);
+            }
+        });
+    }
+
+    private void upsertSyncedScan(String scheduleId, String rackId, RackScanDto scan) {
+        if (scan == null || scan.barcode == null || scan.barcode.trim().isEmpty()) {
+            return;
+        }
+        String clientScanId = scan.clientScanId == null || scan.clientScanId.trim().isEmpty()
+                ? "server-" + scan.id
+                : scan.clientScanId;
+        LocalScanDraft existing = dao.getByClientScanId(clientScanId);
+        if (existing == null) {
+            existing = dao.getByKey(scheduleId, rackId, scan.barcode);
+        }
+        long scannedAt = parseServerTime(scan.dateCreated);
+        long updatedAt = parseServerTime(scan.dateModified == null ? scan.dateCreated : scan.dateModified);
+        if (existing == null) {
+            LocalScanDraft synced = new LocalScanDraft(
+                    clientScanId,
+                    scheduleId,
+                    rackId,
+                    rackId,
+                    scan.barcode,
+                    scan.plu,
+                    scan.pluDescription,
+                    scan.scanQty,
+                    scan.inputType == null ? "SCAN" : scan.inputType,
+                    "SYNCED",
+                    scannedAt,
+                    updatedAt
+            );
+            dao.insert(synced);
+            return;
+        }
+        if ("DRAFT".equals(existing.syncStatus) || "ERROR".equals(existing.syncStatus)) {
+            return;
+        }
+        existing.clientScanId = clientScanId;
+        existing.plu = scan.plu;
+        existing.pluDescription = scan.pluDescription;
+        existing.scanQty = scan.scanQty;
+        existing.inputType = scan.inputType == null ? "SCAN" : scan.inputType;
+        existing.syncStatus = "SYNCED";
+        existing.scannedAt = scannedAt;
+        existing.updatedAt = updatedAt;
+        dao.update(existing);
+    }
+
+    private long parseServerTime(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return System.currentTimeMillis();
+        }
+        try {
+            return Instant.parse(value).toEpochMilli();
+        } catch (DateTimeParseException ignored) {
+            return System.currentTimeMillis();
+        }
+    }
+
+    public void updateQuantity(String scheduleId, String rackId, long draftId, int quantity, ActionCallback callback) {
+        executor.execute(() -> {
+            if (dao.countSyncedForRack(scheduleId, rackId) > 0) {
+                mainHandler.post(() -> callback.onError("Rack sudah submitted. Quantity tidak bisa diedit."));
+                return;
+            }
+            if (quantity <= 0) {
+                mainHandler.post(() -> callback.onError("Quantity harus lebih dari 0."));
+                return;
+            }
+            int updated = dao.updateDraftQuantity(draftId, quantity, System.currentTimeMillis());
+            if (updated <= 0) {
+                mainHandler.post(() -> callback.onError("Item sudah submitted dan tidak bisa diedit."));
+                return;
+            }
+            mainHandler.post(callback::onSuccess);
+        });
+    }
+
+    public void deleteDraft(String scheduleId, String rackId, long draftId, ActionCallback callback) {
+        executor.execute(() -> {
+            if (dao.countSyncedForRack(scheduleId, rackId) > 0) {
+                mainHandler.post(() -> callback.onError("Rack sudah submitted. Item tidak bisa dihapus."));
+                return;
+            }
+            int deleted = dao.deleteDraft(draftId);
+            if (deleted <= 0) {
+                mainHandler.post(() -> callback.onError("Item sudah submitted dan tidak bisa dihapus."));
+                return;
+            }
+            mainHandler.post(callback::onSuccess);
         });
     }
 }

@@ -136,7 +136,9 @@ public class RackListFragment extends Fragment {
                     rack.status(),
                     displayItemCount,
                     displayQuantity,
-                    lastScan
+                    rack.printed() ? "Printed" : lastScan,
+                    rack.submitted(),
+                    rack.printed()
             ));
         }
         applyFilter();

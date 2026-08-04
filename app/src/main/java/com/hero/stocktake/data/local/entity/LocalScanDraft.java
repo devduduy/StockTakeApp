@@ -22,6 +22,7 @@ public class LocalScanDraft {
     public int scanQty;
     public String inputType;
     public String syncStatus;
+    public long scannedAt;
     public long updatedAt;
 
     public LocalScanDraft(
@@ -35,6 +36,7 @@ public class LocalScanDraft {
             int scanQty,
             String inputType,
             String syncStatus,
+            long scannedAt,
             long updatedAt
     ) {
         this.clientScanId = clientScanId;
@@ -47,7 +49,7 @@ public class LocalScanDraft {
         this.scanQty = scanQty;
         this.inputType = inputType;
         this.syncStatus = syncStatus;
+        this.scannedAt = scannedAt;
         this.updatedAt = updatedAt;
     }
 }
-

@@ -1,0 +1,81 @@
+<div class="app-frame">
+  @if (mobileMenuOpen()) {
+    <button class="menu-backdrop" type="button" aria-label="Tutup menu" (click)="closeMenu()"></button>
+  }
+
+  <aside class="sidebar" [class.sidebar--open]="mobileMenuOpen()">
+    <div class="brand">
+      <div class="brand__mark" aria-hidden="true">H</div>
+      <div class="brand__copy">
+        <strong>Hero Supermarket</strong>
+        <span>Stock Take Control</span>
+      </div>
+      <button class="sidebar__close" type="button" aria-label="Tutup menu" (click)="closeMenu()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="user-card">
+      <div class="user-card__avatar">{{ (auth.user()?.fullName || 'U').charAt(0).toUpperCase() }}</div>
+      <div class="user-card__identity">
+        <strong>{{ auth.user()?.fullName }}</strong>
+        <span>{{ auth.user()?.role?.name }} · Lokasi {{ auth.user()?.locCode }}</span>
+      </div>
+    </div>
+
+    <nav class="main-nav" aria-label="Navigasi utama">
+      <p class="main-nav__label">OPERASIONAL</p>
+      @for (item of navigation; track item.label) {
+        @if (item.route) {
+          <a
+            class="main-nav__item"
+            [routerLink]="item.route"
+            routerLinkActive="main-nav__item--active"
+            [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+            (click)="closeMenu()"
+          >
+            <span class="material-symbols-outlined">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            @if (item.hint) { <small>{{ item.hint }}</small> }
+          </a>
+        } @else {
+          <div class="main-nav__item main-nav__item--disabled" [title]="item.hint">
+            <span class="material-symbols-outlined">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            <small>Segera</small>
+          </div>
+        }
+      }
+    </nav>
+
+    <div class="sidebar__footer">
+      <button type="button" class="logout-button" (click)="auth.logout()">
+        <span class="material-symbols-outlined">logout</span>
+        Keluar
+      </button>
+      <span>Hero Stock Take · Web v1.0</span>
+    </div>
+  </aside>
+
+  <section class="workspace">
+    <header class="topbar">
+      <div class="topbar__title">
+        <button class="menu-button" type="button" aria-label="Buka menu" (click)="toggleMenu()">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div>
+          <strong>HERO INVENTORY</strong>
+          <span>Stock Take Management System</span>
+        </div>
+      </div>
+      <div class="system-status" title="Web terhubung ke Backend API">
+        <span class="system-status__dot"></span>
+        <span>API TERHUBUNG</span>
+      </div>
+    </header>
+
+    <main class="page-container">
+      <router-outlet />
+    </main>
+  </section>
+</div>

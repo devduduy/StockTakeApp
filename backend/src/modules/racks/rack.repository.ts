@@ -12,6 +12,7 @@ interface RackRow {
   status: string;
   submitted_line_count?: number;
   submitted_quantity?: number;
+  printed_line_count?: number;
 }
 
 function mapRack(row: RackRow): RackResponse {
@@ -24,6 +25,8 @@ function mapRack(row: RackRow): RackResponse {
     localDraftCount: 0,
     submittedLineCount: Number(row.submitted_line_count ?? 0),
     submittedQuantity: Number(row.submitted_quantity ?? 0),
+    printedLineCount: Number(row.printed_line_count ?? 0),
+    printed: Number(row.printed_line_count ?? 0) > 0,
   };
 }
 
@@ -51,6 +54,8 @@ export async function listActiveRacksByLocation(
             (total, scan) => total + scan.scanQty,
             0,
           ),
+          printed_line_count: submissions.filter((scan) => scan.printNo?.trim())
+            .length,
         });
       });
   }
@@ -68,12 +73,19 @@ export async function listActiveRacksByLocation(
         LOC_CODE AS loc_code,
         STATUS AS status,
         submitted.submitted_line_count,
-        submitted.submitted_quantity
+        submitted.submitted_quantity,
+        submitted.printed_line_count
       FROM dbo.MST_RACK rack
       OUTER APPLY (
         SELECT
           COUNT(1) AS submitted_line_count,
-          COALESCE(SUM(scan.SCAN_QTY), 0) AS submitted_quantity
+          COALESCE(SUM(scan.SCAN_QTY), 0) AS submitted_quantity,
+          SUM(
+            CASE
+              WHEN NULLIF(LTRIM(RTRIM(scan.PRINT_NO)), '') IS NULL THEN 0
+              ELSE 1
+            END
+          ) AS printed_line_count
         FROM dbo.TR_STOCK_TAKE_SCAN scan
         WHERE scan.RACK_ID = rack.ID
           AND (@scheduleId IS NULL OR scan.SCHEDULE_ID = @scheduleId)

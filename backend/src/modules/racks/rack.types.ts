@@ -7,4 +7,6 @@ export interface RackResponse {
   localDraftCount: number;
   submittedLineCount: number;
   submittedQuantity: number;
+  printedLineCount: number;
+  printed: boolean;
 }

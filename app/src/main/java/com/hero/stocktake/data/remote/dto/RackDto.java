@@ -9,4 +9,6 @@ public class RackDto {
     public int localDraftCount;
     public int submittedLineCount;
     public int submittedQuantity;
+    public int printedLineCount;
+    public boolean printed;
 }

@@ -1,0 +1,74 @@
+<main class="login-page">
+  <section class="login-visual" aria-label="Hero Stock Take">
+    <div class="login-visual__content">
+      <div class="visual-brand"><span>H</span> HERO SUPERMARKET</div>
+      <div>
+        <p class="eyebrow">STOCK TAKE CONTROL</p>
+        <h1>Kontrol stok yang akurat,<br />dari rak hingga laporan.</h1>
+        <p class="visual-description">
+          Pantau schedule, progres pemindaian HHT, recheck, dan finalisasi data inventori dalam satu sistem.
+        </p>
+      </div>
+      <div class="visual-stat">
+        <span class="material-symbols-outlined">verified_user</span>
+        <div><strong>Akses internal terlindungi</strong><small>Terhubung langsung ke Hero Stock Take API</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <form class="login-card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="mobile-brand"><span>H</span> Hero Stock Take</div>
+      <p class="eyebrow">SELAMAT DATANG</p>
+      <h2>Masuk ke sistem</h2>
+      <p class="login-card__subtitle">Gunakan akun operasional yang sudah terdaftar.</p>
+
+      @if (errorMessage()) {
+        <div class="alert alert--error" role="alert">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <label class="field">
+        <span>Username</span>
+        <div class="field__control">
+          <span class="material-symbols-outlined">person</span>
+          <input formControlName="username" type="text" autocomplete="username" placeholder="Masukkan username" />
+        </div>
+        @if (form.controls.username.touched && form.controls.username.invalid) {
+          <small>Username wajib diisi.</small>
+        }
+      </label>
+
+      <label class="field">
+        <span>Password</span>
+        <div class="field__control">
+          <span class="material-symbols-outlined">lock</span>
+          <input
+            formControlName="password"
+            [type]="passwordVisible() ? 'text' : 'password'"
+            autocomplete="current-password"
+            placeholder="Masukkan password"
+          />
+          <button type="button" aria-label="Tampilkan atau sembunyikan password" (click)="passwordVisible.set(!passwordVisible())">
+            <span class="material-symbols-outlined">{{ passwordVisible() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <small>Password wajib diisi.</small>
+        }
+      </label>
+
+      <button class="primary-button login-button" type="submit" [disabled]="loading()">
+        @if (loading()) {
+          <span class="spinner" aria-hidden="true"></span> Menghubungkan...
+        } @else {
+          Masuk <span class="material-symbols-outlined">arrow_forward</span>
+        }
+      </button>
+
+      <p class="login-card__footer">Akses hanya untuk personel Hero Supermarket yang berwenang.</p>
+    </form>
+  </section>
+</main>

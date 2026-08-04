@@ -14,7 +14,7 @@ import java.util.List;
 
 @Dao
 public interface ScanDraftDao {
-    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId ORDER BY scannedAt DESC, id DESC")
     LiveData<List<LocalScanDraft>> observeRack(String scheduleId, String rackId);
 
     @Query("SELECT rackId, COUNT(*) AS itemCount, COALESCE(SUM(scanQty), 0) AS totalQuantity, SUM(CASE WHEN syncStatus IN ('DRAFT', 'ERROR') THEN 1 ELSE 0 END) AS pendingItemCount, COALESCE(SUM(CASE WHEN syncStatus IN ('DRAFT', 'ERROR') THEN scanQty ELSE 0 END), 0) AS pendingQuantity, MAX(updatedAt) AS lastUpdatedAt FROM local_scan_draft WHERE scheduleId = :scheduleId GROUP BY rackId")
@@ -26,8 +26,14 @@ public interface ScanDraftDao {
     @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId AND barcode = :barcode LIMIT 1")
     LocalScanDraft getByKey(String scheduleId, String rackId, String barcode);
 
-    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId")
+    @Query("SELECT * FROM local_scan_draft WHERE clientScanId = :clientScanId LIMIT 1")
+    LocalScanDraft getByClientScanId(String clientScanId);
+
+    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId ORDER BY id ASC")
     List<LocalScanDraft> getSubmittableForRack(String scheduleId, String rackId);
+
+    @Query("SELECT COUNT(*) FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId AND syncStatus = 'SYNCED'")
+    int countSyncedForRack(String scheduleId, String rackId);
 
     @Query("SELECT COUNT(*) FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId")
     int countForRack(String scheduleId, String rackId);
@@ -43,4 +49,10 @@ public interface ScanDraftDao {
 
     @Query("UPDATE local_scan_draft SET syncStatus = 'SYNCED', updatedAt = :updatedAt WHERE clientScanId IN (:clientScanIds)")
     void markClientScansSynced(List<String> clientScanIds, long updatedAt);
+
+    @Query("UPDATE local_scan_draft SET scanQty = :quantity, syncStatus = 'DRAFT', updatedAt = :updatedAt WHERE id = :id AND syncStatus IN ('DRAFT', 'ERROR')")
+    int updateDraftQuantity(long id, int quantity, long updatedAt);
+
+    @Query("DELETE FROM local_scan_draft WHERE id = :id AND syncStatus IN ('DRAFT', 'ERROR')")
+    int deleteDraft(long id);
 }

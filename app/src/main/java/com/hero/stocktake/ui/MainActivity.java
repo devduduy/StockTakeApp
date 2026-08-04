@@ -35,6 +35,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView toolbarTitle;
     private String activeScheduleId;
     private String activeRackId;
+    private String activeRackCode;
+    private boolean activeRackSubmitted;
+    private boolean activeRackPrinted;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +124,9 @@ public class MainActivity extends AppCompatActivity {
     public void openRackList(Schedule schedule) {
         activeScheduleId = schedule.id();
         activeRackId = null;
+        activeRackCode = null;
+        activeRackSubmitted = false;
+        activeRackPrinted = false;
         showDetail(RackListFragment.newInstance(schedule.id(), schedule.stockType(), schedule.number()), menuSchedules, "Rack List");
     }
 
@@ -130,11 +136,17 @@ public class MainActivity extends AppCompatActivity {
 
     public void openRackDetail(Rack rack) {
         activeRackId = rack.id();
+        activeRackCode = rack.code();
+        activeRackSubmitted = rack.submitted();
+        activeRackPrinted = rack.printed();
         openScanner();
     }
 
     public void openScanner(Rack rack) {
         activeRackId = rack.id();
+        activeRackCode = rack.code();
+        activeRackSubmitted = rack.submitted();
+        activeRackPrinted = rack.printed();
         openScanner();
     }
 
@@ -144,7 +156,8 @@ public class MainActivity extends AppCompatActivity {
             openSchedules();
             return;
         }
-        showDetail(ScannerFragment.newInstance(activeScheduleId, activeRackId), menuScanner, "Scan Barcode");
+        String scannerTitle = activeRackCode == null || activeRackCode.trim().isEmpty() ? activeRackId : activeRackCode;
+        showDetail(ScannerFragment.newInstance(activeScheduleId, activeRackId, scannerTitle, activeRackSubmitted, activeRackPrinted), menuScanner, scannerTitle);
     }
 
     public void showSubmissionSuccess(int submittedLines) {

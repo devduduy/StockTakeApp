@@ -5,6 +5,7 @@ import com.hero.stocktake.data.remote.dto.LoginResponseDto;
 import com.hero.stocktake.data.remote.dto.ItemLookupDto;
 import com.hero.stocktake.data.remote.dto.RackDto;
 import com.hero.stocktake.data.remote.dto.RackListResponseDto;
+import com.hero.stocktake.data.remote.dto.RackScanListResponseDto;
 import com.hero.stocktake.data.remote.dto.ScheduleDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansRequestDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansResponseDto;
@@ -48,5 +49,12 @@ public interface StockTakeApi {
             @Path("scheduleId") String scheduleId,
             @Path("rackId") String rackId,
             @Body SubmitRackScansRequestDto body
+    );
+
+    @GET("api/stock-take/schedules/{scheduleId}/racks/{rackId}/scans")
+    Call<ApiEnvelope<RackScanListResponseDto>> rackScans(
+            @Header("Authorization") String authorization,
+            @Path("scheduleId") String scheduleId,
+            @Path("rackId") String rackId
     );
 }

@@ -87,7 +87,8 @@
                 app:boxCornerRadiusTopEnd="14dp"
                 app:boxCornerRadiusTopStart="14dp"
                 app:endIconContentDescription="Bersihkan barcode"
-                app:endIconMode="clear_text">
+                app:endIconMode="clear_text"
+                app:errorIconDrawable="@null">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/barcodeInput"

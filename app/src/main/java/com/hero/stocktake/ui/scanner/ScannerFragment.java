@@ -4,10 +4,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,6 +37,9 @@ import java.util.List;
 public class ScannerFragment extends Fragment {
     private static final String ARG_SCHEDULE_ID = "scheduleId";
     private static final String ARG_RACK_ID = "rackId";
+    private static final String ARG_RACK_TITLE = "rackTitle";
+    private static final String ARG_RACK_SUBMITTED = "rackSubmitted";
+    private static final String ARG_RACK_PRINTED = "rackPrinted";
 
     private int quantity = 1;
     private int lookupRequestVersion = 0;
@@ -55,12 +60,18 @@ public class ScannerFragment extends Fragment {
     private boolean submitting = false;
     private final Handler lookupHandler = new Handler(Looper.getMainLooper());
     private Runnable pendingLookup;
+    private boolean rackSubmitted;
+    private boolean rackPrinted;
+    private boolean localSubmitted;
 
-    public static ScannerFragment newInstance(String scheduleId, String rackId) {
+    public static ScannerFragment newInstance(String scheduleId, String rackId, String rackTitle, boolean rackSubmitted, boolean rackPrinted) {
         ScannerFragment fragment = new ScannerFragment();
         Bundle args = new Bundle();
         args.putString(ARG_SCHEDULE_ID, scheduleId);
         args.putString(ARG_RACK_ID, rackId);
+        args.putString(ARG_RACK_TITLE, rackTitle);
+        args.putBoolean(ARG_RACK_SUBMITTED, rackSubmitted);
+        args.putBoolean(ARG_RACK_PRINTED, rackPrinted);
         fragment.setArguments(args);
         return fragment;
     }
@@ -87,16 +98,43 @@ public class ScannerFragment extends Fragment {
         });
         String scheduleId = requireArguments().getString(ARG_SCHEDULE_ID);
         String rackId = requireArguments().getString(ARG_RACK_ID);
+        rackSubmitted = requireArguments().getBoolean(ARG_RACK_SUBMITTED, false);
+        rackPrinted = requireArguments().getBoolean(ARG_RACK_PRINTED, false);
         DraftRepository repository = DraftRepository.getInstance(requireContext());
-        ScanDraftAdapter draftAdapter = new ScanDraftAdapter();
+        ScanDraftAdapter draftAdapter = new ScanDraftAdapter(new ScanDraftAdapter.OnDraftActionListener() {
+            @Override
+            public void onEditQuantity(LocalScanDraft draft) {
+                showEditQuantityDialog(scheduleId, rackId, repository, draft);
+            }
+
+            @Override
+            public void onDelete(LocalScanDraft draft) {
+                showDeleteDialog(scheduleId, rackId, repository, draft);
+            }
+        });
         scannedItemList.setLayoutManager(new LinearLayoutManager(requireContext()));
         scannedItemList.setAdapter(draftAdapter);
         repository.observeRack(scheduleId, rackId).observe(getViewLifecycleOwner(), drafts -> {
             currentDrafts = drafts;
+            localSubmitted = hasSyncedDraft(drafts);
+            draftAdapter.setActionsEnabled(canEditDraftItems());
             draftAdapter.submitList(drafts);
             updateScanSummary(drafts);
             if (drafts != null && !drafts.isEmpty()) {
                 scannedItemList.scrollToPosition(0);
+            }
+            applyRackMode();
+        });
+        repository.refreshRackFromServer(scheduleId, rackId, new DraftRepository.ActionCallback() {
+            @Override
+            public void onSuccess() {
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isAdded()) {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -127,6 +165,7 @@ public class ScannerFragment extends Fragment {
         });
         addButton.setOnClickListener(v -> prepareSave());
         submitButton.setOnClickListener(v -> showSubmitConfirmation(scheduleId, rackId, repository));
+        applyRackMode();
         lookupBarcode(barcodeInput.getText() == null ? "" : barcodeInput.getText().toString());
         barcodeInput.requestFocus();
         barcodeInput.postDelayed(() -> {
@@ -135,6 +174,48 @@ public class ScannerFragment extends Fragment {
             }
         }, 200);
         return view;
+    }
+
+    private boolean hasSyncedDraft(List<LocalScanDraft> drafts) {
+        if (drafts == null) {
+            return false;
+        }
+        for (LocalScanDraft draft : drafts) {
+            if ("SYNCED".equalsIgnoreCase(draft.syncStatus)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean canEditDraftItems() {
+        return !rackPrinted && !rackSubmitted && !localSubmitted && !submitting;
+    }
+
+    private boolean canAddNewScan() {
+        return !rackPrinted && !submitting;
+    }
+
+    private void applyRackMode() {
+        boolean canAdd = canAddNewScan();
+        if (barcodeInput != null) {
+            barcodeInput.setEnabled(canAdd);
+        }
+        if (quantityInput != null) {
+            quantityInput.setEnabled(canAdd);
+        }
+        if (addButton != null) {
+            addButton.setEnabled(canAdd);
+            addButton.setText(rackPrinted ? "Rack sudah print" : "Simpan item");
+        }
+        if (submitButton != null) {
+            submitButton.setEnabled(!rackPrinted && !submitting);
+        }
+        if (rackPrinted) {
+            productTitle.setText("Rack sudah diprint");
+            validBadge.setText("LOCKED");
+            barcodeLayout.setError("Rack sudah print. Scan tambahan tidak diperbolehkan.");
+        }
     }
 
     private void scheduleLookup(String rawBarcode) {
@@ -210,21 +291,24 @@ public class ScannerFragment extends Fragment {
     private void setSubmitting(boolean submitting) {
         this.submitting = submitting;
         if (submitButton != null) {
-            submitButton.setEnabled(!submitting);
+            submitButton.setEnabled(!submitting && !rackPrinted);
             submitButton.setText(submitting ? "Mengirim..." : "Submit");
         }
         if (addButton != null) {
-            addButton.setEnabled(!submitting);
+            addButton.setEnabled(!submitting && !rackPrinted);
         }
         if (barcodeInput != null) {
-            barcodeInput.setEnabled(!submitting);
+            barcodeInput.setEnabled(!submitting && !rackPrinted);
         }
         if (quantityInput != null) {
-            quantityInput.setEnabled(!submitting);
+            quantityInput.setEnabled(!submitting && !rackPrinted);
         }
     }
 
     private void lookupBarcode(String rawBarcode) {
+        if (rackPrinted) {
+            return;
+        }
         String barcode = rawBarcode == null ? "" : rawBarcode.trim();
         barcodeLayout.setError(null);
         currentItem = null;
@@ -281,6 +365,10 @@ public class ScannerFragment extends Fragment {
     }
 
     private void prepareSave() {
+        if (!canAddNewScan()) {
+            Toast.makeText(requireContext(), "Rack sudah print. Scan tambahan tidak diperbolehkan.", Toast.LENGTH_LONG).show();
+            return;
+        }
         String barcode = barcodeInput.getText() == null ? "" : barcodeInput.getText().toString().trim();
         quantity = readQuantity();
         try {
@@ -300,6 +388,11 @@ public class ScannerFragment extends Fragment {
         repository.hasDuplicate(scheduleId, rackId, barcode, duplicate -> {
             if (!duplicate) {
                 save(DraftRules.DuplicateMode.REPLACE);
+                return;
+            }
+            if (!canEditDraftItems()) {
+                Toast.makeText(requireContext(), "Barcode sudah ada di rack. Item submitted tidak bisa diubah.", Toast.LENGTH_LONG).show();
+                resetForNextScan();
                 return;
             }
             new AlertDialog.Builder(requireContext())
@@ -331,6 +424,68 @@ public class ScannerFragment extends Fragment {
                     resetForNextScan();
                 }
         );
+    }
+
+    private void showEditQuantityDialog(String scheduleId, String rackId, DraftRepository repository, LocalScanDraft draft) {
+        if (!canEditDraftItems()) {
+            Toast.makeText(requireContext(), "Rack sudah submitted. Item tidak bisa diedit.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        EditText input = new EditText(requireContext());
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setSelectAllOnFocus(true);
+        input.setText(String.valueOf(draft.scanQty));
+        input.setPadding(32, 8, 32, 8);
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Edit quantity")
+                .setMessage(draft.pluDescription)
+                .setView(input)
+                .setNegativeButton("Batal", null)
+                .setPositiveButton("Simpan", (dialog, which) -> {
+                    int newQuantity;
+                    try {
+                        newQuantity = Math.max(1, Integer.parseInt(input.getText().toString().trim()));
+                    } catch (RuntimeException ignored) {
+                        Toast.makeText(requireContext(), "Quantity tidak valid.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    repository.updateQuantity(scheduleId, rackId, draft.id, newQuantity, new DraftRepository.ActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            Toast.makeText(requireContext(), "Quantity diperbarui.", Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .show();
+    }
+
+    private void showDeleteDialog(String scheduleId, String rackId, DraftRepository repository, LocalScanDraft draft) {
+        if (!canEditDraftItems()) {
+            Toast.makeText(requireContext(), "Rack sudah submitted. Item tidak bisa dihapus.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Hapus item?")
+                .setMessage(draft.pluDescription + "\nBarcode " + draft.barcode)
+                .setNegativeButton("Batal", null)
+                .setPositiveButton("Hapus", (dialog, which) ->
+                        repository.deleteDraft(scheduleId, rackId, draft.id, new DraftRepository.ActionCallback() {
+                            @Override
+                            public void onSuccess() {
+                                Toast.makeText(requireContext(), "Item dihapus.", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                            }
+                        }))
+                .show();
     }
 
     private int readQuantity() {
@@ -366,7 +521,8 @@ public class ScannerFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        ((MainActivity) requireActivity()).showBackNavigation("Scan Barcode");
+        String rackTitle = requireArguments().getString(ARG_RACK_TITLE, "Rack");
+        ((MainActivity) requireActivity()).showBackNavigation(rackTitle);
     }
 
     @Override

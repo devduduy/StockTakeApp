@@ -112,6 +112,7 @@ export interface MockScanSubmission {
   scanQty: number;
   inputType: "SCAN" | "MANUAL";
   scanStatus: "SYNCED";
+  printNo?: string;
   userCreated: string;
   dateCreated: string;
   userModified?: string;

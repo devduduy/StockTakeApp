@@ -78,12 +78,53 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(submitResponse.body.data.acceptedLines).toBe(1);
     expect(submitResponse.body.data.submittedQuantity).toBe(3);
 
+    const scanLinesResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans`)
+      .set("authorization", `Bearer ${token}`);
+    expect(scanLinesResponse.status).toBe(200);
+    expect(scanLinesResponse.body.data.scans.length).toBe(1);
+    expect(scanLinesResponse.body.data.scans[0].clientScanId).toBe(
+      "test-client-scan-1",
+    );
+    expect(scanLinesResponse.body.data.scans[0].rackSeq).toBe(1);
+
     const rackStatsResponse = await request(app)
       .get(`/api/stock-take/schedules/${scheduleId}/racks`)
       .set("authorization", `Bearer ${token}`);
     expect(rackStatsResponse.status).toBe(200);
     expect(rackStatsResponse.body.data.racks[0].submittedLineCount).toBe(1);
     expect(rackStatsResponse.body.data.racks[0].submittedQuantity).toBe(3);
+
+    const mockData = await import("./shared/mock-data.js");
+    const submittedScan = mockData.mockScanSubmissions.find(
+      (scan) => scan.clientScanId === "test-client-scan-1",
+    );
+    expect(submittedScan).toBeTruthy();
+    if (submittedScan) {
+      submittedScan.printNo = "PRINT-001";
+    }
+
+    const printedRackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${token}`);
+    expect(printedRackResponse.status).toBe(200);
+    expect(printedRackResponse.body.data.racks[0].printed).toBe(true);
+
+    const submitAfterPrintResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        lines: [
+          {
+            clientScanId: "test-client-scan-after-print",
+            barcode: "8990123456789",
+            scanQty: 1,
+            inputType: "SCAN",
+          },
+        ],
+      });
+    expect(submitAfterPrintResponse.status).toBe(409);
+    expect(submitAfterPrintResponse.body.error.code).toBe("RACK_ALREADY_PRINTED");
   });
 
   it("protects stock-take endpoints", async () => {
