@@ -18,6 +18,7 @@ import com.google.android.material.chip.Chip;
 import com.google.android.material.textfield.TextInputEditText;
 import com.hero.stocktake.R;
 import com.hero.stocktake.data.repository.NetworkRepository;
+import com.hero.stocktake.data.session.SessionManager;
 import com.hero.stocktake.domain.model.Schedule;
 import com.hero.stocktake.ui.MainActivity;
 
@@ -30,6 +31,7 @@ public class ScheduleListFragment extends Fragment {
     private ScheduleAdapter adapter;
     private TextView state;
     private TextView count;
+    private TextView headerSubtitle;
     private String selectedFilter = "ALL";
     private String searchText = "";
 
@@ -39,6 +41,7 @@ public class ScheduleListFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_schedule_list, container, false);
         state = view.findViewById(R.id.scheduleState);
         count = view.findViewById(R.id.scheduleCount);
+        headerSubtitle = view.findViewById(R.id.scheduleHeaderSubtitle);
         TextInputEditText searchInput = view.findViewById(R.id.scheduleSearchInput);
         RecyclerView list = view.findViewById(R.id.scheduleList);
         adapter = new ScheduleAdapter(schedule -> ((MainActivity) requireActivity()).openRackList(schedule));
@@ -48,8 +51,10 @@ public class ScheduleListFragment extends Fragment {
         setupFilters(view);
         setupSearch(searchInput);
 
+        String locCode = SessionManager.getInstance(requireContext()).getLocCode();
+        headerSubtitle.setText("Menampilkan schedule untuk lokasi " + locCode + ".");
         state.setVisibility(View.VISIBLE);
-        state.setText("Memuat active schedule...");
+        state.setText("Memuat schedule aktif lokasi " + locCode + "...");
         NetworkRepository.getInstance(requireContext()).getActiveSchedules(new NetworkRepository.ResultCallback<>() {
             @Override
             public void onSuccess(List<Schedule> schedules) {
@@ -115,7 +120,7 @@ public class ScheduleListFragment extends Fragment {
         count.setText(filtered.size() + " schedule");
         if (allSchedules.isEmpty()) {
             state.setVisibility(View.VISIBLE);
-            state.setText("Belum ada active schedule untuk lokasi user ini.");
+            state.setText("Belum ada schedule aktif untuk lokasi user ini.");
         } else if (filtered.isEmpty()) {
             state.setVisibility(View.VISIBLE);
             state.setText("Tidak ada schedule yang cocok dengan pencarian/filter.");
@@ -156,6 +161,6 @@ public class ScheduleListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        ((MainActivity) requireActivity()).showMenuNavigation("Active Schedule");
+        ((MainActivity) requireActivity()).showMenuNavigation("Schedule Aktif");
     }
 }

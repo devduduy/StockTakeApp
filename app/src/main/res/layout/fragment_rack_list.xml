@@ -40,7 +40,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Cari rack lalu lanjut scan item."
+            android:text="Cari rack, cek status, lalu buka detail item."
             android:textColor="#DDE5FF"
             android:textSize="14sp" />
     </LinearLayout>
@@ -82,13 +82,19 @@
             android:id="@+id/filterRackActive"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Active" />
+            android:text="Belum scan" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/filterRackCounted"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sudah ada scan" />
+            android:text="Submitted" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/filterRackPrinted"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Printed" />
     </com.google.android.material.chip.ChipGroup>
 
     <LinearLayout

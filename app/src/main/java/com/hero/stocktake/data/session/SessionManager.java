@@ -33,6 +33,7 @@ public class SessionManager {
     }
 
     public void saveLogin(String accessToken, String username, String fullName, String roleCode, String locCode) {
+        SessionExpiredHandler.reset();
         preferences.edit()
                 .putString(KEY_ACCESS_TOKEN, accessToken)
                 .putString(KEY_USERNAME, username)
@@ -60,10 +61,20 @@ public class SessionManager {
         return preferences.getString(KEY_LOC_CODE, DEFAULT_LOC_CODE);
     }
 
+    public String getUsername() {
+        return preferences.getString(KEY_USERNAME, "scanner");
+    }
+
+    public String getFullName() {
+        return preferences.getString(KEY_FULL_NAME, "Scanner");
+    }
+
+    public String getRoleCode() {
+        return preferences.getString(KEY_ROLE_CODE, "SCANNER");
+    }
+
     public String getProfileLabel() {
-        String fullName = preferences.getString(KEY_FULL_NAME, "Scanner");
-        String roleCode = preferences.getString(KEY_ROLE_CODE, "SCANNER");
-        return fullName + " - " + roleCode;
+        return getFullName() + " - " + getRoleCode();
     }
 
     public void clear() {

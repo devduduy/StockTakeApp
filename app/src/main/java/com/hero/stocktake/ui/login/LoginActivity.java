@@ -15,6 +15,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.hero.stocktake.R;
 import com.hero.stocktake.data.remote.dto.LoginResponseDto;
 import com.hero.stocktake.data.repository.NetworkRepository;
+import com.hero.stocktake.data.session.SessionExpiredHandler;
 import com.hero.stocktake.data.session.SessionManager;
 import com.hero.stocktake.ui.MainActivity;
 
@@ -45,6 +46,7 @@ public class LoginActivity extends AppCompatActivity {
         username = findViewById(R.id.usernameInput);
         password = findViewById(R.id.passwordInput);
         loginButton = findViewById(R.id.loginButton);
+        showSessionExpiredMessageIfNeeded();
 
         loginButton.setOnClickListener(view -> {
             usernameLayout.setError(null);
@@ -82,6 +84,13 @@ public class LoginActivity extends AppCompatActivity {
         username.setEnabled(!loading);
         password.setEnabled(!loading);
         loginButton.setText(loading ? "SIGNING IN..." : getString(R.string.login));
+    }
+
+    private void showSessionExpiredMessageIfNeeded() {
+        String message = getIntent().getStringExtra(SessionExpiredHandler.EXTRA_SESSION_EXPIRED_MESSAGE);
+        if (message != null && !message.trim().isEmpty()) {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        }
     }
 
     private void openMain() {

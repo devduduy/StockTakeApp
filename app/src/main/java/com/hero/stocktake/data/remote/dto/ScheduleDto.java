@@ -9,6 +9,8 @@ public class ScheduleDto {
     public String locCode;
     public LocationDto location;
     public String scheduleDate;
+    public String startDate;
+    public String endDate;
     public String startTime;
     public String endTime;
     public StockTypeDto stockType;

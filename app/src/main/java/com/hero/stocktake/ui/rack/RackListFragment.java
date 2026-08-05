@@ -72,7 +72,7 @@ public class RackListFragment extends Fragment {
 
         title.setText("Rack List");
         subtitle.setText(scheduleNo.isEmpty() ? "SCHEDULE AKTIF" : scheduleNo);
-        meta.setText(stockType + "  |  pilih rack untuk mulai scan.");
+        meta.setText(stockType + "  |  pilih rack untuk scan atau lihat item.");
         list.setLayoutManager(new LinearLayoutManager(requireContext()));
         list.setAdapter(adapter);
         setupFilters(view);
@@ -164,8 +164,9 @@ public class RackListFragment extends Fragment {
 
     private void setupFilters(View view) {
         bindFilter(view.findViewById(R.id.filterRackAll), "ALL");
-        bindFilter(view.findViewById(R.id.filterRackActive), "ACTIVE");
-        bindFilter(view.findViewById(R.id.filterRackCounted), "COUNTED");
+        bindFilter(view.findViewById(R.id.filterRackActive), "EMPTY");
+        bindFilter(view.findViewById(R.id.filterRackCounted), "SUBMITTED");
+        bindFilter(view.findViewById(R.id.filterRackPrinted), "PRINTED");
     }
 
     private void bindFilter(Chip chip, String filter) {
@@ -207,6 +208,15 @@ public class RackListFragment extends Fragment {
         }
         if ("COUNTED".equals(selectedFilter)) {
             return rack.itemCount() > 0;
+        }
+        if ("EMPTY".equals(selectedFilter)) {
+            return rack.itemCount() <= 0 && !rack.printed();
+        }
+        if ("SUBMITTED".equals(selectedFilter)) {
+            return rack.itemCount() > 0 && !rack.printed();
+        }
+        if ("PRINTED".equals(selectedFilter)) {
+            return rack.printed();
         }
         return rack.status().equalsIgnoreCase(selectedFilter);
     }

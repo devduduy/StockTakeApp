@@ -54,6 +54,9 @@ public class ScannerFragment extends Fragment {
     private TextInputEditText barcodeInput;
     private TextInputLayout barcodeLayout;
     private RecyclerView scannedItemList;
+    private View scanFormCard;
+    private View scanActionPanel;
+    private View listHeader;
     private MaterialButton addButton;
     private MaterialButton submitButton;
     private List<LocalScanDraft> currentDrafts;
@@ -89,6 +92,9 @@ public class ScannerFragment extends Fragment {
         barcodeInput = view.findViewById(R.id.barcodeInput);
         barcodeLayout = view.findViewById(R.id.barcodeLayout);
         scannedItemList = view.findViewById(R.id.scannedItemList);
+        scanFormCard = view.findViewById(R.id.scanFormCard);
+        scanActionPanel = view.findViewById(R.id.scanActionPanel);
+        listHeader = view.findViewById(R.id.listHeader);
         addButton = view.findViewById(R.id.addButton);
         submitButton = view.findViewById(R.id.submitButton);
         barcodeLayout.setEndIconOnClickListener(v -> {
@@ -198,6 +204,15 @@ public class ScannerFragment extends Fragment {
 
     private void applyRackMode() {
         boolean canAdd = canAddNewScan();
+        if (scanFormCard != null) {
+            scanFormCard.setVisibility(rackPrinted ? View.GONE : View.VISIBLE);
+        }
+        if (scanActionPanel != null) {
+            scanActionPanel.setVisibility(rackPrinted ? View.GONE : View.VISIBLE);
+        }
+        if (listHeader != null && rackPrinted) {
+            listHeader.setVisibility(View.VISIBLE);
+        }
         if (barcodeInput != null) {
             barcodeInput.setEnabled(canAdd);
         }
@@ -206,15 +221,13 @@ public class ScannerFragment extends Fragment {
         }
         if (addButton != null) {
             addButton.setEnabled(canAdd);
-            addButton.setText(rackPrinted ? "Rack sudah print" : "Simpan item");
+            addButton.setText("Simpan item");
         }
         if (submitButton != null) {
             submitButton.setEnabled(!rackPrinted && !submitting);
         }
         if (rackPrinted) {
-            productTitle.setText("Rack sudah diprint");
-            validBadge.setText("LOCKED");
-            barcodeLayout.setError("Rack sudah print. Scan tambahan tidak diperbolehkan.");
+            barcodeLayout.setError(null);
         }
     }
 
@@ -344,7 +357,7 @@ public class ScannerFragment extends Fragment {
                 }
                 currentItem = item;
                 currentItemBarcode = barcode;
-                productTitle.setText(item.pluDescription);
+                productTitle.setText(item.pluDescription + " (" + item.plu + ")");
                 pluText.setText("PLU\n" + item.plu);
                 barcodeText.setText("Barcode\n" + barcode);
                 validBadge.setText("Valid");
@@ -516,6 +529,9 @@ public class ScannerFragment extends Fragment {
             }
         }
         scanSummary.setText(lines + " item  |  Qty " + qty);
+        if (listHeader != null) {
+            listHeader.setVisibility(lines > 0 || rackPrinted ? View.VISIBLE : View.GONE);
+        }
     }
 
     @Override

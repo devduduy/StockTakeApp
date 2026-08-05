@@ -20,6 +20,7 @@ import com.hero.stocktake.data.remote.dto.ScanSubmitLineDto;
 import com.hero.stocktake.data.remote.dto.ScheduleDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansRequestDto;
 import com.hero.stocktake.data.remote.dto.SubmitRackScansResponseDto;
+import com.hero.stocktake.data.session.SessionExpiredHandler;
 import com.hero.stocktake.data.session.SessionManager;
 import com.hero.stocktake.domain.model.Rack;
 import com.hero.stocktake.domain.model.Schedule;
@@ -38,12 +39,14 @@ public class NetworkRepository {
     private static volatile NetworkRepository instance;
 
     private final StockTakeApi api;
+    private final Context appContext;
     private final SessionManager sessionManager;
     private final Gson gson = new Gson();
 
     private NetworkRepository(Context context) {
+        appContext = context.getApplicationContext();
         api = ApiClient.service();
-        sessionManager = SessionManager.getInstance(context);
+        sessionManager = SessionManager.getInstance(appContext);
     }
 
     public static NetworkRepository getInstance(Context context) {
@@ -75,7 +78,7 @@ public class NetworkRepository {
                     callback.onSuccess(envelope.data);
                     return;
                 }
-                callback.onError(readError(response, "Login gagal."));
+                callback.onError(readError(response, "Login gagal.", false));
             }
 
             @Override
@@ -230,13 +233,15 @@ public class NetworkRepository {
         String stockTypeCode = dto.stockType == null ? "" : dto.stockType.code;
         String locCode = firstNonBlank(dto.locCode, dto.location == null ? null : dto.location.code, "-");
         String locationName = firstNonBlank(dto.location == null ? null : dto.location.name, locCode);
+        String startDate = firstNonBlank(dto.startDate, dto.scheduleDate);
+        String endDate = firstNonBlank(dto.endDate, startDate);
         return new Schedule(
                 dto.id,
                 dto.scheduleNo,
                 firstNonBlank(dto.scheduleDesc, "Stock Take"),
                 locCode,
                 locationName,
-                displayDate(dto.scheduleDate),
+                displayDateRange(startDate, endDate),
                 displayTimeRange(dto.startTime, dto.endTime),
                 stockTypeCode,
                 stockType == null || stockType.trim().isEmpty() ? "Stock Take" : stockType,
@@ -289,6 +294,18 @@ public class NetworkRepository {
         return builder.toString();
     }
 
+    private String displayDateRange(String start, String end) {
+        String startText = displayDate(start);
+        String endText = displayDate(end);
+        if ("-".equals(startText)) {
+            return endText;
+        }
+        if ("-".equals(endText) || startText.equals(endText)) {
+            return startText;
+        }
+        return startText + " - " + endText;
+    }
+
     private String displayDate(String value) {
         if (value == null || value.length() < 10) {
             return "-";
@@ -338,6 +355,14 @@ public class NetworkRepository {
     }
 
     private String readError(Response<?> response, String fallback) {
+        return readError(response, fallback, true);
+    }
+
+    private String readError(Response<?> response, String fallback, boolean expireOnUnauthorized) {
+        if (expireOnUnauthorized && response.code() == 401) {
+            SessionExpiredHandler.handle(appContext);
+            return "Sesi login berakhir. Silakan login ulang.";
+        }
         ResponseBody errorBody = response.errorBody();
         if (errorBody == null) {
             return fallback;

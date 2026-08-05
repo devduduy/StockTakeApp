@@ -1,5 +1,6 @@
 package com.hero.stocktake.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -20,6 +21,8 @@ import com.hero.stocktake.data.session.SessionManager;
 import com.hero.stocktake.domain.model.Rack;
 import com.hero.stocktake.domain.model.Schedule;
 import com.hero.stocktake.ui.dashboard.DashboardFragment;
+import com.hero.stocktake.ui.login.LoginActivity;
+import com.hero.stocktake.ui.profile.ProfileFragment;
 import com.hero.stocktake.ui.rack.RackListFragment;
 import com.hero.stocktake.ui.scanner.ScannerFragment;
 import com.hero.stocktake.ui.schedule.ScheduleListFragment;
@@ -60,10 +63,7 @@ public class MainActivity extends AppCompatActivity {
         menuDashboard.setOnClickListener(view -> showTopLevel(new DashboardFragment(), menuDashboard, "Dashboard"));
         menuSchedules.setOnClickListener(view -> openSchedules());
         menuScanner.setOnClickListener(view -> openScanner());
-        menuProfile.setOnClickListener(view -> {
-            Toast.makeText(this, SessionManager.getInstance(this).getProfileLabel(), Toast.LENGTH_SHORT).show();
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
+        menuProfile.setOnClickListener(view -> showTopLevel(new ProfileFragment(), menuProfile, "Profile"));
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openSchedules() {
-        showTopLevel(new ScheduleListFragment(), menuSchedules, "Active Schedule");
+        showTopLevel(new ScheduleListFragment(), menuSchedules, "Schedule Aktif");
     }
 
     public void openRackList() {
@@ -165,10 +165,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void returnToRackList() {
-        showTopLevel(new ScheduleListFragment(), menuSchedules, "Active Schedule");
+        showTopLevel(new ScheduleListFragment(), menuSchedules, "Schedule Aktif");
         if (activeScheduleId != null) {
             showDetail(RackListFragment.newInstance(activeScheduleId, "Stock Take", ""), menuSchedules, "Rack List");
         }
+    }
+
+    public void logout() {
+        SessionManager.getInstance(this).clear();
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
     }
 
     public void setBottomNavigationVisible(boolean visible) {

@@ -3,134 +3,334 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/hero_surface"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="18dp">
 
-        <TextView
-            style="@style/HeroSectionTitle"
-            android:layout_width="wrap_content"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Logged in as" />
+            app:cardBackgroundColor="@color/hero_navy"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="John Doe (Scanner)"
-            android:textColor="@color/hero_text"
-            android:textSize="18sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="18dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/dashboardInitials"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
+                    android:background="@drawable/bg_profile_avatar"
+                    android:gravity="center"
+                    android:text="SC"
+                    android:textColor="@color/hero_navy"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/dashboardUserName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/dashboardUserRole"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textColor="#DDE5FF"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/activeScheduleCard"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="🏪 Store: HERO - Kemang"
-            android:textColor="@color/hero_navy"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#E0E3EC"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:letterSpacing="0.08"
+                        android:text="SCHEDULE AKTIF"
+                        android:textColor="@color/hero_text_muted"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/activeScheduleStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_chip_green"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="5dp"
+                        android:textColor="@color/hero_green"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/activeScheduleNumber"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/hero_navy"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/activeScheduleDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/hero_text"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/dashboardStore"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textColor="@color/hero_text_muted"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/activeScheduleMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/hero_text_muted"
+                    android:textSize="14sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Progress rack"
+                        android:textColor="@color/hero_text"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/activeScheduleProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/hero_navy"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/activeScheduleProgressBar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressTint="@color/hero_green"
+                    android:progressBackgroundTint="@color/hero_surface_low" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:background="@drawable/bg_card"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ACTIVE SCHEDULE"
-                android:textColor="@color/hero_text_muted"
-                android:textSize="14sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="#ST-20260731-001"
-                android:textColor="@color/hero_navy"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_chip_green"
-                android:text="↻ IN PROGRESS"
-                android:textColor="@color/hero_green"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="31 Jul 2026 · Fresh Food"
-                android:textColor="@color/hero_text" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="140dp"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="14dp"
             android:orientation="horizontal">
 
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="8dp"
+                android:layout_height="112dp"
+                android:layout_marginEnd="7dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_card"
-                android:gravity="center"
-                android:orientation="vertical">
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#E0E3EC"
+                app:strokeWidth="1dp">
 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▥" android:textColor="@color/hero_navy" android:textSize="26sp" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1,240" android:textColor="@color/hero_navy" android:textSize="32sp" android:textStyle="bold" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SCANNED ITEMS" android:textColor="@color/hero_text_muted" />
-            </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="14dp">
 
-            <LinearLayout
+                    <TextView
+                        android:id="@+id/scannedRackCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0/0"
+                        android:textColor="@color/hero_navy"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Rack tersubmit"
+                        android:textColor="@color/hero_text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="8dp"
+                android:layout_height="112dp"
+                android:layout_marginHorizontal="7dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_card"
-                android:gravity="center"
-                android:orientation="vertical">
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#E0E3EC"
+                app:strokeWidth="1dp">
 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▱" android:textColor="@color/hero_red" android:textSize="26sp" />
-                <TextView android:id="@+id/pendingDraftCount" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textColor="@color/hero_red" android:textSize="32sp" android:textStyle="bold" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PENDING DRAFTS" android:textColor="@color/hero_text_muted" />
-            </LinearLayout>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/printedRackCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/hero_green"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Rack printed"
+                        android:textColor="@color/hero_text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_marginStart="7dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="#E0E3EC"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/pendingDraftCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/hero_red"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Draft lokal"
+                        android:textColor="@color/hero_text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/dashboardState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:textColor="@color/hero_text_muted"
+            android:textSize="14sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/startButton"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="28dp"
-            android:text="@string/start_stock_take"
-            android:textSize="17sp"
+            android:layout_height="56dp"
+            android:layout_marginTop="18dp"
+            android:text="Buka schedule"
+            android:textSize="16sp"
             android:textStyle="bold"
             app:backgroundTint="@color/hero_navy"
-            app:cornerRadius="8dp" />
+            app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/continueButton"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="12dp"
-            android:text="@string/continue_draft"
+            android:layout_height="56dp"
+            android:layout_marginTop="10dp"
+            android:text="Lihat rack aktif"
             android:textColor="@color/hero_red"
-            app:cornerRadius="8dp"
+            app:cornerRadius="14dp"
             app:strokeColor="@color/hero_red"
-            app:strokeWidth="2dp" />
+            app:strokeWidth="1dp" />
     </LinearLayout>
 </ScrollView>
-

@@ -1,11 +1,13 @@
 package com.hero.stocktake.ui.rack;
 
+import android.graphics.drawable.GradientDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.hero.stocktake.R;
@@ -47,7 +49,8 @@ public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Hold
         LocalScanDraft draft = items.get(position);
         holder.product.setText(draft.pluDescription);
         holder.barcode.setText(draft.barcode + " - PLU " + draft.plu);
-        holder.inputType.setText(draft.inputType + " - " + draft.syncStatus);
+        holder.inputType.setText(statusLabel(draft));
+        applyStatusStyle(holder, draft);
         holder.quantity.setText("x" + draft.scanQty);
         holder.latestBadge.setText("Terbaru");
         holder.latestBadge.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
@@ -66,6 +69,28 @@ public class ScanDraftAdapter extends RecyclerView.Adapter<ScanDraftAdapter.Hold
         void onEditQuantity(LocalScanDraft draft);
 
         void onDelete(LocalScanDraft draft);
+    }
+
+    private String statusLabel(LocalScanDraft draft) {
+        if ("SYNCED".equalsIgnoreCase(draft.syncStatus)) {
+            return "SUBMITTED";
+        }
+        return "DRAFT LOKAL";
+    }
+
+    private void applyStatusStyle(Holder holder, LocalScanDraft draft) {
+        boolean synced = "SYNCED".equalsIgnoreCase(draft.syncStatus);
+        int background = synced ? R.color.hero_green_soft : R.color.hero_amber_soft;
+        int text = synced ? R.color.hero_green : R.color.hero_amber;
+        holder.inputType.setBackground(roundedDrawable(holder, background, 100));
+        holder.inputType.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), text));
+    }
+
+    private GradientDrawable roundedDrawable(Holder holder, int colorRes, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(ContextCompat.getColor(holder.itemView.getContext(), colorRes));
+        drawable.setCornerRadius(radiusDp * holder.itemView.getResources().getDisplayMetrics().density);
+        return drawable;
     }
 
     static class Holder extends RecyclerView.ViewHolder {

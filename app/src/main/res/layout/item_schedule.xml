@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="8dp"
+    android:layout_marginVertical="7dp"
+    android:clickable="true"
+    android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/white"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="1dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
     app:strokeColor="#E2E4EC"
     app:strokeWidth="1dp">
 
@@ -15,7 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="18dp">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -28,41 +31,50 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/hero_navy"
-                android:textSize="17sp"
-                android:textStyle="bold" />
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="ST/2026/08/0001" />
 
             <TextView
                 android:id="@+id/scheduleStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_chip_green"
-                android:textColor="@color/hero_green"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="9dp"
+                android:paddingVertical="6dp"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                tools:text="OPEN" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/scheduleDesc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="9dp"
             android:textColor="@color/hero_text"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Stock Take Fresh Food Minggu 1" />
 
         <TextView
             android:id="@+id/scheduleStore"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:textColor="@color/hero_text_muted"
-            android:textSize="14sp" />
+            android:textSize="13sp"
+            tools:text="Hero Supermarket 6168 (6168)" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="13dp"
             android:orientation="horizontal">
 
             <TextView
@@ -71,8 +83,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textColor="@color/hero_text"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="05 Aug 2026" />
 
             <TextView
                 android:id="@+id/scheduleTime"
@@ -81,26 +94,28 @@
                 android:layout_weight="1"
                 android:gravity="end"
                 android:textColor="@color/hero_text"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="08:00 - 18:00" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/scheduleType"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_card"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="6dp"
                 android:textColor="@color/hero_navy"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:textSize="11sp"
+                android:textStyle="bold"
+                tools:text="PARTIAL" />
 
             <TextView
                 android:id="@+id/scheduleCategory"
@@ -110,24 +125,25 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:paddingVertical="6dp"
                 android:textColor="@color/hero_text_muted"
-                android:textSize="13sp" />
+                android:textSize="12sp"
+                tools:text="Fresh Food, Seafood" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/scheduleProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="16dp"
             android:textColor="@color/hero_text_muted"
-            android:textSize="13sp" />
+            android:textSize="12sp"
+            tools:text="68% - 15 / 22 rack selesai" />
 
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="8dp"
+            android:layout_height="7dp"
             android:layout_marginTop="8dp"
             android:max="100"
             android:progressBackgroundTint="#E9EBF2"
@@ -137,9 +153,9 @@
             android:id="@+id/openScheduleButton"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="10dp"
-            android:text="Buka rack list  ›"
+            android:layout_height="46dp"
+            android:layout_marginTop="8dp"
+            android:text="Buka rack list"
             android:textColor="@color/hero_navy"
             android:textStyle="bold" />
     </LinearLayout>
