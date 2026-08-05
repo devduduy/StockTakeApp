@@ -8,6 +8,8 @@ export interface ActiveSchedule {
     name: string;
   };
   scheduleDate: string;
+  startDate: string;
+  endDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: {
@@ -44,4 +46,20 @@ export interface ScheduleLocation {
   status: string;
   stockTypeCode: string;
   categoryIds: string[];
+}
+
+export type ScheduleStockType = "ALL" | "PARTIAL";
+export type EditableScheduleStatus = "DRAFT" | "OPEN";
+
+export interface ScheduleMutatePayload {
+  scheduleDesc: string;
+  locCode: string;
+  startDate: string;
+  endDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  stockType: ScheduleStockType;
+  categoryIds: string[];
+  status: EditableScheduleStatus;
+  username: string;
 }

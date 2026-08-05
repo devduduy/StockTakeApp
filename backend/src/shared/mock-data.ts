@@ -12,9 +12,49 @@ export const mockUsers = [
     locCode: "6168",
     status: "ACTIVE",
   },
+  {
+    id: "2",
+    username: "store_manager01",
+    passwordHash: bcrypt.hashSync("prototype", 12),
+    fullName: "STORE MANAGER HERO 6168",
+    roleId: 2,
+    roleCode: "STORE_MANAGER",
+    roleName: "Store Manager",
+    locCode: "6168",
+    status: "ACTIVE",
+  },
+  {
+    id: "3",
+    username: "inventory_control01",
+    passwordHash: bcrypt.hashSync("prototype", 12),
+    fullName: "INVENTORY CONTROL HERO",
+    roleId: 1,
+    roleCode: "INVENTORY_CONTROL",
+    roleName: "Inventory Control",
+    locCode: "0000",
+    status: "ACTIVE",
+  },
 ];
 
-export const mockSchedules = [
+export interface MockSchedule {
+  id: string;
+  scheduleNo: string;
+  scheduleDesc: string;
+  locCode: string;
+  locationName: string;
+  scheduleDate: string;
+  endDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  stockTypeId: number;
+  stockTypeCode: string;
+  stockTypeName: string;
+  stockTypeValue: string | null;
+  categoryId: string | null;
+  status: string;
+}
+
+export const mockSchedules: MockSchedule[] = [
   {
     id: "1",
     scheduleNo: "ST/2026/07/001",
@@ -22,6 +62,7 @@ export const mockSchedules = [
     locCode: "6168",
     locationName: "HERO SUPERMARKET 6168",
     scheduleDate: "2026-07-29",
+    endDate: "2026-07-29",
     startTime: "2026-07-29T08:00:00.000Z",
     endTime: null,
     stockTypeId: 1,

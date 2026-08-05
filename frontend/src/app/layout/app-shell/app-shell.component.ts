@@ -18,6 +18,7 @@ interface NavigationItem {
 })
 export class AppShellComponent {
   readonly mobileMenuOpen = signal(false);
+  readonly desktopMenuCollapsed = signal(localStorage.getItem('hero-web-menu-collapsed') === 'true');
   readonly navigation: NavigationItem[] = [
     { label: 'Dashboard', icon: 'space_dashboard', route: '/dashboard' },
     { label: 'Schedule', icon: 'event_note', route: '/schedules' },
@@ -31,6 +32,14 @@ export class AppShellComponent {
 
   toggleMenu(): void {
     this.mobileMenuOpen.update((open) => !open);
+  }
+
+  toggleDesktopMenu(): void {
+    this.desktopMenuCollapsed.update((collapsed) => {
+      const nextValue = !collapsed;
+      localStorage.setItem('hero-web-menu-collapsed', String(nextValue));
+      return nextValue;
+    });
   }
 
   closeMenu(): void {

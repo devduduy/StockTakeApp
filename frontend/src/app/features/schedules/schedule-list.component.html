@@ -1,14 +1,28 @@
 <section class="page-heading">
   <div>
     <p class="eyebrow">STOCK TAKE</p>
-    <h1>Schedule Aktif</h1>
-    <p>Schedule tampil sesuai lokasi yang terhubung dengan akun Anda.</p>
+    <h1>Schedule</h1>
+    <p>Kelola jadwal stock take sesuai lokasi akun, lalu pantau progres rack secara real-time.</p>
   </div>
-  <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
-    <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
-    Perbarui data
-  </button>
+  <div class="page-heading__actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+      <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
+      Perbarui
+    </button>
+    <button class="primary-button" type="button" (click)="openCreateForm()">
+      <span class="material-symbols-outlined">add</span>
+      Buat Schedule
+    </button>
+  </div>
 </section>
+
+@if (successMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Berhasil</strong><span>{{ successMessage() }}</span></div>
+    <button type="button" (click)="successMessage.set('')">Tutup</button>
+  </div>
+}
 
 <section class="filter-bar" aria-label="Filter schedule">
   <label class="search-control">
@@ -52,7 +66,7 @@
         <div class="schedule-card__top">
           <div>
             <span class="schedule-number">{{ schedule.scheduleNo }}</span>
-            <span class="status-chip status-chip--active">{{ statusLabel(schedule.status) }}</span>
+            <span class="status-chip" [class.status-chip--active]="schedule.status !== 'DRAFT'">{{ statusLabel(schedule.status) }}</span>
           </div>
           <span class="type-chip" [class.type-chip--partial]="stockTypeLabel(schedule) === 'PARTIAL'">
             {{ stockTypeLabel(schedule) }}
@@ -67,7 +81,13 @@
           </div>
           <div class="metadata-row">
             <span class="material-symbols-outlined">calendar_today</span>
-            <div><small>Tanggal & Waktu</small><strong>{{ schedule.scheduleDate | date:'dd MMMM yyyy' }} · {{ schedule.startTime ? (schedule.startTime | date:'HH:mm') : '--:--' }}</strong></div>
+            <div>
+              <small>Periode & Waktu</small>
+              <strong>
+                {{ schedule.startDate | date:'dd MMM yyyy' }} - {{ schedule.endDate | date:'dd MMM yyyy' }}
+                · {{ schedule.startTime ? (schedule.startTime | date:'HH:mm') : '--:--' }}
+              </strong>
+            </div>
           </div>
           <div class="metadata-row">
             <span class="material-symbols-outlined">category</span>
@@ -81,9 +101,15 @@
           <small>{{ schedule.progress.rackWithSubmittedScan }} dari {{ schedule.progress.totalRack }} rack sudah disubmit</small>
         </div>
 
-        <a class="schedule-card__action" [routerLink]="['/schedules', schedule.id, 'racks']">
-          Buka monitoring rack <span class="material-symbols-outlined">arrow_forward</span>
-        </a>
+        <div class="schedule-card__actions">
+          <button class="schedule-card__edit" type="button" [disabled]="!canEdit(schedule)" (click)="openEditForm(schedule)">
+            <span class="material-symbols-outlined">edit</span>
+            Edit
+          </button>
+          <a class="schedule-card__action" [routerLink]="['/schedules', schedule.id, 'racks']">
+            Monitoring <span class="material-symbols-outlined">arrow_forward</span>
+          </a>
+        </div>
       </article>
     } @empty {
       <div class="empty-state schedule-empty">
@@ -94,4 +120,191 @@
       </div>
     }
   </div>
+}
+
+@if (formOpen()) {
+  <button class="drawer-backdrop" type="button" aria-label="Tutup form schedule" (click)="closeForm()"></button>
+  <aside class="schedule-drawer" aria-label="Form schedule">
+    <form [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()" novalidate>
+      <header class="drawer-header">
+        <div>
+          <p class="eyebrow">SCHEDULE</p>
+          <h2>{{ editingSchedule() ? 'Edit Schedule' : 'Buat Schedule' }}</h2>
+          <span>{{ locationName(scheduleForm.controls.locCode.value) }}</span>
+        </div>
+        <button type="button" aria-label="Tutup" (click)="closeForm()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      @if (formErrorMessage()) {
+        <div class="inline-alert drawer-alert" role="alert">
+          <span class="material-symbols-outlined">error</span>
+          <div><strong>Schedule gagal disimpan</strong><span>{{ formErrorMessage() }}</span></div>
+        </div>
+      }
+
+      <div class="drawer-body">
+        <label class="form-field">
+          <span>Deskripsi <b>*</b></span>
+          <input formControlName="scheduleDesc" type="text" placeholder="Contoh: Stock Take Fresh Minggu 1" />
+          @if (scheduleForm.controls.scheduleDesc.touched && scheduleForm.controls.scheduleDesc.invalid) {
+            <small>Deskripsi wajib diisi minimal 3 karakter.</small>
+          }
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Lokasi <b>*</b></span>
+            <select formControlName="locCode">
+              @for (location of locations(); track location.code) {
+                <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+              }
+            </select>
+          </label>
+          <label class="form-field">
+            <span>Status <b>*</b></span>
+            <select formControlName="status">
+              <option value="OPEN">OPEN</option>
+              <option value="DRAFT">DRAFT</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-grid form-grid--date">
+          <label class="form-field">
+            <span>Tanggal Mulai <b>*</b></span>
+            <input formControlName="startDate" type="date" />
+          </label>
+          <label class="form-field">
+            <span>Tanggal Selesai <b>*</b></span>
+            <input formControlName="endDate" type="date" />
+          </label>
+          <label class="form-field">
+            <span>Jam Mulai</span>
+            <input formControlName="startTime" type="time" />
+          </label>
+          <label class="form-field">
+            <span>Jam Selesai</span>
+            <input formControlName="endTime" type="time" />
+          </label>
+        </div>
+
+        <section class="stock-type-panel">
+          <span>Tipe Stock Take <b>*</b></span>
+          <div class="stock-type-toggle">
+            <label [class.active]="scheduleForm.controls.stockType.value === 'ALL'">
+              <input type="radio" formControlName="stockType" value="ALL" />
+              <strong>ALL</strong>
+              <small>Semua kategori boleh discan.</small>
+            </label>
+            <label [class.active]="scheduleForm.controls.stockType.value === 'PARTIAL'">
+              <input type="radio" formControlName="stockType" value="PARTIAL" />
+              <strong>PARTIAL</strong>
+              <small>Hanya category terpilih yang valid.</small>
+            </label>
+          </div>
+        </section>
+
+        @if (scheduleForm.controls.stockType.value === 'PARTIAL') {
+          <section class="category-panel">
+            <div class="category-panel__header">
+              <div>
+                <strong>Category <b>*</b></strong>
+                <span>{{ selectedCategoryIds().length }} dipilih</span>
+              </div>
+              <button type="button" (click)="clearCategories()">Kosongkan</button>
+            </div>
+
+            @if (selectedCategories().length > 0) {
+              <div class="selected-category-list" aria-label="Category terpilih">
+                @for (category of selectedCategories(); track category.id) {
+                  <button type="button" (click)="removeCategory(category.id)">
+                    <span>{{ category.id }}</span>
+                    {{ category.name }}
+                    <i class="material-symbols-outlined">close</i>
+                  </button>
+                }
+              </div>
+            }
+
+            <label class="search-control category-search">
+              <span class="material-symbols-outlined">search</span>
+              <input
+                type="search"
+                placeholder="Cari division, department, category..."
+                [value]="categorySearch()"
+                (input)="categorySearch.set($any($event.target).value)"
+              />
+            </label>
+            <div class="category-tree">
+              @for (group of filteredCategoryGroups(); track group.divisionId) {
+                <section class="division-group" [class.division-group--open]="divisionExpanded(group.divisionId)">
+                  <div class="division-group__header">
+                    <label>
+                      <input
+                        type="checkbox"
+                        [checked]="checkedState(divisionCategories(group)) === 'all'"
+                        [indeterminate]="checkedState(divisionCategories(group)) === 'partial'"
+                        (change)="toggleCategoryGroup(divisionCategories(group), $any($event.target).checked)"
+                      />
+                      <span>{{ group.divisionName }}</span>
+                    </label>
+                    <button type="button" (click)="toggleDivision(group.divisionId)" [attr.aria-expanded]="divisionExpanded(group.divisionId)">
+                      <small>{{ divisionCategories(group).length }} category</small>
+                      <i class="material-symbols-outlined">expand_more</i>
+                    </button>
+                  </div>
+                  @if (divisionExpanded(group.divisionId)) {
+                    @for (department of group.departments; track department.departmentId) {
+                      <div class="department-group">
+                        <div class="department-group__title">
+                          <label>
+                            <input
+                              type="checkbox"
+                              [checked]="checkedState(department.categories) === 'all'"
+                              [indeterminate]="checkedState(department.categories) === 'partial'"
+                              (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
+                            />
+                            <span>{{ department.departmentName }}</span>
+                          </label>
+                        </div>
+                        <div class="category-options">
+                          @for (category of department.categories; track category.id) {
+                            <label>
+                              <input
+                                type="checkbox"
+                                [checked]="categoryChecked(category.id)"
+                                (change)="toggleCategory(category.id, $any($event.target).checked)"
+                              />
+                              <span>{{ category.id }}</span>
+                              {{ category.name }}
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+                </section>
+              } @empty {
+                <div class="empty-state compact">
+                  <span class="material-symbols-outlined">search_off</span>
+                  <h3>Category tidak ditemukan</h3>
+                  <p>Coba kata pencarian lain.</p>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+
+      <footer class="drawer-footer">
+        <button class="secondary-button" type="button" (click)="closeForm()" [disabled]="saving()">Batal</button>
+        <button class="primary-button" type="submit" [disabled]="saving()">
+          @if (saving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+          @else { <span class="material-symbols-outlined">save</span> Simpan Schedule }
+        </button>
+      </footer>
+    </form>
+  </aside>
 }

@@ -38,6 +38,23 @@ export interface Category {
   division: { id: string; name: string };
 }
 
+export interface Location {
+  code: string;
+  name: string;
+}
+
+export interface SchedulePayload {
+  scheduleDesc: string;
+  locCode: string;
+  startDate: string;
+  endDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  stockType: 'ALL' | 'PARTIAL';
+  categoryIds: string[];
+  status: 'DRAFT' | 'OPEN';
+}
+
 export interface ActiveSchedule {
   id: string;
   scheduleNo: string;
@@ -45,6 +62,8 @@ export interface ActiveSchedule {
   locCode: string;
   location: { code: string; name: string };
   scheduleDate: string;
+  startDate: string;
+  endDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: {

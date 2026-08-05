@@ -5,6 +5,7 @@ import { getSqlPool } from "./sql.js";
 export interface MigrationResult {
   mode: "mock" | "sql";
   addedScheduleCategoryColumn: boolean;
+  addedScheduleEndDateColumn: boolean;
   normalizedStockTypes: boolean;
   ensuredScanTable: boolean;
 }
@@ -14,6 +15,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     return {
       mode: "mock",
       addedScheduleCategoryColumn: false,
+      addedScheduleEndDateColumn: false,
       normalizedStockTypes: false,
       ensuredScanTable: false,
     };
@@ -22,12 +24,14 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
   const pool = await getSqlPool();
   const result = await pool.request().query<{
     added_schedule_category_column: number;
+    added_schedule_end_date_column: number;
     normalized_stock_types: number;
     ensured_scan_table: number;
   }>(`
     SET NOCOUNT ON;
 
     DECLARE @added_schedule_category_column bit = 0;
+    DECLARE @added_schedule_end_date_column bit = 0;
     DECLARE @normalized_stock_types bit = 0;
     DECLARE @ensured_scan_table bit = 0;
 
@@ -36,6 +40,36 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       ALTER TABLE dbo.TR_STOCK_SCHEDULE
         ADD CATEGORY_ID varchar(max) NULL;
       SET @added_schedule_category_column = 1;
+    END;
+
+    IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'END_DATE') IS NULL
+    BEGIN
+      ALTER TABLE dbo.TR_STOCK_SCHEDULE
+        ADD END_DATE date NULL;
+
+      SET @added_schedule_end_date_column = 1;
+    END;
+
+    IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'END_DATE') IS NOT NULL
+    BEGIN
+      EXEC sp_executesql N'
+        UPDATE dbo.TR_STOCK_SCHEDULE
+        SET END_DATE = SCHEDULE_DATE
+        WHERE END_DATE IS NULL;
+      ';
+
+      IF EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'dbo'
+          AND TABLE_NAME = 'TR_STOCK_SCHEDULE'
+          AND COLUMN_NAME = 'END_DATE'
+          AND IS_NULLABLE = 'YES'
+      )
+      BEGIN
+        ALTER TABLE dbo.TR_STOCK_SCHEDULE
+          ALTER COLUMN END_DATE date NOT NULL;
+      END;
     END;
 
     IF EXISTS (
@@ -115,6 +149,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
 
     SELECT
       CAST(@added_schedule_category_column AS int) AS added_schedule_category_column,
+      CAST(@added_schedule_end_date_column AS int) AS added_schedule_end_date_column,
       CAST(@normalized_stock_types AS int) AS normalized_stock_types,
       CAST(@ensured_scan_table AS int) AS ensured_scan_table;
   `);
@@ -123,6 +158,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
   const migrationResult: MigrationResult = {
     mode: "sql",
     addedScheduleCategoryColumn: row?.added_schedule_category_column === 1,
+    addedScheduleEndDateColumn: row?.added_schedule_end_date_column === 1,
     normalizedStockTypes: row?.normalized_stock_types === 1,
     ensuredScanTable: row?.ensured_scan_table === 1,
   };

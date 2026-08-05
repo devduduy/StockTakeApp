@@ -17,10 +17,11 @@
   flex-direction: column;
   border-right: 1px solid var(--outline-variant);
   background: var(--surface);
+  transition: width 160ms ease, transform 180ms ease;
 }
 
 .brand {
-  display: flex;
+  display: grid;
   min-height: 80px;
   align-items: center;
   gap: 12px;
@@ -28,17 +29,11 @@
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.brand__mark {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--secondary);
-  color: #fff;
-  font-size: 24px;
-  font-weight: 800;
+.brand__logo {
+  width: 128px;
+  height: auto;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 .brand__copy {
@@ -192,6 +187,7 @@
 .workspace {
   min-height: 100vh;
   margin-left: 280px;
+  transition: margin-left 160ms ease;
 }
 
 .topbar {
@@ -228,8 +224,39 @@
   font-size: 11px;
 }
 
-.menu-button {
+.menu-button,
+.desktop-menu-button {
   display: none;
+}
+
+.desktop-menu-button {
+  display: grid;
+}
+
+.desktop-menu-button,
+.menu-button,
+.sidebar__close {
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.desktop-menu-button:hover,
+.menu-button:hover,
+.sidebar__close:hover {
+  background: rgba(255, 255, 255, .1);
+}
+
+.topbar__logo {
+  width: 104px;
+  max-height: 32px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .system-status {
@@ -263,7 +290,95 @@
 
 .menu-backdrop { display: none; }
 
+.app-frame--collapsed .sidebar {
+  width: 76px;
+}
+
+.app-frame--collapsed .workspace {
+  margin-left: 76px;
+}
+
+.app-frame--collapsed .brand {
+  justify-content: center;
+  padding-inline: 10px;
+}
+
+.app-frame--collapsed .brand__logo {
+  width: 48px;
+  max-width: 48px;
+  object-position: left center;
+}
+
+.app-frame--collapsed .brand__copy,
+.app-frame--collapsed .user-card__identity,
+.app-frame--collapsed .main-nav__label,
+.app-frame--collapsed .main-nav__item span:not(.material-symbols-outlined),
+.app-frame--collapsed .main-nav__item small,
+.app-frame--collapsed .sidebar__footer > span {
+  display: none;
+}
+
+.app-frame--collapsed .user-card {
+  justify-content: center;
+  margin-inline: 12px;
+  padding: 8px;
+}
+
+.app-frame--collapsed .main-nav__item {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 0;
+}
+
+.app-frame--collapsed .sidebar__footer {
+  padding-inline: 12px;
+}
+
+.app-frame--collapsed .logout-button {
+  justify-content: center;
+}
+
+.app-frame--collapsed .logout-button {
+  font-size: 0;
+}
+
+.app-frame--collapsed .logout-button .material-symbols-outlined {
+  font-size: 20px;
+}
+
 @media (max-width: 900px) {
+  .app-frame--collapsed .sidebar {
+    width: min(86vw, 300px);
+  }
+
+  .app-frame--collapsed .workspace {
+    margin-left: 0;
+  }
+
+  .app-frame--collapsed .brand {
+    justify-content: flex-start;
+    padding: 16px 20px;
+  }
+
+  .app-frame--collapsed .brand__logo {
+    width: 128px;
+    max-width: none;
+  }
+
+  .app-frame--collapsed .brand__copy,
+  .app-frame--collapsed .user-card__identity,
+  .app-frame--collapsed .main-nav__label,
+  .app-frame--collapsed .main-nav__item span:not(.material-symbols-outlined),
+  .app-frame--collapsed .main-nav__item small,
+  .app-frame--collapsed .sidebar__footer > span {
+    display: initial;
+  }
+
+  .app-frame--collapsed .logout-button {
+    justify-content: flex-start;
+    font-size: 13px;
+  }
+
   .sidebar {
     width: min(86vw, 300px);
     transform: translateX(-102%);
@@ -274,20 +389,10 @@
   .sidebar__close { display: grid; }
   .workspace { margin-left: 0; }
   .menu-button { display: grid; }
-
-  .menu-button,
-  .sidebar__close {
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
+  .desktop-menu-button { display: none; }
 
   .sidebar__close { color: var(--text-muted); }
+  .sidebar__close:hover { background: var(--surface-high); }
 
   .menu-backdrop {
     position: fixed;

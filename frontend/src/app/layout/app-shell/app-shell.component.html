@@ -1,11 +1,11 @@
-<div class="app-frame">
+<div class="app-frame" [class.app-frame--collapsed]="desktopMenuCollapsed()">
   @if (mobileMenuOpen()) {
     <button class="menu-backdrop" type="button" aria-label="Tutup menu" (click)="closeMenu()"></button>
   }
 
   <aside class="sidebar" [class.sidebar--open]="mobileMenuOpen()">
     <div class="brand">
-      <div class="brand__mark" aria-hidden="true">H</div>
+      <img class="brand__logo" src="hero-logo.png" alt="Hero Supermarket" />
       <div class="brand__copy">
         <strong>Hero Supermarket</strong>
         <span>Stock Take Control</span>
@@ -33,6 +33,7 @@
             routerLinkActive="main-nav__item--active"
             [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
             (click)="closeMenu()"
+            [title]="desktopMenuCollapsed() ? item.label : null"
           >
             <span class="material-symbols-outlined">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
@@ -63,6 +64,15 @@
         <button class="menu-button" type="button" aria-label="Buka menu" (click)="toggleMenu()">
           <span class="material-symbols-outlined">menu</span>
         </button>
+        <button
+          class="desktop-menu-button"
+          type="button"
+          [attr.aria-label]="desktopMenuCollapsed() ? 'Tampilkan menu' : 'Sembunyikan menu'"
+          (click)="toggleDesktopMenu()"
+        >
+          <span class="material-symbols-outlined">{{ desktopMenuCollapsed() ? 'menu_open' : 'menu' }}</span>
+        </button>
+        <!-- <img class="topbar__logo" src="hero-logo.png" alt="Hero Supermarket" /> -->
         <div>
           <strong>HERO INVENTORY</strong>
           <span>Stock Take Management System</span>

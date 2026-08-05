@@ -4,9 +4,12 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import {
   ActiveSchedule,
   ApiEnvelope,
+  Category,
   DashboardSnapshot,
+  Location,
   RackListResponse,
-  RackScanListResponse
+  RackScanListResponse,
+  SchedulePayload
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -16,6 +19,36 @@ export class StockTakeApiService {
   getActiveSchedules(): Observable<ActiveSchedule[]> {
     return this.http
       .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules/active')
+      .pipe(map(({ data }) => data));
+  }
+
+  getSchedules(): Observable<ActiveSchedule[]> {
+    return this.http
+      .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules')
+      .pipe(map(({ data }) => data));
+  }
+
+  createSchedule(payload: SchedulePayload): Observable<ActiveSchedule> {
+    return this.http
+      .post<ApiEnvelope<ActiveSchedule>>('/api/stock-take/schedules', payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  updateSchedule(scheduleId: string, payload: SchedulePayload): Observable<ActiveSchedule> {
+    return this.http
+      .put<ApiEnvelope<ActiveSchedule>>(`/api/stock-take/schedules/${scheduleId}`, payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  getCategories(): Observable<Category[]> {
+    return this.http
+      .get<ApiEnvelope<Category[]>>('/api/stock-take/categories')
+      .pipe(map(({ data }) => data));
+  }
+
+  getLocations(): Observable<Location[]> {
+    return this.http
+      .get<ApiEnvelope<Location[]>>('/api/stock-take/locations')
       .pipe(map(({ data }) => data));
   }
 
