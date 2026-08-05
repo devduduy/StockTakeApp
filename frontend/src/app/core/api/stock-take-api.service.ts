@@ -7,6 +7,7 @@ import {
   Category,
   DashboardSnapshot,
   Location,
+  PrintRackResponse,
   RackListResponse,
   RackScanListResponse,
   SchedulePayload
@@ -62,6 +63,15 @@ export class StockTakeApiService {
     return this.http
       .get<ApiEnvelope<RackScanListResponse>>(
         `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans`
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  printRack(scheduleId: string, rackId: string): Observable<PrintRackResponse> {
+    return this.http
+      .post<ApiEnvelope<PrintRackResponse>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`,
+        {}
       )
       .pipe(map(({ data }) => data));
   }

@@ -2,7 +2,10 @@ import sql from "mssql";
 import { env } from "../../config/env.js";
 import { getSqlPool } from "../../db/sql.js";
 import { mockScanSubmissions } from "../../shared/mock-data.js";
+import { AppError } from "../../shared/app-error.js";
 import type {
+  PrintRackScansInput,
+  PrintRackScansResponse,
   RackScanLineResponse,
   SubmitRackScansInput,
   SubmitRackScansResponse,
@@ -49,6 +52,14 @@ function mapScanLine(row: ScanLineRow): RackScanLineResponse {
     dateCreated: isoDateTime(row.date_created) ?? new Date(0).toISOString(),
     dateModified: isoDateTime(row.date_modified),
   };
+}
+
+function createPrintNo(scheduleId: number, rackId: number): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, "")
+    .slice(0, 14);
+  return `PRN-${timestamp}-${scheduleId}-${rackId}`;
 }
 
 export async function listRackScans(
@@ -300,6 +311,108 @@ export async function submitRackScans(
       updatedLines,
       submittedQuantity,
       serverTime,
+    };
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+export async function printRackScans(
+  input: PrintRackScansInput,
+): Promise<PrintRackScansResponse> {
+  const printTime = new Date().toISOString();
+  const printNo = createPrintNo(input.scheduleId, input.rackId);
+
+  if (env.SQL_MODE === "mock") {
+    const scans = mockScanSubmissions.filter(
+      (scan) =>
+        Number(scan.scheduleId) === input.scheduleId &&
+        Number(scan.rackId) === input.rackId,
+    );
+    if (scans.length === 0) {
+      throw new AppError(
+        409,
+        "Rack belum memiliki data scan untuk diprint.",
+        "RACK_HAS_NO_SCANS",
+      );
+    }
+    if (scans.some((scan) => scan.printNo?.trim())) {
+      throw new AppError(409, "Rack sudah diprint.", "RACK_ALREADY_PRINTED");
+    }
+    for (const scan of scans) {
+      scan.printNo = printNo;
+      scan.userModified = input.username;
+      scan.dateModified = printTime;
+    }
+    return {
+      printNo,
+      printTime,
+      printedLineCount: scans.length,
+      printedQuantity: scans.reduce((total, scan) => total + scan.scanQty, 0),
+    };
+  }
+
+  const pool = await getSqlPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+  try {
+    const summary = await new sql.Request(transaction)
+      .input("scheduleId", sql.BigInt, input.scheduleId)
+      .input("rackId", sql.BigInt, input.rackId)
+      .query<{
+        submitted_line_count: number;
+        printed_line_count: number;
+        submitted_quantity: number;
+      }>(`
+        SELECT
+          COUNT(1) AS submitted_line_count,
+          SUM(CASE WHEN NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NULL THEN 0 ELSE 1 END) AS printed_line_count,
+          COALESCE(SUM(SCAN_QTY), 0) AS submitted_quantity
+        FROM dbo.TR_STOCK_TAKE_SCAN WITH (UPDLOCK, HOLDLOCK)
+        WHERE SCHEDULE_ID = @scheduleId
+          AND RACK_ID = @rackId
+          AND SCAN_STATUS = 'SYNCED';
+      `);
+    const row = summary.recordset[0];
+    const submittedLineCount = Number(row?.submitted_line_count ?? 0);
+    const printedLineCount = Number(row?.printed_line_count ?? 0);
+    const submittedQuantity = Number(row?.submitted_quantity ?? 0);
+
+    if (submittedLineCount === 0) {
+      throw new AppError(
+        409,
+        "Rack belum memiliki data scan untuk diprint.",
+        "RACK_HAS_NO_SCANS",
+      );
+    }
+    if (printedLineCount > 0) {
+      throw new AppError(409, "Rack sudah diprint.", "RACK_ALREADY_PRINTED");
+    }
+
+    await new sql.Request(transaction)
+      .input("scheduleId", sql.BigInt, input.scheduleId)
+      .input("rackId", sql.BigInt, input.rackId)
+      .input("printNo", sql.VarChar(50), printNo)
+      .input("username", sql.VarChar(100), input.username)
+      .query(`
+        UPDATE dbo.TR_STOCK_TAKE_SCAN
+        SET PRINT_NO = @printNo,
+            PRINT_TIME = SYSUTCDATETIME(),
+            USER_MODIFIED = @username,
+            DATE_MODIFIED = SYSUTCDATETIME()
+        WHERE SCHEDULE_ID = @scheduleId
+          AND RACK_ID = @rackId
+          AND SCAN_STATUS = 'SYNCED'
+          AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NULL;
+      `);
+
+    await transaction.commit();
+    return {
+      printNo,
+      printTime,
+      printedLineCount: submittedLineCount,
+      printedQuantity: submittedQuantity,
     };
   } catch (error) {
     await transaction.rollback();

@@ -128,6 +128,13 @@ export interface RackScanListResponse {
   scans: RackScan[];
 }
 
+export interface PrintRackResponse {
+  printNo: string;
+  printTime: string;
+  printedLineCount: number;
+  printedQuantity: number;
+}
+
 export interface DashboardSnapshot {
   schedules: ActiveSchedule[];
   totalRacks: number;

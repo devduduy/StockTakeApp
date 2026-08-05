@@ -28,8 +28,12 @@ export class RackMonitoringComponent {
   readonly loading = signal(true);
   readonly refreshing = signal(false);
   readonly scansLoading = signal(false);
+  readonly printing = signal(false);
+  readonly printConfirmRack = signal<Rack | null>(null);
   readonly errorMessage = signal('');
   readonly scanErrorMessage = signal('');
+  readonly printMessage = signal('');
+  readonly printErrorMessage = signal('');
   readonly search = signal('');
   readonly statusFilter = signal<'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED'>('ALL');
   readonly lastUpdated = signal<Date | null>(null);
@@ -51,6 +55,7 @@ export class RackMonitoringComponent {
   readonly totalLines = computed(() => this.racks().reduce((sum, rack) => sum + rack.submittedLineCount, 0));
   readonly totalQuantity = computed(() => this.racks().reduce((sum, rack) => sum + rack.submittedQuantity, 0));
   readonly selectedQuantity = computed(() => this.scans().reduce((sum, scan) => sum + scan.scanQty, 0));
+  readonly selectedPrintNo = computed(() => this.scans().find((scan) => !!scan.printNo)?.printNo ?? null);
 
   constructor() {
     interval(10_000)
@@ -75,6 +80,44 @@ export class RackMonitoringComponent {
     this.selectedRack.set(null);
     this.scans.set([]);
     this.scanErrorMessage.set('');
+    this.printErrorMessage.set('');
+  }
+
+  openPrintConfirm(rack: Rack): void {
+    if (rack.printed || rack.submittedLineCount === 0 || this.printing()) return;
+    this.printErrorMessage.set('');
+    this.printConfirmRack.set(rack);
+  }
+
+  closePrintConfirm(): void {
+    if (!this.printing()) this.printConfirmRack.set(null);
+  }
+
+  confirmPrint(): void {
+    const rack = this.printConfirmRack();
+    if (!rack || this.printing()) return;
+    this.printing.set(true);
+    this.printErrorMessage.set('');
+    this.printMessage.set('');
+    this.api.printRack(this.scheduleId, rack.id)
+      .pipe(
+        switchMap((result) => {
+          this.printMessage.set(`Rack ${rack.rackCode} berhasil diprint dengan nomor ${result.printNo}.`);
+          this.printConfirmRack.set(null);
+          return this.fetchPage(false);
+        }),
+        tap(() => {
+          this.loadRackScans(rack.id, false);
+          this.printing.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.printErrorMessage.set(apiErrorMessage(error, 'Rack gagal diprint.'));
+          this.printing.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   setStatusFilter(status: 'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED'): void {
@@ -95,7 +138,7 @@ export class RackMonitoringComponent {
     initial ? this.loading.set(true) : this.refreshing.set(true);
     this.errorMessage.set('');
     return forkJoin({
-      schedules: this.api.getActiveSchedules().pipe(catchError(() => of([]))),
+      schedules: this.api.getSchedules().pipe(catchError(() => of([]))),
       rackResponse: this.api.getRacks(this.scheduleId)
     }).pipe(
       tap(({ schedules, rackResponse }) => {

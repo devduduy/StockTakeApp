@@ -3,10 +3,12 @@ import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
+import { isInventoryControl } from "../../shared/roles.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
 import { findRackById } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
-import { isRackPrinted, listRackScans, submitRackScans } from "./scan.repository.js";
+import { isRackPrinted, listRackScans, printRackScans, submitRackScans } from "./scan.repository.js";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { CanonicalScanLine } from "./scan.types.js";
 
 const paramsSchema = z.object({
@@ -30,6 +32,29 @@ const bodySchema = z.object({
 
 export const scanRouter = Router({ mergeParams: true });
 
+function assertCanAccessScheduleLocation(
+  auth: AuthenticatedUser | undefined,
+  scheduleLocCode: string,
+): void {
+  if (!isInventoryControl(auth) && auth?.locCode && auth.locCode !== scheduleLocCode) {
+    throw new AppError(
+      403,
+      "User tidak memiliki akses ke lokasi schedule ini.",
+      "SCHEDULE_LOCATION_FORBIDDEN",
+    );
+  }
+}
+
+function assertCanPrint(roleCode: string | undefined): void {
+  if (roleCode === "SCANNER") {
+    throw new AppError(
+      403,
+      "Role scanner tidak diizinkan melakukan print rack.",
+      "FORBIDDEN",
+    );
+  }
+}
+
 scanRouter.get(
   "/:scheduleId/racks/:rackId/scans",
   authenticate,
@@ -43,13 +68,7 @@ scanRouter.get(
         "SCHEDULE_NOT_FOUND",
       );
     }
-    if (request.auth?.locCode && request.auth.locCode !== schedule.locCode) {
-      throw new AppError(
-        403,
-        "User tidak memiliki akses ke lokasi schedule ini.",
-        "SCHEDULE_LOCATION_FORBIDDEN",
-      );
-    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -89,13 +108,7 @@ scanRouter.post(
         "SCHEDULE_CANCELLED",
       );
     }
-    if (request.auth?.locCode && request.auth.locCode !== schedule.locCode) {
-      throw new AppError(
-        403,
-        "User tidak memiliki akses ke lokasi schedule ini.",
-        "SCHEDULE_LOCATION_FORBIDDEN",
-      );
-    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -153,6 +166,50 @@ scanRouter.post(
       lines: canonicalLines,
     });
 
+    response.status(200).json({ data: result });
+  }),
+);
+
+scanRouter.post(
+  "/:scheduleId/racks/:rackId/print",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanPrint(request.auth?.roleCode);
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const schedule = await findScheduleLocation(scheduleId);
+    if (!schedule) {
+      throw new AppError(
+        404,
+        "Schedule tidak ditemukan.",
+        "SCHEDULE_NOT_FOUND",
+      );
+    }
+    if (schedule.status === "CANCELLED") {
+      throw new AppError(
+        409,
+        "Schedule sudah dibatalkan.",
+        "SCHEDULE_CANCELLED",
+      );
+    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+
+    const rack = await findRackById(rackId);
+    if (!rack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    if (rack.locCode !== schedule.locCode) {
+      throw new AppError(
+        422,
+        "Rack tidak sesuai dengan lokasi schedule.",
+        "RACK_LOCATION_MISMATCH",
+      );
+    }
+
+    const result = await printRackScans({
+      scheduleId,
+      rackId,
+      username: request.auth?.username ?? "web",
+    });
     response.status(200).json({ data: result });
   }),
 );

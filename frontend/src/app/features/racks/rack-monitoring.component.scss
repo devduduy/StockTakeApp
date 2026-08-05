@@ -26,6 +26,7 @@
 .rack-state--printed { background: #eef2ff; color: #304474; }
 .print-lock { display: inline-flex; align-items: center; gap: 4px; color: #304474; font-size: 9px; font-weight: 700; }
 .print-lock .material-symbols-outlined { font-size: 14px; }
+.ready-print { display: inline-flex; align-items: center; color: #087c48; font-size: 9px; font-weight: 800; }
 .muted { color: var(--text-subtle); font-size: 9px; }
 .action { text-align: right; }
 .action button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; }
@@ -48,6 +49,14 @@
 .drawer-metrics div:last-child { border-right: 0; }
 .drawer-metrics strong { overflow: hidden; color: var(--primary); font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .drawer-metrics span { color: var(--text-subtle); font-size: 9px; }
+.print-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 16px 18px 0; padding: 13px; border: 1px solid #cbd6ed; border-radius: 10px; background: #f6f8ff; }
+.print-panel > div { display: flex; min-width: 0; align-items: center; gap: 11px; }
+.print-panel > div > .material-symbols-outlined { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 8px; background: var(--primary); color: #fff; font-size: 20px; }
+.print-panel strong { color: var(--primary); font-size: 12px; }
+.print-panel small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.print-panel .primary-button { min-width: 128px; }
+.print-panel--locked { border-color: #d9dde8; background: var(--surface-low); }
+.print-panel--locked > div > .material-symbols-outlined { background: #304474; }
 .drawer-section-title { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 12px; }
 .drawer-section-title > div { display: grid; gap: 3px; }
 .drawer-section-title h3 { margin: 0; color: var(--primary); font-size: 14px; }
@@ -66,5 +75,13 @@
 .scan-row__meta > span { color: var(--text-subtle); font-size: 8px; }
 .drawer-error { margin: 0 22px 12px; padding: 10px; border-radius: 6px; background: #fff0f0; color: var(--error); font-size: 10px; }
 
+.confirm-backdrop { position: fixed; inset: 0; z-index: 90; border: 0; background: rgba(2, 21, 65, .46); }
+.confirm-dialog { position: fixed; left: 50%; top: 50%; z-index: 100; width: min(420px, calc(100vw - 32px)); transform: translate(-50%, -50%); border: 1px solid var(--outline-variant); border-radius: 12px; background: var(--surface-lowest); padding: 22px; box-shadow: 0 22px 60px rgba(2, 21, 65, .22); }
+.confirm-dialog__icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 10px; background: var(--primary-soft); color: var(--primary); }
+.confirm-dialog__icon span { font-size: 23px; }
+.confirm-dialog h2 { margin: 16px 0 8px; color: var(--primary); font-size: 18px; }
+.confirm-dialog p { margin: 0; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+.confirm-dialog__actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+
 @media (max-width: 1100px) { .rack-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rack-toolbar { flex-wrap: wrap; } .rack-toolbar .result-count { margin-left: 0; } }
-@media (max-width: 650px) { .rack-summary-grid { grid-template-columns: 1fr 1fr; } .rack-summary-grid article { min-height: 78px; padding: 12px; } .rack-summary-grid article > span { width: 34px; height: 34px; font-size: 18px; } .rack-filters { width: 100%; overflow-x: auto; } .rack-filters button { white-space: nowrap; } .drawer-metrics div { padding: 12px; } }
+@media (max-width: 650px) { .rack-summary-grid { grid-template-columns: 1fr 1fr; } .rack-summary-grid article { min-height: 78px; padding: 12px; } .rack-summary-grid article > span { width: 34px; height: 34px; font-size: 18px; } .rack-filters { width: 100%; overflow-x: auto; } .rack-filters button { white-space: nowrap; } .drawer-metrics div { padding: 12px; } .print-panel { align-items: stretch; flex-direction: column; } .print-panel .primary-button { width: 100%; } .confirm-dialog__actions { flex-direction: column-reverse; } .confirm-dialog__actions .primary-button, .confirm-dialog__actions .secondary-button { width: 100%; } }

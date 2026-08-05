@@ -6,11 +6,13 @@
 
 <section class="page-heading rack-heading">
   <div>
-    <p class="eyebrow">MONITORING RACK</p>
+    <p class="eyebrow">DETAIL SCHEDULE</p>
     <h1>{{ schedule()?.scheduleDesc || scheduleLocation()?.scheduleNo || 'Detail Schedule' }}</h1>
     <p>
       {{ schedule()?.location?.name || ('Lokasi ' + (scheduleLocation()?.locCode || '-')) }}
-      @if (schedule()?.scheduleDate) { · {{ schedule()?.scheduleDate | date:'dd MMMM yyyy' }} }
+      @if (schedule()?.startDate) {
+        · {{ schedule()?.startDate | date:'dd MMM yyyy' }} - {{ schedule()?.endDate | date:'dd MMM yyyy' }}
+      }
     </p>
   </div>
   <div class="page-heading__actions">
@@ -20,6 +22,14 @@
     </button>
   </div>
 </section>
+
+@if (printMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Print berhasil</strong><span>{{ printMessage() }}</span></div>
+    <button type="button" (click)="printMessage.set('')">Tutup</button>
+  </div>
+}
 
 @if (errorMessage()) {
   <div class="inline-alert" role="alert">
@@ -68,7 +78,8 @@
               <td class="number mono">{{ rack.submittedQuantity | number }}</td>
               <td>
                 @if (rack.printed) { <span class="print-lock"><span class="material-symbols-outlined">lock</span> Terkunci</span> }
-                @else { <span class="muted">Belum print</span> }
+                @else if (rack.submittedLineCount > 0) { <span class="ready-print">Siap print</span> }
+                @else { <span class="muted">Belum scan</span> }
               </td>
               <td class="action"><button type="button" aria-label="Lihat detail rack"><span class="material-symbols-outlined">chevron_right</span></button></td>
             </tr>
@@ -94,7 +105,42 @@
       <div><strong>{{ selectedQuantity() | number }}</strong><span>Total quantity</span></div>
       <div><strong>{{ rackStateLabel(rack) }}</strong><span>Status rack</span></div>
     </div>
-    <div class="drawer-section-title"><div><h3>Data item tersubmit</h3><span>{{ scans().length }} baris data</span></div>@if (rack.printed) { <span class="locked-badge"><span class="material-symbols-outlined">lock</span> Printed</span> }</div>
+
+    <section class="print-panel" [class.print-panel--locked]="rack.printed">
+      <div>
+        <span class="material-symbols-outlined">{{ rack.printed ? 'lock' : 'print' }}</span>
+        <div>
+          <strong>{{ rack.printed ? 'Rack sudah terkunci print' : 'Print checklist rack' }}</strong>
+          <small>
+            @if (rack.printed) {
+              Print No {{ selectedPrintNo() || '-' }}
+            } @else if (rack.submittedLineCount > 0) {
+              Setelah print, HHT tidak boleh tambah/edit/delete scan untuk rack ini.
+            } @else {
+              Rack belum memiliki item submit untuk diprint.
+            }
+          </small>
+        </div>
+      </div>
+      <button
+        class="primary-button"
+        type="button"
+        [disabled]="rack.printed || rack.submittedLineCount === 0 || printing()"
+        (click)="openPrintConfirm(rack)"
+      >
+        <span class="material-symbols-outlined">print</span>
+        Print Rack
+      </button>
+    </section>
+
+    @if (printErrorMessage()) {
+      <div class="drawer-error">{{ printErrorMessage() }}</div>
+    }
+
+    <div class="drawer-section-title">
+      <div><h3>Data item tersubmit</h3><span>{{ scans().length }} baris data</span></div>
+      @if (rack.printed) { <span class="locked-badge"><span class="material-symbols-outlined">lock</span> Printed</span> }
+    </div>
 
     @if (scanErrorMessage()) { <div class="drawer-error">{{ scanErrorMessage() }}</div> }
     <div class="scan-list">
@@ -105,7 +151,11 @@
           <article class="scan-row">
             <div class="scan-row__main"><strong>{{ scan.pluDescription }}</strong><span class="mono">PLU {{ scan.plu }} · {{ scan.barcode }}</span></div>
             <div class="scan-row__qty"><span>Qty</span><strong>{{ scan.scanQty | number }}</strong></div>
-            <div class="scan-row__meta"><span>{{ scan.dateCreated | date:'dd MMM yyyy, HH:mm' }}</span><i class="status-chip status-chip--active">{{ scan.scanStatus }}</i></div>
+            <div class="scan-row__meta">
+              <span>{{ scan.dateCreated | date:'dd MMM yyyy, HH:mm' }}</span>
+              @if (scan.printNo) { <i class="status-chip status-chip--active">{{ scan.printNo }}</i> }
+              @else { <i class="status-chip status-chip--active">{{ scan.scanStatus }}</i> }
+            </div>
           </article>
         } @empty {
           <div class="empty-state compact"><span class="material-symbols-outlined">barcode_scanner</span><h3>Belum ada item</h3><p>Data akan muncul setelah HHT melakukan submit.</p></div>
@@ -113,4 +163,23 @@
       }
     </div>
   </aside>
+}
+
+@if (printConfirmRack(); as rack) {
+  <button class="confirm-backdrop" type="button" aria-label="Batal print" (click)="closePrintConfirm()"></button>
+  <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="print-confirm-title">
+    <div class="confirm-dialog__icon"><span class="material-symbols-outlined">print</span></div>
+    <h2 id="print-confirm-title">Print rack {{ rack.rackCode }}?</h2>
+    <p>
+      Aksi ini akan membuat nomor print dan mengunci {{ rack.submittedLineCount | number }}
+      item scan. Setelah terkunci, mobile tidak bisa menambah atau mengubah item di rack ini.
+    </p>
+    <div class="confirm-dialog__actions">
+      <button class="secondary-button" type="button" (click)="closePrintConfirm()" [disabled]="printing()">Batal</button>
+      <button class="primary-button" type="button" (click)="confirmPrint()" [disabled]="printing()">
+        @if (printing()) { <span class="spinner" aria-hidden="true"></span> Memproses... }
+        @else { <span class="material-symbols-outlined">print</span> Ya, Print }
+      </button>
+    </div>
+  </section>
 }

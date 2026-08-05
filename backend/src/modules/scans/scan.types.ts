@@ -44,3 +44,16 @@ export interface RackScanLineResponse {
   dateCreated: string;
   dateModified: string | null;
 }
+
+export interface PrintRackScansInput {
+  scheduleId: number;
+  rackId: number;
+  username: string;
+}
+
+export interface PrintRackScansResponse {
+  printNo: string;
+  printTime: string;
+  printedLineCount: number;
+  printedQuantity: number;
+}

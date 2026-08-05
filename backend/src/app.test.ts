@@ -216,6 +216,75 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(createResponse.body.data.endDate).toBe("2026-08-06");
   });
 
+  it("prints submitted rack scans and locks further mobile submissions", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    expect(loginResponse.status).toBe(200);
+    const token = loginResponse.body.data.accessToken as string;
+
+    const scheduleResponse = await request(app)
+      .get("/api/stock-take/schedules?locCode=6168")
+      .set("authorization", `Bearer ${token}`);
+    expect(scheduleResponse.status).toBe(200);
+    const scheduleId = scheduleResponse.body.data[0].id as string;
+
+    const rackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${token}`);
+    expect(rackResponse.status).toBe(200);
+    const rackId = rackResponse.body.data.racks[1].id as string;
+
+    const submitResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        lines: [
+          {
+            clientScanId: "print-flow-scan-1",
+            barcode: "383800000013",
+            scanQty: 2,
+            inputType: "SCAN",
+          },
+        ],
+      });
+    expect(submitResponse.status).toBe(200);
+
+    const printResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`)
+      .set("authorization", `Bearer ${token}`)
+      .send({});
+    expect(printResponse.status).toBe(200);
+    expect(printResponse.body.data.printNo).toMatch(/^PRN-/);
+    expect(printResponse.body.data.printedLineCount).toBe(1);
+    expect(printResponse.body.data.printedQuantity).toBe(2);
+
+    const scanLinesResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans`)
+      .set("authorization", `Bearer ${token}`);
+    expect(scanLinesResponse.status).toBe(200);
+    expect(scanLinesResponse.body.data.scans[0].printNo).toBe(
+      printResponse.body.data.printNo,
+    );
+
+    const submitAfterPrintResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        lines: [
+          {
+            clientScanId: "print-flow-scan-after-print",
+            barcode: "8990123456789",
+            scanQty: 1,
+            inputType: "SCAN",
+          },
+        ],
+      });
+    expect(submitAfterPrintResponse.status).toBe(409);
+    expect(submitAfterPrintResponse.body.error.code).toBe("RACK_ALREADY_PRINTED");
+  });
+
   it("prevents scanners from managing schedules", async () => {
     const loginResponse = await request(app).post("/api/auth/login").send({
       username: "scanner01",
