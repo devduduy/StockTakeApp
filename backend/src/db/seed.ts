@@ -122,7 +122,7 @@ export async function seedEmptyTables(): Promise<SeedResult> {
           )
         VALUES
           (
-            CONCAT('ST-', FORMAT(SYSDATETIME(), 'yyyyMMddHHmmss')),
+            CONCAT('ST/', FORMAT(CAST(GETDATE() AS date), 'yyyy/MM'), '/0001'),
             N'STOCK TAKE PROTOTYPE - ALL',
             @locationCode,
             CAST(GETDATE() AS date),
@@ -172,4 +172,3 @@ export async function seedEmptyTables(): Promise<SeedResult> {
     throw error;
   }
 }
-

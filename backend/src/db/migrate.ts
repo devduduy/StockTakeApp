@@ -6,6 +6,8 @@ export interface MigrationResult {
   mode: "mock" | "sql";
   addedScheduleCategoryColumn: boolean;
   addedScheduleEndDateColumn: boolean;
+  normalizedScheduleNumbers: boolean;
+  ensuredScheduleNoUniqueIndex: boolean;
   normalizedStockTypes: boolean;
   ensuredScanTable: boolean;
 }
@@ -16,6 +18,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       mode: "mock",
       addedScheduleCategoryColumn: false,
       addedScheduleEndDateColumn: false,
+      normalizedScheduleNumbers: false,
+      ensuredScheduleNoUniqueIndex: false,
       normalizedStockTypes: false,
       ensuredScanTable: false,
     };
@@ -25,6 +29,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
   const result = await pool.request().query<{
     added_schedule_category_column: number;
     added_schedule_end_date_column: number;
+    normalized_schedule_numbers: number;
+    ensured_schedule_no_unique_index: number;
     normalized_stock_types: number;
     ensured_scan_table: number;
   }>(`
@@ -32,6 +38,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
 
     DECLARE @added_schedule_category_column bit = 0;
     DECLARE @added_schedule_end_date_column bit = 0;
+    DECLARE @normalized_schedule_numbers bit = 0;
+    DECLARE @ensured_schedule_no_unique_index bit = 0;
     DECLARE @normalized_stock_types bit = 0;
     DECLARE @ensured_scan_table bit = 0;
 
@@ -69,6 +77,72 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       BEGIN
         ALTER TABLE dbo.TR_STOCK_SCHEDULE
           ALTER COLUMN END_DATE date NOT NULL;
+      END;
+    END;
+
+    IF OBJECT_ID('dbo.TR_STOCK_SCHEDULE', 'U') IS NOT NULL
+    BEGIN
+      ;WITH schedule_base AS (
+        SELECT
+          ID,
+          SCHEDULE_NO,
+          SCHEDULE_DATE,
+          CASE
+            WHEN SCHEDULE_NO LIKE 'ST/[12][0-9][0-9][0-9]/[01][0-9]/[0-9][0-9][0-9][0-9]'
+             AND LEN(SCHEDULE_NO) = 15
+            THEN 1
+            ELSE 0
+          END AS is_valid_format,
+          COUNT(*) OVER (PARTITION BY SCHEDULE_NO) AS duplicate_count,
+          ROW_NUMBER() OVER (PARTITION BY SCHEDULE_NO ORDER BY ID) AS duplicate_rank
+        FROM dbo.TR_STOCK_SCHEDULE
+      ),
+      candidates AS (
+        SELECT
+          ID,
+          FORMAT(CONVERT(date, SCHEDULE_DATE), 'yyyy/MM') AS period,
+          ROW_NUMBER() OVER (
+            PARTITION BY FORMAT(CONVERT(date, SCHEDULE_DATE), 'yyyy/MM')
+            ORDER BY SCHEDULE_DATE, ID
+          ) AS candidate_sequence
+        FROM schedule_base
+        WHERE is_valid_format = 0
+           OR (duplicate_count > 1 AND duplicate_rank > 1)
+      ),
+      period_max AS (
+        SELECT
+          candidates.period,
+          ISNULL(MAX(TRY_CONVERT(int, RIGHT(schedule_existing.SCHEDULE_NO, 4))), 0) AS max_sequence
+        FROM candidates
+        LEFT JOIN dbo.TR_STOCK_SCHEDULE schedule_existing
+          ON schedule_existing.ID NOT IN (SELECT ID FROM candidates)
+         AND schedule_existing.SCHEDULE_NO LIKE 'ST/' + candidates.period + '/[0-9][0-9][0-9][0-9]'
+         AND LEN(schedule_existing.SCHEDULE_NO) = 15
+        GROUP BY candidates.period
+      )
+      UPDATE schedule_target
+      SET
+        SCHEDULE_NO = 'ST/' + candidates.period + '/' + RIGHT('0000' + CONVERT(varchar(10), period_max.max_sequence + candidates.candidate_sequence), 4),
+        DATE_MODIFIED = SYSUTCDATETIME()
+      FROM dbo.TR_STOCK_SCHEDULE schedule_target
+      INNER JOIN candidates ON candidates.ID = schedule_target.ID
+      INNER JOIN period_max ON period_max.period = candidates.period;
+
+      IF @@ROWCOUNT > 0
+      BEGIN
+        SET @normalized_schedule_numbers = 1;
+      END;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.TR_STOCK_SCHEDULE')
+          AND name = 'UX_TR_STOCK_SCHEDULE_SCHEDULE_NO'
+      )
+      BEGIN
+        CREATE UNIQUE INDEX UX_TR_STOCK_SCHEDULE_SCHEDULE_NO
+          ON dbo.TR_STOCK_SCHEDULE (SCHEDULE_NO);
+        SET @ensured_schedule_no_unique_index = 1;
       END;
     END;
 
@@ -150,6 +224,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     SELECT
       CAST(@added_schedule_category_column AS int) AS added_schedule_category_column,
       CAST(@added_schedule_end_date_column AS int) AS added_schedule_end_date_column,
+      CAST(@normalized_schedule_numbers AS int) AS normalized_schedule_numbers,
+      CAST(@ensured_schedule_no_unique_index AS int) AS ensured_schedule_no_unique_index,
       CAST(@normalized_stock_types AS int) AS normalized_stock_types,
       CAST(@ensured_scan_table AS int) AS ensured_scan_table;
   `);
@@ -159,6 +235,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     mode: "sql",
     addedScheduleCategoryColumn: row?.added_schedule_category_column === 1,
     addedScheduleEndDateColumn: row?.added_schedule_end_date_column === 1,
+    normalizedScheduleNumbers: row?.normalized_schedule_numbers === 1,
+    ensuredScheduleNoUniqueIndex: row?.ensured_schedule_no_unique_index === 1,
     normalizedStockTypes: row?.normalized_stock_types === 1,
     ensuredScanTable: row?.ensured_scan_table === 1,
   };

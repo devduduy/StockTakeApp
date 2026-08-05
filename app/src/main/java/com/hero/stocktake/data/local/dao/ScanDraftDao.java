@@ -29,7 +29,7 @@ public interface ScanDraftDao {
     @Query("SELECT * FROM local_scan_draft WHERE clientScanId = :clientScanId LIMIT 1")
     LocalScanDraft getByClientScanId(String clientScanId);
 
-    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId ORDER BY id ASC")
+    @Query("SELECT * FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId AND syncStatus IN ('DRAFT', 'ERROR') ORDER BY id ASC")
     List<LocalScanDraft> getSubmittableForRack(String scheduleId, String rackId);
 
     @Query("SELECT COUNT(*) FROM local_scan_draft WHERE scheduleId = :scheduleId AND rackId = :rackId AND syncStatus = 'SYNCED'")

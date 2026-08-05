@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.textfield.TextInputEditText;
@@ -32,6 +33,9 @@ public class ScheduleListFragment extends Fragment {
     private TextView state;
     private TextView count;
     private TextView headerSubtitle;
+    private SwipeRefreshLayout refreshLayout;
+    private String locCode;
+    private boolean firstResume = true;
     private String selectedFilter = "ALL";
     private String searchText = "";
 
@@ -42,6 +46,7 @@ public class ScheduleListFragment extends Fragment {
         state = view.findViewById(R.id.scheduleState);
         count = view.findViewById(R.id.scheduleCount);
         headerSubtitle = view.findViewById(R.id.scheduleHeaderSubtitle);
+        refreshLayout = view.findViewById(R.id.scheduleRefreshLayout);
         TextInputEditText searchInput = view.findViewById(R.id.scheduleSearchInput);
         RecyclerView list = view.findViewById(R.id.scheduleList);
         adapter = new ScheduleAdapter(schedule -> ((MainActivity) requireActivity()).openRackList(schedule));
@@ -51,25 +56,43 @@ public class ScheduleListFragment extends Fragment {
         setupFilters(view);
         setupSearch(searchInput);
 
-        String locCode = SessionManager.getInstance(requireContext()).getLocCode();
+        locCode = SessionManager.getInstance(requireContext()).getLocCode();
         headerSubtitle.setText("Menampilkan schedule untuk lokasi " + locCode + ".");
+        refreshLayout.setOnRefreshListener(() -> loadSchedules(true));
+        loadSchedules(false);
+        return view;
+    }
+
+    private void loadSchedules(boolean userRefresh) {
+        if (!userRefresh) {
+            refreshLayout.setRefreshing(true);
+        }
         state.setVisibility(View.VISIBLE);
         state.setText("Memuat schedule aktif lokasi " + locCode + "...");
         NetworkRepository.getInstance(requireContext()).getActiveSchedules(new NetworkRepository.ResultCallback<>() {
             @Override
             public void onSuccess(List<Schedule> schedules) {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
                 allSchedules.clear();
-                allSchedules.addAll(schedules);
+                if (schedules != null) {
+                    allSchedules.addAll(schedules);
+                }
                 applyFilter();
             }
 
             @Override
             public void onError(String message) {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
                 state.setVisibility(View.VISIBLE);
                 state.setText(message);
             }
         });
-        return view;
     }
 
     private void setupSearch(TextInputEditText searchInput) {
@@ -162,5 +185,10 @@ public class ScheduleListFragment extends Fragment {
     public void onResume() {
         super.onResume();
         ((MainActivity) requireActivity()).showMenuNavigation("Schedule Aktif");
+        if (firstResume) {
+            firstResume = false;
+        } else if (refreshLayout != null && !refreshLayout.isRefreshing()) {
+            loadSchedules(true);
+        }
     }
 }

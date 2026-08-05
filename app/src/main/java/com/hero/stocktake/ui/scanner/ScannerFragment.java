@@ -19,6 +19,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -57,6 +58,7 @@ public class ScannerFragment extends Fragment {
     private View scanFormCard;
     private View scanActionPanel;
     private View listHeader;
+    private SwipeRefreshLayout refreshLayout;
     private MaterialButton addButton;
     private MaterialButton submitButton;
     private List<LocalScanDraft> currentDrafts;
@@ -66,6 +68,7 @@ public class ScannerFragment extends Fragment {
     private boolean rackSubmitted;
     private boolean rackPrinted;
     private boolean localSubmitted;
+    private boolean lookupInFlight;
 
     public static ScannerFragment newInstance(String scheduleId, String rackId, String rackTitle, boolean rackSubmitted, boolean rackPrinted) {
         ScannerFragment fragment = new ScannerFragment();
@@ -95,6 +98,7 @@ public class ScannerFragment extends Fragment {
         scanFormCard = view.findViewById(R.id.scanFormCard);
         scanActionPanel = view.findViewById(R.id.scanActionPanel);
         listHeader = view.findViewById(R.id.listHeader);
+        refreshLayout = view.findViewById(R.id.scannerRefreshLayout);
         addButton = view.findViewById(R.id.addButton);
         submitButton = view.findViewById(R.id.submitButton);
         barcodeLayout.setEndIconOnClickListener(v -> {
@@ -131,18 +135,8 @@ public class ScannerFragment extends Fragment {
             }
             applyRackMode();
         });
-        repository.refreshRackFromServer(scheduleId, rackId, new DraftRepository.ActionCallback() {
-            @Override
-            public void onSuccess() {
-            }
-
-            @Override
-            public void onError(String message) {
-                if (isAdded()) {
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+        refreshLayout.setOnRefreshListener(() -> refreshRackFromServer(repository, scheduleId, rackId, true));
+        refreshRackFromServer(repository, scheduleId, rackId, false);
 
         barcodeInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -236,6 +230,7 @@ public class ScannerFragment extends Fragment {
             lookupHandler.removeCallbacks(pendingLookup);
         }
         String barcode = rawBarcode == null ? "" : rawBarcode;
+        barcodeLayout.setError(null);
         if (barcode.trim().isEmpty()) {
             lookupBarcode(barcode);
             return;
@@ -252,6 +247,9 @@ public class ScannerFragment extends Fragment {
         int submitQuantity = 0;
         if (currentDrafts != null) {
             for (LocalScanDraft draft : currentDrafts) {
+                if (!isPendingDraft(draft)) {
+                    continue;
+                }
                 submitLines += 1;
                 submitQuantity += draft.scanQty;
             }
@@ -287,6 +285,7 @@ public class ScannerFragment extends Fragment {
                     Toast.makeText(requireContext(), "Belum ada data scan untuk disubmit.", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                ((MainActivity) requireActivity()).markActiveRackSubmitted();
                 ((MainActivity) requireActivity()).showSubmissionSuccess(submittedLines);
             }
 
@@ -326,6 +325,7 @@ public class ScannerFragment extends Fragment {
         barcodeLayout.setError(null);
         currentItem = null;
         currentItemBarcode = null;
+        lookupInFlight = false;
         lookupRequestVersion += 1;
         int requestVersion = lookupRequestVersion;
 
@@ -345,6 +345,7 @@ public class ScannerFragment extends Fragment {
         }
 
         productTitle.setText("Mencari item...");
+        lookupInFlight = true;
         pluText.setText("PLU\n-");
         barcodeText.setText("Barcode\n" + barcode);
         validBadge.setText("Lookup");
@@ -355,6 +356,7 @@ public class ScannerFragment extends Fragment {
                 if (requestVersion != lookupRequestVersion) {
                     return;
                 }
+                lookupInFlight = false;
                 currentItem = item;
                 currentItemBarcode = barcode;
                 productTitle.setText(item.pluDescription + " (" + item.plu + ")");
@@ -368,6 +370,7 @@ public class ScannerFragment extends Fragment {
                 if (requestVersion != lookupRequestVersion) {
                     return;
                 }
+                lookupInFlight = false;
                 productTitle.setText("Item tidak ditemukan");
                 pluText.setText("PLU\n-");
                 barcodeText.setText("Barcode\n" + barcode);
@@ -383,15 +386,28 @@ public class ScannerFragment extends Fragment {
             return;
         }
         String barcode = barcodeInput.getText() == null ? "" : barcodeInput.getText().toString().trim();
-        quantity = readQuantity();
+        Integer parsedQuantity = readPositiveQuantity();
+        if (parsedQuantity == null) {
+            quantityInput.setError("Quantity harus lebih dari 0.");
+            quantityInput.requestFocus();
+            return;
+        }
+        quantityInput.setError(null);
+        quantity = parsedQuantity;
         try {
             DraftRules.validate(barcode, quantity);
         } catch (IllegalArgumentException error) {
             barcodeLayout.setError(error.getMessage());
+            barcodeInput.requestFocus();
+            return;
+        }
+        if (lookupInFlight) {
+            barcodeLayout.setError("Lookup barcode masih berjalan.");
             return;
         }
         if (currentItem == null || currentItemBarcode == null || !currentItemBarcode.equals(barcode)) {
             barcodeLayout.setError("Item belum valid. Tunggu lookup barcode selesai.");
+            barcodeInput.requestFocus();
             return;
         }
 
@@ -510,14 +526,64 @@ public class ScannerFragment extends Fragment {
         }
     }
 
+    private Integer readPositiveQuantity() {
+        String raw = quantityInput.getText() == null ? "" : quantityInput.getText().toString().trim();
+        try {
+            int parsed = Integer.parseInt(raw);
+            return parsed > 0 ? parsed : null;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     private void resetForNextScan() {
         quantity = 1;
         quantityInput.setText(String.valueOf(quantity));
+        quantityInput.setError(null);
         barcodeInput.setText("");
         barcodeLayout.setError(null);
         currentItem = null;
         currentItemBarcode = null;
+        lookupInFlight = false;
         barcodeInput.requestFocus();
+    }
+
+    private boolean isPendingDraft(LocalScanDraft draft) {
+        return draft != null
+                && ("DRAFT".equalsIgnoreCase(draft.syncStatus) || "ERROR".equalsIgnoreCase(draft.syncStatus));
+    }
+
+    private void refreshRackFromServer(DraftRepository repository, String scheduleId, String rackId, boolean userRefresh) {
+        if (!userRefresh) {
+            refreshLayout.setRefreshing(true);
+        }
+        repository.refreshRackFromServer(scheduleId, rackId, new DraftRepository.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
+                if (userRefresh) {
+                    Toast.makeText(requireContext(), "Data rack diperbarui.", Toast.LENGTH_SHORT).show();
+                }
+                if (!rackPrinted) {
+                    barcodeInput.requestFocus();
+                }
+            }
+
+            @Override
+            public void onError(String message) {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                if (!rackPrinted) {
+                    barcodeInput.requestFocus();
+                }
+            }
+        });
     }
 
     private void updateScanSummary(List<LocalScanDraft> drafts) {

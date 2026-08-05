@@ -164,6 +164,10 @@ public class MainActivity extends AppCompatActivity {
         showDetail(SubmissionSuccessFragment.newInstance(submittedLines), menuScanner, "Submit Success");
     }
 
+    public void markActiveRackSubmitted() {
+        activeRackSubmitted = true;
+    }
+
     public void returnToRackList() {
         showTopLevel(new ScheduleListFragment(), menuSchedules, "Schedule Aktif");
         if (activeScheduleId != null) {

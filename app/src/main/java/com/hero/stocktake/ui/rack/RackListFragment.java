@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.textfield.TextInputEditText;
@@ -41,6 +42,9 @@ public class RackListFragment extends Fragment {
     private RackAdapter adapter;
     private TextView state;
     private TextView count;
+    private SwipeRefreshLayout refreshLayout;
+    private String scheduleId;
+    private boolean firstResume = true;
     private String selectedFilter = "ALL";
     private String searchText = "";
 
@@ -58,7 +62,7 @@ public class RackListFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_rack_list, container, false);
-        String scheduleId = requireArguments().getString(ARG_SCHEDULE_ID);
+        scheduleId = requireArguments().getString(ARG_SCHEDULE_ID);
         String stockType = requireArguments().getString(ARG_STOCK_TYPE, "Stock Take");
         String scheduleNo = requireArguments().getString(ARG_SCHEDULE_NO, "");
         TextView title = view.findViewById(R.id.rackListTitle);
@@ -66,6 +70,7 @@ public class RackListFragment extends Fragment {
         TextView meta = view.findViewById(R.id.rackListMeta);
         state = view.findViewById(R.id.rackState);
         count = view.findViewById(R.id.rackCount);
+        refreshLayout = view.findViewById(R.id.rackRefreshLayout);
         TextInputEditText searchInput = view.findViewById(R.id.rackSearchInput);
         RecyclerView list = view.findViewById(R.id.rackList);
         adapter = new RackAdapter(rack -> ((MainActivity) requireActivity()).openScanner(rack));
@@ -77,6 +82,7 @@ public class RackListFragment extends Fragment {
         list.setAdapter(adapter);
         setupFilters(view);
         setupSearch(searchInput);
+        refreshLayout.setOnRefreshListener(() -> loadRacks(true));
         DraftRepository.getInstance(requireContext())
                 .observeScheduleSummary(scheduleId)
                 .observe(getViewLifecycleOwner(), summaries -> {
@@ -89,23 +95,40 @@ public class RackListFragment extends Fragment {
                     rebuildRacks();
                 });
 
+        loadRacks(false);
+        return view;
+    }
+
+    private void loadRacks(boolean userRefresh) {
+        if (!userRefresh) {
+            refreshLayout.setRefreshing(true);
+        }
         state.setVisibility(View.VISIBLE);
         state.setText("Memuat rack list...");
         NetworkRepository.getInstance(requireContext()).getRacks(scheduleId, new NetworkRepository.ResultCallback<>() {
             @Override
             public void onSuccess(List<Rack> racks) {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
                 remoteRacks.clear();
-                remoteRacks.addAll(racks);
+                if (racks != null) {
+                    remoteRacks.addAll(racks);
+                }
                 rebuildRacks();
             }
 
             @Override
             public void onError(String message) {
+                if (!isAdded()) {
+                    return;
+                }
+                refreshLayout.setRefreshing(false);
                 state.setVisibility(View.VISIBLE);
                 state.setText(message);
             }
         });
-        return view;
     }
 
     private void rebuildRacks() {
@@ -233,5 +256,10 @@ public class RackListFragment extends Fragment {
     public void onResume() {
         super.onResume();
         ((MainActivity) requireActivity()).showBackNavigation("Rack List");
+        if (firstResume) {
+            firstResume = false;
+        } else if (refreshLayout != null && !refreshLayout.isRefreshing()) {
+            loadRacks(true);
+        }
     }
 }
