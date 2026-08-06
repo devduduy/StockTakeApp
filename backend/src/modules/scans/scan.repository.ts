@@ -321,8 +321,8 @@ export async function submitRackScans(
 export async function printRackScans(
   input: PrintRackScansInput,
 ): Promise<PrintRackScansResponse> {
-  const printTime = new Date().toISOString();
-  const printNo = createPrintNo(input.scheduleId, input.rackId);
+  const printTimeDate = new Date();
+  const printTime = printTimeDate.toISOString();
 
   if (env.SQL_MODE === "mock") {
     const scans = mockScanSubmissions.filter(
@@ -337,9 +337,9 @@ export async function printRackScans(
         "RACK_HAS_NO_SCANS",
       );
     }
-    if (scans.some((scan) => scan.printNo?.trim())) {
-      throw new AppError(409, "Rack sudah diprint.", "RACK_ALREADY_PRINTED");
-    }
+    const printNo =
+      scans.find((scan) => scan.printNo?.trim())?.printNo?.trim() ??
+      createPrintNo(input.scheduleId, input.rackId);
     for (const scan of scans) {
       scan.printNo = printNo;
       scan.userModified = input.username;
@@ -362,13 +362,13 @@ export async function printRackScans(
       .input("rackId", sql.BigInt, input.rackId)
       .query<{
         submitted_line_count: number;
-        printed_line_count: number;
         submitted_quantity: number;
+        existing_print_no: string | null;
       }>(`
         SELECT
           COUNT(1) AS submitted_line_count,
-          SUM(CASE WHEN NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NULL THEN 0 ELSE 1 END) AS printed_line_count,
-          COALESCE(SUM(SCAN_QTY), 0) AS submitted_quantity
+          COALESCE(SUM(SCAN_QTY), 0) AS submitted_quantity,
+          MAX(NULLIF(LTRIM(RTRIM(PRINT_NO)), '')) AS existing_print_no
         FROM dbo.TR_STOCK_TAKE_SCAN WITH (UPDLOCK, HOLDLOCK)
         WHERE SCHEDULE_ID = @scheduleId
           AND RACK_ID = @rackId
@@ -376,8 +376,9 @@ export async function printRackScans(
       `);
     const row = summary.recordset[0];
     const submittedLineCount = Number(row?.submitted_line_count ?? 0);
-    const printedLineCount = Number(row?.printed_line_count ?? 0);
     const submittedQuantity = Number(row?.submitted_quantity ?? 0);
+    const printNo =
+      row?.existing_print_no?.trim() || createPrintNo(input.scheduleId, input.rackId);
 
     if (submittedLineCount === 0) {
       throw new AppError(
@@ -386,25 +387,22 @@ export async function printRackScans(
         "RACK_HAS_NO_SCANS",
       );
     }
-    if (printedLineCount > 0) {
-      throw new AppError(409, "Rack sudah diprint.", "RACK_ALREADY_PRINTED");
-    }
 
     await new sql.Request(transaction)
       .input("scheduleId", sql.BigInt, input.scheduleId)
       .input("rackId", sql.BigInt, input.rackId)
       .input("printNo", sql.VarChar(50), printNo)
+      .input("printTime", sql.DateTime2, printTimeDate)
       .input("username", sql.VarChar(100), input.username)
       .query(`
         UPDATE dbo.TR_STOCK_TAKE_SCAN
-        SET PRINT_NO = @printNo,
-            PRINT_TIME = SYSUTCDATETIME(),
+        SET PRINT_NO = COALESCE(NULLIF(LTRIM(RTRIM(PRINT_NO)), ''), @printNo),
+            PRINT_TIME = @printTime,
             USER_MODIFIED = @username,
-            DATE_MODIFIED = SYSUTCDATETIME()
+            DATE_MODIFIED = @printTime
         WHERE SCHEDULE_ID = @scheduleId
           AND RACK_ID = @rackId
-          AND SCAN_STATUS = 'SYNCED'
-          AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NULL;
+          AND SCAN_STATUS = 'SYNCED';
       `);
 
     await transaction.commit();

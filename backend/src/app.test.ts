@@ -268,6 +268,16 @@ describe("Hero Stock Take API (mock mode)", () => {
       printResponse.body.data.printNo,
     );
 
+    const reprintResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`)
+      .set("authorization", `Bearer ${token}`)
+      .send({});
+    expect(reprintResponse.status).toBe(200);
+    expect(reprintResponse.body.data.printNo).toBe(
+      printResponse.body.data.printNo,
+    );
+    expect(reprintResponse.body.data.printTime).toEqual(expect.any(String));
+
     const submitAfterPrintResponse = await request(app)
       .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
       .set("authorization", `Bearer ${token}`)

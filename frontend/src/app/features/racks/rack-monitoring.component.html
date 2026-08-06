@@ -11,12 +11,12 @@
     <p>
       {{ schedule()?.location?.name || ('Lokasi ' + (scheduleLocation()?.locCode || '-')) }}
       @if (schedule()?.startDate) {
-        · {{ schedule()?.startDate | date:'dd MMM yyyy' }} - {{ schedule()?.endDate | date:'dd MMM yyyy' }}
+        &middot; {{ schedule()?.startDate | date:'dd MMM yyyy' }} - {{ schedule()?.endDate | date:'dd MMM yyyy' }}
       }
     </p>
   </div>
   <div class="page-heading__actions">
-    @if (lastUpdated()) { <span class="last-updated">Auto-refresh 10 detik · {{ lastUpdated() | date:'HH:mm:ss' }}</span> }
+    @if (lastUpdated()) { <span class="last-updated">Auto-refresh 10 detik &middot; {{ lastUpdated() | date:'HH:mm:ss' }}</span> }
     <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
       <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span> Perbarui
     </button>
@@ -110,7 +110,7 @@
       <div>
         <span class="material-symbols-outlined">{{ rack.printed ? 'lock' : 'print' }}</span>
         <div>
-          <strong>{{ rack.printed ? 'Rack sudah terkunci print' : 'Print checklist rack' }}</strong>
+          <strong>{{ rack.printed ? 'Rack sudah pernah diprint' : 'Print checklist rack' }}</strong>
           <small>
             @if (rack.printed) {
               Print No {{ selectedPrintNo() || '-' }}
@@ -125,11 +125,11 @@
       <button
         class="primary-button"
         type="button"
-        [disabled]="rack.printed || rack.submittedLineCount === 0 || printing()"
+        [disabled]="rack.submittedLineCount === 0 || scansLoading() || printing()"
         (click)="openPrintConfirm(rack)"
       >
         <span class="material-symbols-outlined">print</span>
-        Print Rack
+        {{ rack.printed ? 'Print Ulang' : 'Print Rack' }}
       </button>
     </section>
 
@@ -149,7 +149,7 @@
       } @else {
         @for (scan of scans(); track scan.id) {
           <article class="scan-row">
-            <div class="scan-row__main"><strong>{{ scan.pluDescription }}</strong><span class="mono">PLU {{ scan.plu }} · {{ scan.barcode }}</span></div>
+            <div class="scan-row__main"><strong>{{ scan.pluDescription }}</strong><span class="mono">Seq {{ scan.rackSeq }} &middot; PLU {{ scan.plu }} &middot; {{ scan.barcode }}</span></div>
             <div class="scan-row__qty"><span>Qty</span><strong>{{ scan.scanQty | number }}</strong></div>
             <div class="scan-row__meta">
               <span>{{ scan.dateCreated | date:'dd MMM yyyy, HH:mm' }}</span>

@@ -168,6 +168,11 @@ public class MainActivity extends AppCompatActivity {
         activeRackSubmitted = true;
     }
 
+    public void markActiveRackPrinted() {
+        activeRackSubmitted = true;
+        activeRackPrinted = true;
+    }
+
     public void returnToRackList() {
         showTopLevel(new ScheduleListFragment(), menuSchedules, "Schedule Aktif");
         if (activeScheduleId != null) {

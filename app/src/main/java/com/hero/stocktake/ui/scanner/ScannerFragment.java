@@ -30,6 +30,7 @@ import com.hero.stocktake.data.remote.dto.ItemLookupDto;
 import com.hero.stocktake.data.repository.DraftRepository;
 import com.hero.stocktake.data.repository.NetworkRepository;
 import com.hero.stocktake.domain.DraftRules;
+import com.hero.stocktake.domain.model.Rack;
 import com.hero.stocktake.ui.MainActivity;
 import com.hero.stocktake.ui.rack.ScanDraftAdapter;
 
@@ -564,6 +565,7 @@ public class ScannerFragment extends Fragment {
                     return;
                 }
                 refreshLayout.setRefreshing(false);
+                refreshRackPrintState(scheduleId, rackId);
                 if (userRefresh) {
                     Toast.makeText(requireContext(), "Data rack diperbarui.", Toast.LENGTH_SHORT).show();
                 }
@@ -581,6 +583,37 @@ public class ScannerFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
                 if (!rackPrinted) {
                     barcodeInput.requestFocus();
+                }
+            }
+        });
+    }
+
+    private void refreshRackPrintState(String scheduleId, String rackId) {
+        NetworkRepository.getInstance(requireContext()).getRacks(scheduleId, new NetworkRepository.ResultCallback<>() {
+            @Override
+            public void onSuccess(List<Rack> racks) {
+                if (!isAdded() || racks == null) {
+                    return;
+                }
+                for (Rack rack : racks) {
+                    if (!rackId.equals(rack.id())) {
+                        continue;
+                    }
+                    rackSubmitted = rack.submitted();
+                    rackPrinted = rack.printed();
+                    if (rackPrinted) {
+                        ((MainActivity) requireActivity()).markActiveRackPrinted();
+                        barcodeLayout.setError(null);
+                    }
+                    applyRackMode();
+                    return;
+                }
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isAdded()) {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
                 }
             }
         });
