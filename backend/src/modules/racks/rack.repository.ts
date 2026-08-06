@@ -12,10 +12,28 @@ interface RackRow {
   status: string;
   submitted_line_count?: number;
   submitted_quantity?: number;
+  final_quantity?: number;
   printed_line_count?: number;
+  confirmed_line_count?: number;
+  rejected_line_count?: number;
+  discrepancy_quantity?: number;
 }
 
 function mapRack(row: RackRow): RackResponse {
+  const submittedLineCount = Number(row.submitted_line_count ?? 0);
+  const printedLineCount = Number(row.printed_line_count ?? 0);
+  const confirmedLineCount = Number(row.confirmed_line_count ?? 0);
+  const rejectedLineCount = Number(row.rejected_line_count ?? 0);
+  const rackStatus =
+    submittedLineCount === 0 && rejectedLineCount > 0
+      ? "REJECTED"
+      : submittedLineCount === 0
+        ? "EMPTY"
+        : confirmedLineCount >= submittedLineCount
+          ? "CONFIRMED"
+          : printedLineCount > 0
+            ? "PRINTED"
+            : "SUBMITTED";
   return {
     id: String(row.id),
     rackCode: row.rack_code,
@@ -23,10 +41,15 @@ function mapRack(row: RackRow): RackResponse {
     locCode: row.loc_code.trim(),
     status: row.status,
     localDraftCount: 0,
-    submittedLineCount: Number(row.submitted_line_count ?? 0),
+    submittedLineCount,
     submittedQuantity: Number(row.submitted_quantity ?? 0),
-    printedLineCount: Number(row.printed_line_count ?? 0),
-    printed: Number(row.printed_line_count ?? 0) > 0,
+    finalQuantity: Number(row.final_quantity ?? row.submitted_quantity ?? 0),
+    printedLineCount,
+    printed: printedLineCount > 0,
+    rackStatus,
+    confirmedLineCount,
+    rejectedLineCount,
+    discrepancyQuantity: Number(row.discrepancy_quantity ?? 0),
   };
 }
 
@@ -43,19 +66,37 @@ export async function listActiveRacksByLocation(
             scan.rackId === rack.id &&
             (!scheduleId || Number(scan.scheduleId) === scheduleId),
         );
+        const activeSubmissions = submissions.filter(
+          (scan) => scan.scanStatus === "SYNCED",
+        );
         return mapRack({
           id: rack.id,
           rack_code: rack.rackCode,
           rack_name: rack.rackName,
           loc_code: rack.locCode,
           status: rack.status,
-          submitted_line_count: submissions.length,
-          submitted_quantity: submissions.reduce(
+          submitted_line_count: activeSubmissions.length,
+          submitted_quantity: activeSubmissions.reduce(
             (total, scan) => total + scan.scanQty,
             0,
           ),
-          printed_line_count: submissions.filter((scan) => scan.printNo?.trim())
+          final_quantity: activeSubmissions.reduce(
+            (total, scan) => total + (scan.finalQty ?? scan.scanQty),
+            0,
+          ),
+          printed_line_count: activeSubmissions.filter((scan) => scan.printNo?.trim())
             .length,
+          confirmed_line_count: activeSubmissions.filter(
+            (scan) => Boolean(scan.confirmTime),
+          ).length,
+          rejected_line_count: submissions.filter(
+            (scan) => scan.scanStatus === "REJECTED",
+          ).length,
+          discrepancy_quantity: activeSubmissions.reduce(
+            (total, scan) =>
+              total + ((scan.finalQty ?? scan.scanQty) - scan.scanQty),
+            0,
+          ),
         });
       });
   }
@@ -74,23 +115,43 @@ export async function listActiveRacksByLocation(
         STATUS AS status,
         submitted.submitted_line_count,
         submitted.submitted_quantity,
-        submitted.printed_line_count
+        submitted.final_quantity,
+        submitted.printed_line_count,
+        submitted.confirmed_line_count,
+        rejected.rejected_line_count,
+        submitted.discrepancy_quantity
       FROM dbo.MST_RACK rack
       OUTER APPLY (
         SELECT
           COUNT(1) AS submitted_line_count,
           COALESCE(SUM(scan.SCAN_QTY), 0) AS submitted_quantity,
+          COALESCE(SUM(scan.FINAL_QTY), 0) AS final_quantity,
           SUM(
             CASE
               WHEN NULLIF(LTRIM(RTRIM(scan.PRINT_NO)), '') IS NULL THEN 0
               ELSE 1
             END
-          ) AS printed_line_count
+          ) AS printed_line_count,
+          SUM(
+            CASE
+              WHEN scan.CONFIRM_TIME IS NOT NULL
+              THEN 1
+              ELSE 0
+            END
+          ) AS confirmed_line_count,
+          COALESCE(SUM(scan.FINAL_QTY - scan.SCAN_QTY), 0) AS discrepancy_quantity
         FROM dbo.TR_STOCK_TAKE_SCAN scan
         WHERE scan.RACK_ID = rack.ID
           AND (@scheduleId IS NULL OR scan.SCHEDULE_ID = @scheduleId)
           AND scan.SCAN_STATUS = 'SYNCED'
       ) submitted
+      OUTER APPLY (
+        SELECT COUNT(1) AS rejected_line_count
+        FROM dbo.TR_STOCK_TAKE_SCAN scan
+        WHERE scan.RACK_ID = rack.ID
+          AND (@scheduleId IS NULL OR scan.SCHEDULE_ID = @scheduleId)
+          AND scan.SCAN_STATUS = 'REJECTED'
+      ) rejected
       WHERE rack.LOC_CODE = @locCode
         AND rack.STATUS = 'ACTIVE'
       ORDER BY RACK_CODE;

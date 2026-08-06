@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
+import { authenticate } from "../../middleware/authenticate.js";
 import { asyncHandler } from "../../shared/async-handler.js";
+import { listActiveUsersByRole } from "./auth.repository.js";
 import { login } from "./auth.service.js";
 
 const loginSchema = z.object({
@@ -19,3 +21,11 @@ authRouter.post(
   }),
 );
 
+authRouter.get(
+  "/recheckers",
+  authenticate,
+  asyncHandler(async (_request, response) => {
+    const users = await listActiveUsersByRole("SCANNER");
+    response.status(200).json({ data: users });
+  }),
+);

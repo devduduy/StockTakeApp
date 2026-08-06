@@ -2,7 +2,7 @@ import sql from "mssql";
 import { env } from "../../config/env.js";
 import { getSqlPool } from "../../db/sql.js";
 import { mockUsers } from "../../shared/mock-data.js";
-import type { UserRecord } from "./auth.types.js";
+import type { UserOptionResponse, UserRecord } from "./auth.types.js";
 
 interface SqlUserRow {
   id: string | number;
@@ -86,4 +86,52 @@ export async function recordSuccessfulLogin(userId: string): Promise<void> {
           DATE_MODIFIED = SYSUTCDATETIME()
       WHERE ID = @userId;
     `);
+}
+
+export async function listActiveUsersByRole(
+  roleCode: string,
+): Promise<UserOptionResponse[]> {
+  if (env.SQL_MODE === "mock") {
+    return mockUsers
+      .filter((user) => user.status === "ACTIVE" && user.roleCode === roleCode)
+      .map((user) => ({
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        roleCode: user.roleCode,
+        locCode: user.locCode,
+      }));
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("roleCode", sql.VarChar(50), roleCode)
+    .query<{
+      id: string | number;
+      username: string;
+      full_name: string;
+      role_code: string;
+      loc_code: string;
+    }>(`
+      SELECT
+        CAST(u.ID AS varchar(30)) AS id,
+        u.USERNAME AS username,
+        u.FULLNAME AS full_name,
+        r.ROLE_CODE AS role_code,
+        u.LOC_CODE AS loc_code
+      FROM dbo.MST_USERS u
+      INNER JOIN dbo.MST_ROLE r ON r.ID = u.ROLE_ID
+      WHERE u.STATUS = 'ACTIVE'
+        AND r.STATUS = 'ACTIVE'
+        AND r.ROLE_CODE = @roleCode
+      ORDER BY u.FULLNAME, u.USERNAME;
+    `);
+  return result.recordset.map((row) => ({
+    id: String(row.id),
+    username: row.username,
+    fullName: row.full_name,
+    roleCode: row.role_code,
+    locCode: row.loc_code.trim(),
+  }));
 }

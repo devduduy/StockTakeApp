@@ -151,9 +151,13 @@ export interface MockScanSubmission {
   plu: string;
   pluDescription: string;
   scanQty: number;
+  finalQty?: number;
   inputType: "SCAN" | "MANUAL";
-  scanStatus: "SYNCED";
+  scanStatus: "SYNCED" | "REJECTED";
   printNo?: string;
+  recheckUser?: string;
+  confirmUser?: string;
+  confirmTime?: string;
   userCreated: string;
   dateCreated: string;
   userModified?: string;

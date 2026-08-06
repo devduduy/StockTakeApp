@@ -267,6 +267,50 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(scanLinesResponse.body.data.scans[0].printNo).toBe(
       printResponse.body.data.printNo,
     );
+    const scanId = scanLinesResponse.body.data.scans[0].id as string;
+
+    const finalQtyResponse = await request(app)
+      .patch(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/final-qty`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        recheckUser: "scanner01",
+        lines: [
+          {
+            scanId,
+            finalQty: 1,
+          },
+        ],
+      });
+    expect(finalQtyResponse.status).toBe(200);
+    expect(finalQtyResponse.body.data.scans[0].scanQty).toBe(2);
+    expect(finalQtyResponse.body.data.scans[0].finalQty).toBe(1);
+    expect(finalQtyResponse.body.data.scans[0].discrepancyQty).toBe(-1);
+    expect(finalQtyResponse.body.data.scans[0].recheckUser).toBe("scanner01");
+
+    const correctedRackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${token}`);
+    expect(correctedRackResponse.status).toBe(200);
+    const correctedRack = correctedRackResponse.body.data.racks.find(
+      (rack: { id: string }) => rack.id === rackId,
+    );
+    expect(correctedRack.rackStatus).toBe("PRINTED");
+    expect(correctedRack.discrepancyQuantity).toBe(-1);
+
+    const confirmResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/confirm`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        recheckUser: "scanner01",
+        lines: [
+          {
+            scanId,
+            finalQty: 1,
+          },
+        ],
+      });
+    expect(confirmResponse.status).toBe(200);
+    expect(confirmResponse.body.data.scans[0].confirmTime).toEqual(expect.any(String));
 
     const reprintResponse = await request(app)
       .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`)
@@ -293,6 +337,76 @@ describe("Hero Stock Take API (mock mode)", () => {
       });
     expect(submitAfterPrintResponse.status).toBe(409);
     expect(submitAfterPrintResponse.body.error.code).toBe("RACK_ALREADY_PRINTED");
+  });
+
+  it("rejects printed rack scans so mobile can scan the rack again", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    const token = loginResponse.body.data.accessToken as string;
+
+    const scheduleResponse = await request(app)
+      .get("/api/stock-take/schedules?locCode=6168")
+      .set("authorization", `Bearer ${token}`);
+    const scheduleId = scheduleResponse.body.data[0].id as string;
+
+    const rackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${token}`);
+    const rackId = rackResponse.body.data.racks[2].id as string;
+
+    const submitResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        lines: [
+          {
+            clientScanId: "reject-flow-scan-1",
+            barcode: "383800000013",
+            scanQty: 1,
+            inputType: "SCAN",
+          },
+        ],
+      });
+    expect(submitResponse.status).toBe(200);
+
+    const printResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`)
+      .set("authorization", `Bearer ${token}`)
+      .send({});
+    expect(printResponse.status).toBe(200);
+
+    const rejectResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/reject`)
+      .set("authorization", `Bearer ${token}`)
+      .send({});
+    expect(rejectResponse.status).toBe(200);
+    expect(rejectResponse.body.data.rejected).toBe(true);
+
+    const rejectedRackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${token}`);
+    const rejectedRack = rejectedRackResponse.body.data.racks.find(
+      (rack: { id: string }) => rack.id === rackId,
+    );
+    expect(rejectedRack.rackStatus).toBe("REJECTED");
+    expect(rejectedRack.submittedLineCount).toBe(0);
+
+    const resubmitResponse = await request(app)
+      .post(`/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/submit`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        lines: [
+          {
+            clientScanId: "reject-flow-scan-2",
+            barcode: "383800000013",
+            scanQty: 2,
+            inputType: "SCAN",
+          },
+        ],
+      });
+    expect(resubmitResponse.status).toBe(200);
   });
 
   it("prevents scanners from managing schedules", async () => {

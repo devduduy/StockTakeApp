@@ -47,7 +47,8 @@
     <article><span class="material-symbols-outlined">view_module</span><div><strong>{{ racks().length }}</strong><small>Total rack aktif</small></div></article>
     <article><span class="material-symbols-outlined">task_alt</span><div><strong>{{ submittedCount() }}</strong><small>Rack sudah submit</small></div></article>
     <article><span class="material-symbols-outlined">barcode_scanner</span><div><strong>{{ totalLines() | number }}</strong><small>Item terscan</small></div></article>
-    <article class="printed"><span class="material-symbols-outlined">print</span><div><strong>{{ printedCount() }}</strong><small>Rack terkunci print</small></div></article>
+    <article class="printed"><span class="material-symbols-outlined">print</span><div><strong>{{ printedCount() }}</strong><small>Rack sudah print</small></div></article>
+    <article class="correction"><span class="material-symbols-outlined">rule</span><div><strong>{{ correctionCount() }}</strong><small>Ada selisih</small></div></article>
   </div>
 
   <section class="content-card rack-panel">
@@ -62,20 +63,22 @@
         <button type="button" [class.active]="statusFilter() === 'EMPTY'" (click)="setStatusFilter('EMPTY')">Belum scan</button>
         <button type="button" [class.active]="statusFilter() === 'SUBMITTED'" (click)="setStatusFilter('SUBMITTED')">Submit</button>
         <button type="button" [class.active]="statusFilter() === 'PRINTED'" (click)="setStatusFilter('PRINTED')">Printed</button>
+        <button type="button" [class.active]="statusFilter() === 'CONFIRMED'" (click)="setStatusFilter('CONFIRMED')">Confirm</button>
+        <button type="button" [class.active]="statusFilter() === 'REJECTED'" (click)="setStatusFilter('REJECTED')">Reject</button>
       </div>
       <span class="result-count">{{ filteredRacks().length }} rack</span>
     </div>
 
     <div class="rack-table-wrap">
       <table class="data-table rack-table">
-        <thead><tr><th>Rack</th><th>Status</th><th class="number">Item terscan</th><th class="number">Total quantity</th><th>Print</th><th aria-label="Aksi"></th></tr></thead>
+        <thead><tr><th>Rack</th><th>Status</th><th class="number">Item terscan</th><th class="number">Final quantity</th><th>Print</th><th aria-label="Aksi"></th></tr></thead>
         <tbody>
           @for (rack of filteredRacks(); track rack.id) {
             <tr (click)="selectRack(rack)" [class.selected]="selectedRack()?.id === rack.id">
               <td><div class="rack-name"><span class="rack-code">{{ rack.rackCode }}</span><strong>{{ rack.rackName }}</strong></div></td>
               <td><span class="rack-state" [class]="'rack-state rack-state--' + rackState(rack)"><i></i>{{ rackStateLabel(rack) }}</span></td>
               <td class="number mono">{{ rack.submittedLineCount | number }}</td>
-              <td class="number mono">{{ rack.submittedQuantity | number }}</td>
+              <td class="number mono">{{ rack.finalQuantity | number }}</td>
               <td>
                 @if (rack.printed) { <span class="print-lock"><span class="material-symbols-outlined">lock</span> Terkunci</span> }
                 @else if (rack.submittedLineCount > 0) { <span class="ready-print">Siap print</span> }
@@ -100,9 +103,13 @@
       <div><span>DETAIL RACK</span><h2>{{ rack.rackCode }}</h2><p>{{ rack.rackName }}</p></div>
       <button type="button" aria-label="Tutup detail" (click)="closeDetail()"><span class="material-symbols-outlined">close</span></button>
     </header>
+    <div class="rack-drawer__body">
     <div class="drawer-metrics">
       <div><strong>{{ rack.submittedLineCount | number }}</strong><span>Item terscan</span></div>
-      <div><strong>{{ selectedQuantity() | number }}</strong><span>Total quantity</span></div>
+      <div>
+        <strong>{{ selectedFinalQuantity() | number }}</strong>
+        <span>{{ finalQtySummary().discrepancyQty !== 0 ? 'Final quantity' : 'Total quantity' }}</span>
+      </div>
       <div><strong>{{ rackStateLabel(rack) }}</strong><span>Status rack</span></div>
     </div>
 
@@ -113,7 +120,7 @@
           <strong>{{ rack.printed ? 'Rack sudah pernah diprint' : 'Print checklist rack' }}</strong>
           <small>
             @if (rack.printed) {
-              Print No {{ selectedPrintNo() || '-' }}
+              Kertas kerja recheck sudah dibuat. Print ulang jika checker butuh lembar baru.
             } @else if (rack.submittedLineCount > 0) {
               Setelah print, HHT tidak boleh tambah/edit/delete scan untuk rack ini.
             } @else {
@@ -137,30 +144,131 @@
       <div class="drawer-error">{{ printErrorMessage() }}</div>
     }
 
-    <div class="drawer-section-title">
-      <div><h3>Data item tersubmit</h3><span>{{ scans().length }} baris data</span></div>
-      @if (rack.printed) { <span class="locked-badge"><span class="material-symbols-outlined">lock</span> Printed</span> }
+    @if (rack.printed && rack.rackStatus !== 'CONFIRMED') {
+      <section class="recheck-summary-panel">
+        <label class="rechecker-select">
+          <span>Rechecker</span>
+          <select [ngModel]="selectedRecheckUser()" (ngModelChange)="selectedRecheckUser.set($event)">
+            <option value="">Pilih user scanner sebagai rechecker</option>
+            @for (user of recheckers(); track user.username) {
+              <option [value]="user.username">{{ user.fullName }} ({{ user.username }})</option>
+            }
+          </select>
+        </label>
+        <div class="recheck-summary-grid">
+          <div>
+            <span>Before total qty / final total qty</span>
+            <strong>{{ finalQtySummary().scanQty | number }} / {{ finalQtySummary().finalQty | number }}</strong>
+          </div>
+          <div class="recheck-summary-grid__action">
+            <span>Item selisih qty / total selisih qty</span>
+            <strong>{{ finalQtySummary().discrepancyItemCount | number }} / {{ finalQtySummary().discrepancyQty | number }}</strong>
+            @if (finalQtySummary().discrepancyItemCount > 0) {
+              <button class="secondary-button" type="button" (click)="saveCorrections()" [disabled]="correctionSaving() || scansLoading()">
+                @if (correctionSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+                @else { <span class="material-symbols-outlined">save</span> Simpan Koreksi }
+              </button>
+            }
+          </div>
+        </div>
+        <div class="rack-decision-actions">
+          <button class="secondary-button danger" type="button" (click)="openActionConfirm('REJECT')" [disabled]="rejecting() || scansLoading()">
+            @if (rejecting()) { <span class="spinner" aria-hidden="true"></span> Reject... }
+            @else { <span class="material-symbols-outlined">undo</span> Reject }
+          </button>
+          <button class="primary-button" type="button" (click)="openActionConfirm('CONFIRM')" [disabled]="confirming() || scansLoading()">
+            @if (confirming()) { <span class="spinner" aria-hidden="true"></span> Confirm... }
+            @else { <span class="material-symbols-outlined">task_alt</span> Confirm Rack }
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (correctionMessage()) {
+      <div class="drawer-success">{{ correctionMessage() }}</div>
+    }
+
+    @if (correctionErrorMessage()) {
+      <div class="drawer-error">{{ correctionErrorMessage() }}</div>
+    }
+
+    <div class="scan-workbar">
+      <div>
+        <h3>Data item tersubmit</h3>
+        <span>{{ filteredScans().length | number }} dari {{ scans().length | number }} item ditampilkan</span>
+      </div>
+      <label class="item-search">
+        <span class="material-symbols-outlined">search</span>
+        <input
+          type="search"
+          placeholder="Cari PLU, nama item, atau barcode"
+          [ngModel]="itemSearch()"
+          (ngModelChange)="itemSearch.set($event)"
+        />
+        @if (itemSearch()) {
+          <button type="button" aria-label="Bersihkan pencarian item" (click)="itemSearch.set('')">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        }
+      </label>
     </div>
 
     @if (scanErrorMessage()) { <div class="drawer-error">{{ scanErrorMessage() }}</div> }
-    <div class="scan-list">
+    <div class="scan-list" [class.scan-list--printed]="rack.printed">
       @if (scansLoading()) {
         @for (item of [1,2,3]; track item) { <div class="skeleton skeleton--scan"></div> }
       } @else {
-        @for (scan of scans(); track scan.id) {
-          <article class="scan-row">
-            <div class="scan-row__main"><strong>{{ scan.pluDescription }}</strong><span class="mono">Seq {{ scan.rackSeq }} &middot; PLU {{ scan.plu }} &middot; {{ scan.barcode }}</span></div>
-            <div class="scan-row__qty"><span>Qty</span><strong>{{ scan.scanQty | number }}</strong></div>
+        <div class="scan-list-head">
+          <span>Seq</span>
+          <span>Item / Barcode</span>
+          <span>Waktu scan</span>
+          <span>Scan Qty</span>
+          @if (rack.printed) {
+            <span>Final Qty</span>
+            <span>Selisih</span>
+          }
+        </div>
+        @for (scan of filteredScans(); track scan.id) {
+          <article class="scan-row" [class.scan-row--diff]="rack.printed && discrepancyPreview(scan) !== 0">
+            <div class="scan-row__seq"><strong>{{ scan.rackSeq }}</strong></div>
+            <div class="scan-row__main">
+              <strong>{{ scan.pluDescription }}</strong>
+              <span class="mono">PLU {{ scan.plu }} &middot; {{ scan.barcode }}</span>
+            </div>
             <div class="scan-row__meta">
               <span>{{ scan.dateCreated | date:'dd MMM yyyy, HH:mm' }}</span>
-              @if (scan.printNo) { <i class="status-chip status-chip--active">{{ scan.printNo }}</i> }
-              @else { <i class="status-chip status-chip--active">{{ scan.scanStatus }}</i> }
             </div>
+            <div class="scan-row__qty"><strong>{{ scan.scanQty | number }}</strong></div>
+            @if (rack.printed) {
+              <label class="scan-row__final">
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  [ngModel]="finalQtyDraft(scan.id)"
+                  (ngModelChange)="setFinalQtyDraft(scan.id, $event)"
+                  placeholder="-"
+                  [disabled]="rack.rackStatus === 'CONFIRMED'"
+                />
+              </label>
+              <div class="scan-row__diff" [class.scan-row__diff--alert]="discrepancyPreview(scan) !== 0">
+                <strong>{{ discrepancyPreview(scan) | number }}</strong>
+              </div>
+            }
           </article>
         } @empty {
-          <div class="empty-state compact"><span class="material-symbols-outlined">barcode_scanner</span><h3>Belum ada item</h3><p>Data akan muncul setelah HHT melakukan submit.</p></div>
+          <div class="empty-state compact">
+            <span class="material-symbols-outlined">barcode_scanner</span>
+            @if (scans().length === 0) {
+              <h3>Belum ada item</h3>
+              <p>Data akan muncul setelah HHT melakukan submit.</p>
+            } @else {
+              <h3>Item tidak ditemukan</h3>
+              <p>Coba cari dengan PLU, nama item, atau barcode lain.</p>
+            }
+          </div>
         }
       }
+    </div>
     </div>
   </aside>
 }
@@ -179,6 +287,38 @@
       <button class="primary-button" type="button" (click)="confirmPrint()" [disabled]="printing()">
         @if (printing()) { <span class="spinner" aria-hidden="true"></span> Memproses... }
         @else { <span class="material-symbols-outlined">print</span> Ya, Print }
+      </button>
+    </div>
+  </section>
+}
+
+@if (actionConfirm(); as action) {
+  <button class="confirm-backdrop" type="button" aria-label="Batal aksi" (click)="closeActionConfirm()"></button>
+  <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="rack-action-confirm-title">
+    <div class="confirm-dialog__icon" [class.confirm-dialog__icon--danger]="action === 'REJECT'">
+      <span class="material-symbols-outlined">{{ action === 'REJECT' ? 'undo' : 'task_alt' }}</span>
+    </div>
+    <h2 id="rack-action-confirm-title">
+      {{ action === 'REJECT' ? 'Reject rack ini?' : 'Confirm rack ini?' }}
+    </h2>
+    <p>
+      @if (action === 'REJECT') {
+        Data scan aktif rack ini akan diarsipkan sebagai rejected dan mobile harus scan ulang dari awal.
+      } @else {
+        Rack akan dikunci sebagai confirm memakai Final Qty saat ini. Pastikan koreksi sudah benar.
+      }
+    </p>
+    <div class="confirm-dialog__actions">
+      <button class="secondary-button" type="button" (click)="closeActionConfirm()" [disabled]="confirming() || rejecting()">Batal</button>
+      <button
+        class="primary-button"
+        type="button"
+        [class.danger-fill]="action === 'REJECT'"
+        (click)="executeConfirmedAction()"
+        [disabled]="confirming() || rejecting()"
+      >
+        @if (confirming() || rejecting()) { <span class="spinner" aria-hidden="true"></span> Memproses... }
+        @else { <span class="material-symbols-outlined">{{ action === 'REJECT' ? 'undo' : 'task_alt' }}</span> {{ action === 'REJECT' ? 'Ya, Reject' : 'Ya, Confirm' }} }
       </button>
     </div>
   </section>

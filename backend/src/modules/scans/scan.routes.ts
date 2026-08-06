@@ -7,7 +7,7 @@ import { isInventoryControl } from "../../shared/roles.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
 import { findRackById } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
-import { isRackPrinted, listRackScans, printRackScans, submitRackScans } from "./scan.repository.js";
+import { confirmRackScans, isRackPrinted, listRackScans, printRackScans, rejectRackScans, submitRackScans, updateRackFinalQuantities } from "./scan.repository.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { CanonicalScanLine } from "./scan.types.js";
 
@@ -28,6 +28,16 @@ const lineSchema = z.object({
 
 const bodySchema = z.object({
   lines: z.array(lineSchema).min(1).max(500),
+});
+
+const finalQtyLineSchema = z.object({
+  scanId: z.coerce.number().int().positive().safe(),
+  finalQty: z.coerce.number().int().min(0).max(999_999),
+});
+
+const finalQtyBodySchema = z.object({
+  recheckUser: z.string().trim().min(1).max(100),
+  lines: z.array(finalQtyLineSchema).min(1).max(500),
 });
 
 export const scanRouter = Router({ mergeParams: true });
@@ -211,5 +221,136 @@ scanRouter.post(
       username: request.auth?.username ?? "web",
     });
     response.status(200).json({ data: result });
+  }),
+);
+
+scanRouter.patch(
+  "/:scheduleId/racks/:rackId/scans/final-qty",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanPrint(request.auth?.roleCode);
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const body = finalQtyBodySchema.parse(request.body);
+    const schedule = await findScheduleLocation(scheduleId);
+    if (!schedule) {
+      throw new AppError(
+        404,
+        "Schedule tidak ditemukan.",
+        "SCHEDULE_NOT_FOUND",
+      );
+    }
+    if (schedule.status === "CANCELLED") {
+      throw new AppError(
+        409,
+        "Schedule sudah dibatalkan.",
+        "SCHEDULE_CANCELLED",
+      );
+    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+
+    const rack = await findRackById(rackId);
+    if (!rack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    if (rack.locCode !== schedule.locCode) {
+      throw new AppError(
+        422,
+        "Rack tidak sesuai dengan lokasi schedule.",
+        "RACK_LOCATION_MISMATCH",
+      );
+    }
+    if (!(await isRackPrinted(scheduleId, rackId))) {
+      throw new AppError(
+        409,
+        "Rack belum diprint. Final qty hanya bisa diedit setelah print pertama.",
+        "RACK_NOT_PRINTED",
+      );
+    }
+
+    const scans = await updateRackFinalQuantities({
+      scheduleId,
+      rackId,
+      username: request.auth?.username ?? "web",
+      recheckUser: body.recheckUser,
+      lines: body.lines,
+    });
+    response.status(200).json({ data: { scans } });
+  }),
+);
+
+scanRouter.post(
+  "/:scheduleId/racks/:rackId/confirm",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanPrint(request.auth?.roleCode);
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const body = finalQtyBodySchema.parse(request.body);
+    const schedule = await findScheduleLocation(scheduleId);
+    if (!schedule) {
+      throw new AppError(
+        404,
+        "Schedule tidak ditemukan.",
+        "SCHEDULE_NOT_FOUND",
+      );
+    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+
+    const rack = await findRackById(rackId);
+    if (!rack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    if (rack.locCode !== schedule.locCode) {
+      throw new AppError(
+        422,
+        "Rack tidak sesuai dengan lokasi schedule.",
+        "RACK_LOCATION_MISMATCH",
+      );
+    }
+
+    const scans = await confirmRackScans({
+      scheduleId,
+      rackId,
+      username: request.auth?.username ?? "web",
+      recheckUser: body.recheckUser,
+      lines: body.lines,
+    });
+    response.status(200).json({ data: { scans } });
+  }),
+);
+
+scanRouter.post(
+  "/:scheduleId/racks/:rackId/reject",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanPrint(request.auth?.roleCode);
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const schedule = await findScheduleLocation(scheduleId);
+    if (!schedule) {
+      throw new AppError(
+        404,
+        "Schedule tidak ditemukan.",
+        "SCHEDULE_NOT_FOUND",
+      );
+    }
+    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+
+    const rack = await findRackById(rackId);
+    if (!rack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    if (rack.locCode !== schedule.locCode) {
+      throw new AppError(
+        422,
+        "Rack tidak sesuai dengan lokasi schedule.",
+        "RACK_LOCATION_MISMATCH",
+      );
+    }
+
+    await rejectRackScans({
+      scheduleId,
+      rackId,
+      username: request.auth?.username ?? "web",
+    });
+    response.status(200).json({ data: { rejected: true } });
   }),
 );

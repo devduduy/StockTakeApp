@@ -24,6 +24,14 @@ export interface AuthUser {
   status: string;
 }
 
+export interface UserOption {
+  id: string;
+  username: string;
+  fullName: string;
+  roleCode: string;
+  locCode: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   tokenType: 'Bearer';
@@ -100,8 +108,13 @@ export interface Rack {
   localDraftCount: number;
   submittedLineCount: number;
   submittedQuantity: number;
+  finalQuantity: number;
   printedLineCount: number;
   printed: boolean;
+  rackStatus: 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED';
+  confirmedLineCount: number;
+  rejectedLineCount: number;
+  discrepancyQuantity: number;
 }
 
 export interface RackListResponse {
@@ -117,15 +130,30 @@ export interface RackScan {
   plu: string;
   pluDescription: string;
   scanQty: number;
+  finalQty: number;
+  discrepancyQty: number;
   inputType: 'SCAN' | 'MANUAL';
   scanStatus: string;
   printNo: string | null;
+  recheckUser: string | null;
+  confirmUser: string | null;
+  confirmTime: string | null;
   dateCreated: string;
   dateModified: string | null;
 }
 
 export interface RackScanListResponse {
   scans: RackScan[];
+}
+
+export interface RackFinalQtyLinePayload {
+  scanId: string;
+  finalQty: number;
+}
+
+export interface RackFinalQtyPayload {
+  recheckUser: string;
+  lines: RackFinalQtyLinePayload[];
 }
 
 export interface PrintRackResponse {

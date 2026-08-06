@@ -8,9 +8,11 @@ import {
   DashboardSnapshot,
   Location,
   PrintRackResponse,
+  RackFinalQtyPayload,
   RackListResponse,
   RackScanListResponse,
-  SchedulePayload
+  SchedulePayload,
+  UserOption
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -53,6 +55,12 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
+  getRecheckers(): Observable<UserOption[]> {
+    return this.http
+      .get<ApiEnvelope<UserOption[]>>('/api/auth/recheckers')
+      .pipe(map(({ data }) => data));
+  }
+
   getRacks(scheduleId: string): Observable<RackListResponse> {
     return this.http
       .get<ApiEnvelope<RackListResponse>>(`/api/stock-take/schedules/${scheduleId}/racks`)
@@ -71,6 +79,33 @@ export class StockTakeApiService {
     return this.http
       .post<ApiEnvelope<PrintRackResponse>>(
         `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`,
+        {}
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  updateRackFinalQty(scheduleId: string, rackId: string, payload: RackFinalQtyPayload): Observable<RackScanListResponse> {
+    return this.http
+      .patch<ApiEnvelope<RackScanListResponse>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/final-qty`,
+        payload
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  confirmRack(scheduleId: string, rackId: string, payload: RackFinalQtyPayload): Observable<RackScanListResponse> {
+    return this.http
+      .post<ApiEnvelope<RackScanListResponse>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/confirm`,
+        payload
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  rejectRack(scheduleId: string, rackId: string): Observable<{ rejected: boolean }> {
+    return this.http
+      .post<ApiEnvelope<{ rejected: boolean }>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/reject`,
         {}
       )
       .pipe(map(({ data }) => data));

@@ -7,8 +7,11 @@ import type {
   PrintRackScansInput,
   PrintRackScansResponse,
   RackScanLineResponse,
+  ConfirmRackInput,
+  RejectRackInput,
   SubmitRackScansInput,
   SubmitRackScansResponse,
+  UpdateRackFinalQuantitiesInput,
 } from "./scan.types.js";
 
 interface MergeActionRow {
@@ -23,9 +26,13 @@ interface ScanLineRow {
   plu: string | null;
   plu_description: string | null;
   scan_qty: number | string;
+  final_qty: number | string;
   input_type: "SCAN" | "MANUAL";
   scan_status: string;
   print_no: string | null;
+  recheck_user: string | null;
+  confirm_user: string | null;
+  confirm_time: Date | string | null;
   date_created: Date | string;
   date_modified: Date | string | null;
 }
@@ -46,9 +53,14 @@ function mapScanLine(row: ScanLineRow): RackScanLineResponse {
     plu: row.plu ?? "",
     pluDescription: row.plu_description ?? "",
     scanQty: Number(row.scan_qty),
+    finalQty: Number(row.final_qty),
+    discrepancyQty: Number(row.final_qty) - Number(row.scan_qty),
     inputType: row.input_type,
     scanStatus: row.scan_status,
     printNo: row.print_no?.trim() || null,
+    recheckUser: row.recheck_user?.trim() || null,
+    confirmUser: row.confirm_user?.trim() || null,
+    confirmTime: isoDateTime(row.confirm_time),
     dateCreated: isoDateTime(row.date_created) ?? new Date(0).toISOString(),
     dateModified: isoDateTime(row.date_modified),
   };
@@ -71,7 +83,8 @@ export async function listRackScans(
       .filter(
         (scan) =>
           Number(scan.scheduleId) === scheduleId &&
-          Number(scan.rackId) === rackId,
+          Number(scan.rackId) === rackId &&
+          scan.scanStatus === "SYNCED",
       )
       .map((scan, index) =>
         mapScanLine({
@@ -82,9 +95,13 @@ export async function listRackScans(
           plu: scan.plu,
           plu_description: scan.pluDescription,
           scan_qty: scan.scanQty,
+          final_qty: scan.finalQty ?? scan.scanQty,
           input_type: scan.inputType,
           scan_status: scan.scanStatus,
           print_no: scan.printNo ?? null,
+          recheck_user: scan.recheckUser ?? null,
+          confirm_user: scan.confirmUser ?? null,
+          confirm_time: scan.confirmTime ?? null,
           date_created: scan.dateCreated,
           date_modified: scan.dateModified ?? null,
         }),
@@ -106,9 +123,13 @@ export async function listRackScans(
         PLU AS plu,
         PLU_DESCRIPTION AS plu_description,
         SCAN_QTY AS scan_qty,
+        FINAL_QTY AS final_qty,
         INPUT_TYPE AS input_type,
         SCAN_STATUS AS scan_status,
         PRINT_NO AS print_no,
+        RECHECK_USER AS recheck_user,
+        CONFIRM_USER AS confirm_user,
+        CONFIRM_TIME AS confirm_time,
         DATE_CREATED AS date_created,
         DATE_MODIFIED AS date_modified
       FROM dbo.TR_STOCK_TAKE_SCAN
@@ -129,6 +150,7 @@ export async function isRackPrinted(
       (scan) =>
         Number(scan.scheduleId) === scheduleId &&
         Number(scan.rackId) === rackId &&
+        scan.scanStatus === "SYNCED" &&
         Boolean(scan.printNo?.trim()),
     );
   }
@@ -143,6 +165,7 @@ export async function isRackPrinted(
       FROM dbo.TR_STOCK_TAKE_SCAN
       WHERE SCHEDULE_ID = @scheduleId
         AND RACK_ID = @rackId
+        AND SCAN_STATUS = 'SYNCED'
         AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NOT NULL;
     `);
   return Number(result.recordset[0]?.printed_count ?? 0) > 0;
@@ -175,6 +198,7 @@ export async function submitRackScans(
           plu: line.plu,
           pluDescription: line.pluDescription,
           scanQty: line.scanQty,
+          finalQty: line.scanQty,
           inputType: line.inputType,
           scanStatus: "SYNCED",
           userModified: input.username,
@@ -192,6 +216,7 @@ export async function submitRackScans(
           plu: line.plu,
           pluDescription: line.pluDescription,
           scanQty: line.scanQty,
+          finalQty: line.scanQty,
           inputType: line.inputType,
           scanStatus: "SYNCED",
           userCreated: input.username,
@@ -415,5 +440,181 @@ export async function printRackScans(
   } catch (error) {
     await transaction.rollback();
     throw error;
+  }
+}
+
+export async function updateRackFinalQuantities(
+  input: UpdateRackFinalQuantitiesInput,
+): Promise<RackScanLineResponse[]> {
+  const modifiedTime = new Date().toISOString();
+
+  if (env.SQL_MODE === "mock") {
+    const rackScans = mockScanSubmissions.filter(
+      (scan) =>
+        Number(scan.scheduleId) === input.scheduleId &&
+        Number(scan.rackId) === input.rackId &&
+        scan.scanStatus === "SYNCED",
+    );
+    for (const line of input.lines) {
+      const scan = rackScans.find((candidate, index) => index + 1 === line.scanId);
+      if (!scan) {
+        throw new AppError(404, "Item scan tidak ditemukan.", "SCAN_NOT_FOUND");
+      }
+      if (!scan.printNo?.trim()) {
+        throw new AppError(
+          409,
+          "Item belum diprint sehingga final qty belum bisa diedit.",
+          "SCAN_NOT_PRINTED",
+        );
+      }
+      scan.finalQty = line.finalQty;
+      scan.recheckUser = input.recheckUser;
+      scan.userModified = input.username;
+      scan.dateModified = modifiedTime;
+    }
+    return listRackScans(input.scheduleId, input.rackId);
+  }
+
+  const pool = await getSqlPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+  try {
+    for (const line of input.lines) {
+      const result = await new sql.Request(transaction)
+        .input("scheduleId", sql.BigInt, input.scheduleId)
+        .input("rackId", sql.BigInt, input.rackId)
+        .input("scanId", sql.BigInt, line.scanId)
+        .input("finalQty", sql.Int, line.finalQty)
+        .input("recheckUser", sql.VarChar(100), input.recheckUser)
+        .input("username", sql.VarChar(100), input.username)
+        .query<{ affected_count: number }>(`
+          UPDATE dbo.TR_STOCK_TAKE_SCAN
+          SET FINAL_QTY = @finalQty,
+              RECHECK_USER = @recheckUser,
+              USER_MODIFIED = @username,
+              DATE_MODIFIED = SYSUTCDATETIME()
+          WHERE ID = @scanId
+            AND SCHEDULE_ID = @scheduleId
+            AND RACK_ID = @rackId
+            AND SCAN_STATUS = 'SYNCED'
+            AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NOT NULL
+            AND CONFIRM_TIME IS NULL;
+
+          SELECT @@ROWCOUNT AS affected_count;
+        `);
+      if (Number(result.recordset[0]?.affected_count ?? 0) === 0) {
+        throw new AppError(
+          409,
+          "Item tidak bisa diedit. Pastikan rack sudah diprint dan belum confirm.",
+          "SCAN_NOT_EDITABLE",
+        );
+      }
+    }
+
+    await transaction.commit();
+    return listRackScans(input.scheduleId, input.rackId);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+export async function confirmRackScans(
+  input: ConfirmRackInput,
+): Promise<RackScanLineResponse[]> {
+  const scans = await updateRackFinalQuantities(input);
+
+  if (env.SQL_MODE === "mock") {
+    const confirmTime = new Date().toISOString();
+    for (const scan of mockScanSubmissions) {
+      if (
+        Number(scan.scheduleId) === input.scheduleId &&
+        Number(scan.rackId) === input.rackId &&
+        scan.scanStatus === "SYNCED"
+      ) {
+        scan.confirmUser = input.username;
+        scan.confirmTime = confirmTime;
+        scan.userModified = input.username;
+        scan.dateModified = confirmTime;
+      }
+    }
+    return listRackScans(input.scheduleId, input.rackId);
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("scheduleId", sql.BigInt, input.scheduleId)
+    .input("rackId", sql.BigInt, input.rackId)
+    .input("username", sql.VarChar(100), input.username)
+    .query<{ affected_count: number }>(`
+      UPDATE dbo.TR_STOCK_TAKE_SCAN
+      SET CONFIRM_TIME = SYSUTCDATETIME(),
+          CONFIRM_USER = @username,
+          USER_MODIFIED = @username,
+          DATE_MODIFIED = SYSUTCDATETIME()
+      WHERE SCHEDULE_ID = @scheduleId
+        AND RACK_ID = @rackId
+        AND SCAN_STATUS = 'SYNCED'
+        AND NULLIF(LTRIM(RTRIM(PRINT_NO)), '') IS NOT NULL
+        AND CONFIRM_TIME IS NULL;
+
+      SELECT @@ROWCOUNT AS affected_count;
+    `);
+  if (Number(result.recordset[0]?.affected_count ?? 0) === 0 && scans.length === 0) {
+    throw new AppError(
+      409,
+      "Rack belum memiliki data printed untuk dikonfirmasi.",
+      "RACK_NOT_PRINTED",
+    );
+  }
+  return listRackScans(input.scheduleId, input.rackId);
+}
+
+export async function rejectRackScans(
+  input: RejectRackInput,
+): Promise<void> {
+  const modifiedTime = new Date().toISOString();
+
+  if (env.SQL_MODE === "mock") {
+    let affected = 0;
+    for (const scan of mockScanSubmissions) {
+      if (
+        Number(scan.scheduleId) === input.scheduleId &&
+        Number(scan.rackId) === input.rackId &&
+        scan.scanStatus === "SYNCED"
+      ) {
+        scan.scanStatus = "REJECTED";
+        scan.userModified = input.username;
+        scan.dateModified = modifiedTime;
+        affected += 1;
+      }
+    }
+    if (affected === 0) {
+      throw new AppError(409, "Rack tidak memiliki data aktif untuk direject.", "RACK_NOT_REJECTABLE");
+    }
+    return;
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("scheduleId", sql.BigInt, input.scheduleId)
+    .input("rackId", sql.BigInt, input.rackId)
+    .input("username", sql.VarChar(100), input.username)
+    .query<{ affected_count: number }>(`
+      UPDATE dbo.TR_STOCK_TAKE_SCAN
+      SET SCAN_STATUS = 'REJECTED',
+          USER_MODIFIED = @username,
+          DATE_MODIFIED = SYSUTCDATETIME()
+      WHERE SCHEDULE_ID = @scheduleId
+        AND RACK_ID = @rackId
+        AND SCAN_STATUS = 'SYNCED'
+        AND CONFIRM_TIME IS NULL;
+
+      SELECT @@ROWCOUNT AS affected_count;
+    `);
+  if (Number(result.recordset[0]?.affected_count ?? 0) === 0) {
+    throw new AppError(409, "Rack tidak memiliki data aktif untuk direject.", "RACK_NOT_REJECTABLE");
   }
 }

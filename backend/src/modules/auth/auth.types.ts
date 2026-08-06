@@ -34,3 +34,11 @@ export interface LoginResponse {
     status: string;
   };
 }
+
+export interface UserOptionResponse {
+  id: string;
+  username: string;
+  fullName: string;
+  roleCode: string;
+  locCode: string;
+}
