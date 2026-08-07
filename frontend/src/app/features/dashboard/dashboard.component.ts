@@ -63,7 +63,7 @@ export class DashboardComponent {
   }
 
   statusLabel(status: string): string {
-    return ({ OPEN: 'Terbuka', IN_PROGRESS: 'Berjalan', COMPLETED: 'Selesai' } as Record<string, string>)[status] || status;
+    return ({ OPEN: 'Open', IN_PROGRESS: 'Inprogress', COMPLETED: 'Completed' } as Record<string, string>)[status] || status;
   }
 
   stockTypeLabel(code: string): string {

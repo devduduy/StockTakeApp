@@ -278,7 +278,7 @@ export class ScheduleListComponent {
   }
 
   statusLabel(status: string): string {
-    return ({ DRAFT: 'Draft', OPEN: 'Terbuka', IN_PROGRESS: 'Berjalan', COMPLETED: 'Selesai' } as Record<string, string>)[status] || status;
+    return ({ DRAFT: 'Draft', OPEN: 'Open', IN_PROGRESS: 'Inprogress', COMPLETED: 'Completed' } as Record<string, string>)[status] || status;
   }
 
   stockTypeLabel(schedule: ActiveSchedule): 'ALL' | 'PARTIAL' {

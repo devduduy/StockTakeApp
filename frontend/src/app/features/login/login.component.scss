@@ -22,10 +22,11 @@
   position: relative;
   z-index: 1;
   display: flex;
-  height: 100%;
+  height: 55%;
   max-width: 660px;
   flex-direction: column;
   justify-content: space-between;
+  margin-top: 95px;
 }
 
 .mobile-brand {
@@ -46,7 +47,7 @@
 .eyebrow {
   margin: 0 0 14px;
   color: var(--secondary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: .16em;
 }
@@ -55,7 +56,7 @@
 
 .login-visual h1 {
   margin: 0;
-  font-size: clamp(38px, 4.2vw, 62px);
+  font-size: clamp(38px, 4.2vw, 42px);
   line-height: 1.08;
   letter-spacing: -.04em;
 }
@@ -64,7 +65,7 @@
   max-width: 590px;
   margin: 24px 0 0;
   color: #cbd6fa;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
@@ -81,8 +82,8 @@
 
 .visual-stat .material-symbols-outlined { color: #79e3b1; }
 .visual-stat div { display: grid; gap: 2px; }
-.visual-stat strong { font-size: 12px; }
-.visual-stat small { color: #b5c5f9; font-size: 10px; }
+.visual-stat strong { font-size: 14px; }
+.visual-stat small { color: #b5c5f9; font-size: 12px; }
 
 .login-panel {
   display: grid;
@@ -100,7 +101,7 @@
   gap: 8px;
   margin-bottom: 19px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -122,15 +123,15 @@
 .field__control input::placeholder { color: #9b9ca5; }
 .field__control button { display: grid; padding: 4px; place-items: center; border: 0; background: transparent; color: var(--text-subtle); cursor: pointer; }
 .field__control button span { font-size: 19px; }
-.field small { color: var(--error); font-size: 10px; }
+.field small { color: var(--error); font-size: 12px; }
 
-.alert { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 22px; padding: 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
+.alert { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 22px; padding: 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
 .alert--error { border: 1px solid #f2b7b7; background: #fff0f0; color: #9f1717; }
 .alert .material-symbols-outlined { margin-top: 1px; font-size: 18px; }
 
 .login-button { width: 100%; height: 50px; margin-top: 6px; }
 .login-button .material-symbols-outlined { font-size: 19px; }
-.login-card__footer { margin: 24px 0 0; color: var(--text-subtle); font-size: 10px; text-align: center; }
+.login-card__footer { margin: 24px 0 0; color: var(--text-subtle); font-size: 12px; text-align: center; }
 
 @media (max-width: 900px) {
   .login-page { grid-template-columns: 1fr; }
