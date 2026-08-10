@@ -11,6 +11,7 @@ export interface MigrationResult {
   normalizedStockTypes: boolean;
   ensuredScanTable: boolean;
   removedLegacyRecheckColumns: boolean;
+  ensuredScheduleRackTable: boolean;
 }
 
 export async function ensureDatabaseSchema(): Promise<MigrationResult> {
@@ -24,6 +25,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       normalizedStockTypes: false,
       ensuredScanTable: false,
       removedLegacyRecheckColumns: false,
+      ensuredScheduleRackTable: false,
     };
   }
 
@@ -36,6 +38,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     normalized_stock_types: number;
     ensured_scan_table: number;
     removed_legacy_recheck_columns: number;
+    ensured_schedule_rack_table: number;
   }>(`
     SET NOCOUNT ON;
 
@@ -46,6 +49,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     DECLARE @normalized_stock_types bit = 0;
     DECLARE @ensured_scan_table bit = 0;
     DECLARE @removed_legacy_recheck_columns bit = 0;
+    DECLARE @ensured_schedule_rack_table bit = 0;
 
     IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'CATEGORY_ID') IS NULL
     BEGIN
@@ -287,6 +291,72 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       DEALLOCATE legacy_recheck_column_cursor;
     END;
 
+    IF OBJECT_ID('dbo.TR_STOCK_SCHEDULE_RACK', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.TR_STOCK_SCHEDULE_RACK (
+        ID bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_TR_STOCK_SCHEDULE_RACK PRIMARY KEY,
+        SCHEDULE_ID bigint NOT NULL,
+        RACK_ID bigint NOT NULL,
+        RACK_CODE varchar(30) NOT NULL,
+        RACK_NAME nvarchar(100) NOT NULL,
+        LOC_CODE char(4) NOT NULL,
+        STATUS varchar(10) NOT NULL CONSTRAINT DF_TR_STOCK_SCHEDULE_RACK_STATUS DEFAULT 'ACTIVE',
+        USER_CREATED varchar(100) NULL,
+        DATE_CREATED datetime2 NOT NULL CONSTRAINT DF_TR_STOCK_SCHEDULE_RACK_DATE_CREATED DEFAULT SYSUTCDATETIME(),
+        USER_MODIFIED varchar(100) NULL,
+        DATE_MODIFIED datetime2 NULL
+      );
+      SET @ensured_schedule_rack_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.UX_TR_STOCK_SCHEDULE_RACK_SCHEDULE_RACK', 'UQ') IS NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.TR_STOCK_SCHEDULE_RACK')
+          AND name = 'UX_TR_STOCK_SCHEDULE_RACK_SCHEDULE_RACK'
+      )
+    BEGIN
+      CREATE UNIQUE INDEX UX_TR_STOCK_SCHEDULE_RACK_SCHEDULE_RACK
+        ON dbo.TR_STOCK_SCHEDULE_RACK (SCHEDULE_ID, RACK_ID);
+      SET @ensured_schedule_rack_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.TR_STOCK_SCHEDULE_RACK', 'U') IS NOT NULL
+    BEGIN
+      INSERT INTO dbo.TR_STOCK_SCHEDULE_RACK (
+        SCHEDULE_ID,
+        RACK_ID,
+        RACK_CODE,
+        RACK_NAME,
+        LOC_CODE,
+        STATUS,
+        USER_CREATED
+      )
+      SELECT
+        schedule.ID,
+        rack.ID,
+        rack.RACK_CODE,
+        rack.RACK_NAME,
+        rack.LOC_CODE,
+        'ACTIVE',
+        'MIGRATION'
+      FROM dbo.TR_STOCK_SCHEDULE schedule
+      INNER JOIN dbo.MST_RACK rack
+        ON rack.LOC_CODE = schedule.LOC_CODE
+       AND rack.STATUS = 'ACTIVE'
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = schedule.ID
+      );
+
+      IF @@ROWCOUNT > 0
+      BEGIN
+        SET @ensured_schedule_rack_table = 1;
+      END;
+    END;
+
     SELECT
       CAST(@added_schedule_category_column AS int) AS added_schedule_category_column,
       CAST(@added_schedule_end_date_column AS int) AS added_schedule_end_date_column,
@@ -294,7 +364,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       CAST(@ensured_schedule_no_unique_index AS int) AS ensured_schedule_no_unique_index,
       CAST(@normalized_stock_types AS int) AS normalized_stock_types,
       CAST(@ensured_scan_table AS int) AS ensured_scan_table,
-      CAST(@removed_legacy_recheck_columns AS int) AS removed_legacy_recheck_columns;
+      CAST(@removed_legacy_recheck_columns AS int) AS removed_legacy_recheck_columns,
+      CAST(@ensured_schedule_rack_table AS int) AS ensured_schedule_rack_table;
   `);
 
   const row = result.recordset[0];
@@ -307,6 +378,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     normalizedStockTypes: row?.normalized_stock_types === 1,
     ensuredScanTable: row?.ensured_scan_table === 1,
     removedLegacyRecheckColumns: row?.removed_legacy_recheck_columns === 1,
+    ensuredScheduleRackTable: row?.ensured_schedule_rack_table === 1,
   };
   logger.info({ migration: migrationResult }, "Database schema checked");
   return migrationResult;

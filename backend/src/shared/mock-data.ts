@@ -98,6 +98,24 @@ export const mockRacks = [
   },
 ];
 
+export interface MockScheduleRack {
+  scheduleId: string;
+  rackId: string;
+  rackCode: string;
+  rackName: string;
+  locCode: string;
+  status: string;
+}
+
+export const mockScheduleRacks: MockScheduleRack[] = mockRacks.map((rack) => ({
+  scheduleId: "1",
+  rackId: rack.id,
+  rackCode: rack.rackCode,
+  rackName: rack.rackName,
+  locCode: rack.locCode,
+  status: "ACTIVE",
+}));
+
 export const mockItems = [
   {
     barcode: "383800000013",

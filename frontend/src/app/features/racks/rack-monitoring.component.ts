@@ -1,18 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, EMPTY, forkJoin, interval, of, switchMap, take, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
-import { ActiveSchedule, Rack, RackScan, ScheduleLocation, UserOption } from '../../core/models/api.models';
+import { ActiveSchedule, Rack, RackMaster, RackScan, ScheduleLocation, UserOption } from '../../core/models/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-rack-monitoring',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './rack-monitoring.component.html',
   styleUrl: './rack-monitoring.component.scss'
 })
@@ -21,15 +21,21 @@ export class RackMonitoringComponent {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly fb = inject(FormBuilder);
   readonly scheduleId = this.route.snapshot.paramMap.get('scheduleId') ?? '';
 
   readonly schedule = signal<ActiveSchedule | null>(null);
   readonly scheduleLocation = signal<ScheduleLocation | null>(null);
   readonly racks = signal<Rack[]>([]);
+  readonly rackMasters = signal<RackMaster[]>([]);
   readonly scans = signal<RackScan[]>([]);
   readonly selectedRack = signal<Rack | null>(null);
   readonly loading = signal(true);
   readonly refreshing = signal(false);
+  readonly addRackOpen = signal(false);
+  readonly addRackLoading = signal(false);
+  readonly addRackSaving = signal(false);
+  readonly rackCreateOpen = signal(false);
   readonly scansLoading = signal(false);
   readonly printing = signal(false);
   readonly correctionSaving = signal(false);
@@ -40,9 +46,13 @@ export class RackMonitoringComponent {
   readonly scanErrorMessage = signal('');
   readonly printMessage = signal('');
   readonly printErrorMessage = signal('');
+  readonly rackScopeMessage = signal('');
+  readonly rackScopeErrorMessage = signal('');
+  readonly rackCreateErrorMessage = signal('');
   readonly correctionMessage = signal('');
   readonly correctionErrorMessage = signal('');
   readonly search = signal('');
+  readonly addRackSearch = signal('');
   readonly itemSearch = signal('');
   readonly statusFilter = signal<'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED'>('ALL');
   readonly lastUpdated = signal<Date | null>(null);
@@ -51,6 +61,11 @@ export class RackMonitoringComponent {
   readonly recheckers = signal<UserOption[]>([]);
   readonly selectedRecheckUser = signal('');
   readonly actionConfirm = signal<'CONFIRM' | 'REJECT' | null>(null);
+  readonly rackCreateForm = this.fb.nonNullable.group({
+    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
+    rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+    status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
+  });
 
   readonly filteredRacks = computed(() => {
     const keyword = this.search().trim().toLowerCase();
@@ -100,6 +115,17 @@ export class RackMonitoringComponent {
       discrepancyItemCount: discrepancyItems.length,
       discrepancyQty: discrepancyItems.reduce((sum, discrepancyQty) => sum + discrepancyQty, 0)
     };
+  });
+  readonly availableRackMasters = computed(() => {
+    const usedRackIds = new Set(this.racks().map((rack) => rack.id));
+    const keyword = this.addRackSearch().trim().toLowerCase();
+    return this.rackMasters()
+      .filter((rack) => rack.status === 'ACTIVE' && !usedRackIds.has(rack.id))
+      .filter((rack) => !keyword || [
+        rack.rackCode,
+        rack.rackName,
+        rack.locCode
+      ].some((value) => value.toLowerCase().includes(keyword)));
   });
 
   constructor() {
@@ -164,6 +190,109 @@ export class RackMonitoringComponent {
 
   setStatusFilter(status: 'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED'): void {
     this.statusFilter.set(status);
+  }
+
+  canAddRackToSchedule(): boolean {
+    const status = this.scheduleLocation()?.status ?? this.schedule()?.status ?? '';
+    return this.auth.user()?.role.code !== 'SCANNER'
+      && Boolean(this.scheduleLocation()?.locCode)
+      && !['COMPLETED', 'CLOSED', 'CANCELLED'].includes(status);
+  }
+
+  openAddRack(): void {
+    if (!this.canAddRackToSchedule()) return;
+    this.addRackSearch.set('');
+    this.rackScopeErrorMessage.set('');
+    this.rackCreateErrorMessage.set('');
+    this.rackCreateOpen.set(false);
+    this.rackCreateForm.reset({
+      rackCode: '',
+      rackName: '',
+      status: 'ACTIVE'
+    });
+    this.addRackOpen.set(true);
+    this.loadRackMastersForSchedule();
+  }
+
+  closeAddRack(): void {
+    if (!this.addRackSaving()) this.addRackOpen.set(false);
+  }
+
+  toggleRackCreate(): void {
+    this.rackScopeErrorMessage.set('');
+    this.rackCreateErrorMessage.set('');
+    this.rackCreateOpen.update((open) => !open);
+  }
+
+  assignRackToSchedule(rack: RackMaster): void {
+    if (!this.canAddRackToSchedule() || this.addRackSaving()) return;
+    this.addRackSaving.set(true);
+    this.rackScopeErrorMessage.set('');
+    this.rackScopeMessage.set('');
+    this.api.addRackToSchedule(this.scheduleId, rack.id)
+      .pipe(
+        switchMap(() => this.fetchPage(false)),
+        tap(() => {
+          this.rackScopeMessage.set(`Rack ${rack.rackCode} berhasil ditambahkan ke schedule.`);
+          this.addRackSaving.set(false);
+          this.loadRackMastersForSchedule();
+        }),
+        catchError((error: unknown) => {
+          this.rackScopeErrorMessage.set(apiErrorMessage(error, 'Rack gagal ditambahkan ke schedule.'));
+          this.addRackSaving.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  createRackAndAssign(): void {
+    const locCode = this.scheduleLocation()?.locCode;
+    if (!locCode || !this.canAddRackToSchedule() || this.addRackSaving()) return;
+    this.normalizeRackCreateCode();
+    if (this.rackCreateForm.invalid) {
+      this.rackCreateForm.markAllAsTouched();
+      return;
+    }
+    const raw = this.rackCreateForm.getRawValue();
+    this.addRackSaving.set(true);
+    this.rackCreateErrorMessage.set('');
+    this.rackScopeMessage.set('');
+    this.api.createRack({
+      locCode,
+      rackCode: raw.rackCode.trim(),
+      rackName: raw.rackName.trim(),
+      status: raw.status
+    })
+      .pipe(
+        switchMap((rack) =>
+          this.api.addRackToSchedule(this.scheduleId, rack.id).pipe(
+            switchMap(() => this.fetchPage(false)),
+            tap(() => {
+              this.rackScopeMessage.set(`Rack ${rack.rackCode} berhasil dibuat dan ditambahkan ke schedule.`);
+            })
+          )
+        ),
+        tap(() => {
+          this.addRackSaving.set(false);
+          this.rackCreateOpen.set(false);
+          this.rackCreateForm.reset({ rackCode: '', rackName: '', status: 'ACTIVE' });
+          this.loadRackMastersForSchedule();
+        }),
+        catchError((error: unknown) => {
+          this.rackCreateErrorMessage.set(apiErrorMessage(error, 'Rack baru gagal dibuat.'));
+          this.addRackSaving.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  normalizeRackCreateCode(): void {
+    const value = this.rackCreateForm.controls.rackCode.value.trim().toUpperCase();
+    this.rackCreateForm.controls.rackCode.setValue(value);
   }
 
   rackState(rack: Rack): 'confirmed' | 'rejected' | 'printed' | 'submitted' | 'empty' {
@@ -429,6 +558,28 @@ export class RackMonitoringComponent {
         error: (error: unknown) => {
           this.scanErrorMessage.set(apiErrorMessage(error, 'Detail item rack gagal dimuat.'));
           this.scansLoading.set(false);
+        }
+      });
+  }
+
+  private loadRackMastersForSchedule(): void {
+    const locCode = this.scheduleLocation()?.locCode;
+    if (!locCode) {
+      this.rackMasters.set([]);
+      return;
+    }
+    this.addRackLoading.set(true);
+    this.api.getRackMasters(locCode)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (racks) => {
+          this.rackMasters.set(racks);
+          this.addRackLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.rackScopeErrorMessage.set(apiErrorMessage(error, 'Master rack lokasi gagal dimuat.'));
+          this.rackMasters.set([]);
+          this.addRackLoading.set(false);
         }
       });
   }

@@ -2,7 +2,7 @@ import sql from "mssql";
 import { env } from "../../config/env.js";
 import { getSqlPool } from "../../db/sql.js";
 import { listCategoriesByIds } from "../categories/category.repository.js";
-import { mockSchedules, mockScanSubmissions } from "../../shared/mock-data.js";
+import { mockRacks, mockScheduleRacks, mockSchedules, mockScanSubmissions } from "../../shared/mock-data.js";
 import { AppError } from "../../shared/app-error.js";
 import { parseCategoryIds } from "../../shared/category-filter.js";
 import type {
@@ -29,8 +29,8 @@ interface ScheduleRow {
   status: string;
   total_rack: number;
   submitted_rack_count: number;
+  rack_ids: string | null;
 }
-
 function isoDate(value: Date | string): string {
   return value instanceof Date
     ? value.toISOString().slice(0, 10)
@@ -134,6 +134,7 @@ async function mapSchedule(row: ScheduleRow): Promise<ActiveSchedule> {
       value: row.stock_type_value,
     },
     categoryIds,
+    rackIds: parseCategoryIds(row.rack_ids),
     categories: await listCategoriesByIds(categoryIds),
     status: row.status,
     progress: {
@@ -145,6 +146,163 @@ async function mapSchedule(row: ScheduleRow): Promise<ActiveSchedule> {
           : Math.round((row.submitted_rack_count / row.total_rack) * 100),
     },
   };
+}
+
+function uniqueRackIds(rackIds: string[]): string[] {
+  return [...new Set(rackIds.map((rackId) => rackId.trim()).filter(Boolean))];
+}
+
+async function applyMockScheduleRackScope(
+  scheduleId: string,
+  payload: ScheduleMutatePayload,
+): Promise<void> {
+  const rackIds =
+    payload.stockType === "ALL"
+      ? mockRacks
+          .filter((rack) => rack.locCode === payload.locCode && rack.status === "ACTIVE")
+          .map((rack) => rack.id)
+      : uniqueRackIds(payload.rackIds);
+
+  if (payload.stockType === "PARTIAL" && rackIds.length === 0) {
+    throw new AppError(
+      400,
+      "Schedule PARTIAL wajib memilih minimal satu rack.",
+      "RACK_SCOPE_REQUIRED",
+    );
+  }
+
+  const racks = mockRacks.filter(
+    (rack) => rackIds.includes(rack.id) && rack.locCode === payload.locCode && rack.status === "ACTIVE",
+  );
+  if (racks.length !== rackIds.length) {
+    throw new AppError(
+      400,
+      "Ada rack yang tidak ditemukan atau tidak sesuai lokasi schedule.",
+      "RACK_SCOPE_INVALID",
+    );
+  }
+
+  for (let index = mockScheduleRacks.length - 1; index >= 0; index -= 1) {
+    if (mockScheduleRacks[index]?.scheduleId === scheduleId) {
+      mockScheduleRacks.splice(index, 1);
+    }
+  }
+  mockScheduleRacks.push(
+    ...racks.map((rack) => ({
+      scheduleId,
+      rackId: rack.id,
+      rackCode: rack.rackCode,
+      rackName: rack.rackName,
+      locCode: rack.locCode,
+      status: "ACTIVE",
+    })),
+  );
+}
+
+async function applySqlScheduleRackScope(
+  transaction: sql.Transaction,
+  scheduleId: number,
+  payload: ScheduleMutatePayload,
+): Promise<void> {
+  await transaction
+    .request()
+    .input("scheduleId", sql.BigInt, scheduleId)
+    .query(`
+      DELETE FROM dbo.TR_STOCK_SCHEDULE_RACK
+      WHERE SCHEDULE_ID = @scheduleId;
+    `);
+
+  if (payload.stockType === "ALL") {
+    await transaction
+      .request()
+      .input("scheduleId", sql.BigInt, scheduleId)
+      .input("locCode", sql.Char(4), payload.locCode)
+      .input("username", sql.VarChar(100), payload.username)
+      .query(`
+        INSERT INTO dbo.TR_STOCK_SCHEDULE_RACK (
+          SCHEDULE_ID,
+          RACK_ID,
+          RACK_CODE,
+          RACK_NAME,
+          LOC_CODE,
+          STATUS,
+          USER_CREATED
+        )
+        SELECT
+          @scheduleId,
+          rack.ID,
+          rack.RACK_CODE,
+          rack.RACK_NAME,
+          rack.LOC_CODE,
+          'ACTIVE',
+          @username
+        FROM dbo.MST_RACK rack
+        WHERE rack.LOC_CODE = @locCode
+          AND rack.STATUS = 'ACTIVE';
+      `);
+    return;
+  }
+
+  const rackIds = uniqueRackIds(payload.rackIds);
+  if (rackIds.length === 0) {
+    throw new AppError(
+      400,
+      "Schedule PARTIAL wajib memilih minimal satu rack.",
+      "RACK_SCOPE_REQUIRED",
+    );
+  }
+
+  const rackIdCsv = rackIds.join(",");
+  const validation = await transaction
+    .request()
+    .input("locCode", sql.Char(4), payload.locCode)
+    .input("rackIdCsv", sql.VarChar(sql.MAX), rackIdCsv)
+    .query<{ valid_rack_count: number }>(`
+      SELECT COUNT(DISTINCT rack.ID) AS valid_rack_count
+      FROM dbo.MST_RACK rack
+      INNER JOIN STRING_SPLIT(@rackIdCsv, ',') selected
+        ON TRY_CONVERT(bigint, selected.value) = rack.ID
+      WHERE rack.LOC_CODE = @locCode
+        AND rack.STATUS = 'ACTIVE';
+    `);
+  if (Number(validation.recordset[0]?.valid_rack_count ?? 0) !== rackIds.length) {
+    throw new AppError(
+      400,
+      "Ada rack yang tidak ditemukan atau tidak sesuai lokasi schedule.",
+      "RACK_SCOPE_INVALID",
+    );
+  }
+
+  await transaction
+    .request()
+    .input("scheduleId", sql.BigInt, scheduleId)
+    .input("locCode", sql.Char(4), payload.locCode)
+    .input("rackIdCsv", sql.VarChar(sql.MAX), rackIdCsv)
+    .input("username", sql.VarChar(100), payload.username)
+    .query(`
+      INSERT INTO dbo.TR_STOCK_SCHEDULE_RACK (
+        SCHEDULE_ID,
+        RACK_ID,
+        RACK_CODE,
+        RACK_NAME,
+        LOC_CODE,
+        STATUS,
+        USER_CREATED
+      )
+      SELECT
+        @scheduleId,
+        rack.ID,
+        rack.RACK_CODE,
+        rack.RACK_NAME,
+        rack.LOC_CODE,
+        'ACTIVE',
+        @username
+      FROM dbo.MST_RACK rack
+      INNER JOIN STRING_SPLIT(@rackIdCsv, ',') selected
+        ON TRY_CONVERT(bigint, selected.value) = rack.ID
+      WHERE rack.LOC_CODE = @locCode
+        AND rack.STATUS = 'ACTIVE';
+    `);
 }
 
 export async function listActiveSchedules(
@@ -174,12 +332,18 @@ export async function listActiveSchedules(
           stock_type_value: schedule.stockTypeValue,
           category_id: schedule.categoryId,
           status: schedule.status,
-          total_rack: 3,
+          total_rack: mockScheduleRacks.filter(
+            (scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE",
+          ).length,
           submitted_rack_count: new Set(
             mockScanSubmissions
               .filter((scan) => scan.scheduleId === schedule.id)
               .map((scan) => scan.rackId),
           ).size,
+          rack_ids: mockScheduleRacks
+            .filter((scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE")
+            .map((scope) => scope.rackId)
+            .join(","),
         }),
       );
     return Promise.all(schedules);
@@ -207,16 +371,22 @@ export async function listActiveSchedules(
       s.STATUS AS status,
       (
         SELECT COUNT(*)
-        FROM dbo.MST_RACK r
-        WHERE r.LOC_CODE = s.LOC_CODE
-          AND r.STATUS = 'ACTIVE'
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
       ) AS total_rack,
       (
         SELECT COUNT(DISTINCT scan.RACK_ID)
         FROM dbo.TR_STOCK_TAKE_SCAN scan
         WHERE scan.SCHEDULE_ID = s.ID
           AND scan.SCAN_STATUS = 'SYNCED'
-      ) AS submitted_rack_count
+      ) AS submitted_rack_count,
+      (
+        SELECT STRING_AGG(CONVERT(varchar(30), scope.RACK_ID), ',')
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
+      ) AS rack_ids
     FROM dbo.TR_STOCK_SCHEDULE s
     INNER JOIN dbo.MST_STOCK_TYPE st ON st.ID = s.STOCK_TYPE_ID
     LEFT JOIN MasterData.dbo.MFLOCATION loc
@@ -249,12 +419,18 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
           stock_type_value: schedule.stockTypeValue,
           category_id: schedule.categoryId,
           status: schedule.status,
-          total_rack: 3,
+          total_rack: mockScheduleRacks.filter(
+            (scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE",
+          ).length,
           submitted_rack_count: new Set(
             mockScanSubmissions
               .filter((scan) => scan.scheduleId === schedule.id)
               .map((scan) => scan.rackId),
           ).size,
+          rack_ids: mockScheduleRacks
+            .filter((scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE")
+            .map((scope) => scope.rackId)
+            .join(","),
         }),
       );
     return Promise.all(schedules);
@@ -282,16 +458,22 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
       s.STATUS AS status,
       (
         SELECT COUNT(*)
-        FROM dbo.MST_RACK r
-        WHERE r.LOC_CODE = s.LOC_CODE
-          AND r.STATUS = 'ACTIVE'
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
       ) AS total_rack,
       (
         SELECT COUNT(DISTINCT scan.RACK_ID)
         FROM dbo.TR_STOCK_TAKE_SCAN scan
         WHERE scan.SCHEDULE_ID = s.ID
           AND scan.SCAN_STATUS = 'SYNCED'
-      ) AS submitted_rack_count
+      ) AS submitted_rack_count,
+      (
+        SELECT STRING_AGG(CONVERT(varchar(30), scope.RACK_ID), ',')
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
+      ) AS rack_ids
     FROM dbo.TR_STOCK_SCHEDULE s
     INNER JOIN dbo.MST_STOCK_TYPE st ON st.ID = s.STOCK_TYPE_ID
     LEFT JOIN MasterData.dbo.MFLOCATION loc
@@ -329,12 +511,14 @@ export async function createSchedule(
       categoryId: categoryValue(payload),
       status: payload.status,
     });
+    await applyMockScheduleRackScope(nextId, payload);
     const schedule = await listSchedules(payload.locCode);
     return schedule.find((item) => item.id === nextId)!;
   }
 
   const pool = await getSqlPool();
   const transaction = new sql.Transaction(pool);
+  let createdId: string | number | undefined;
   await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
   try {
     const result = await transaction
@@ -389,19 +573,21 @@ export async function createSchedule(
           @categoryId
         );
       `);
-    await transaction.commit();
     const created = result.recordset[0];
     if (!created) {
       throw new AppError(500, "Schedule gagal dibuat.", "SCHEDULE_CREATE_FAILED");
     }
-    const schedules = await listSchedules(payload.locCode);
-    return schedules.find((schedule) => schedule.id === String(created.id))!;
+    createdId = created.id;
+    await applySqlScheduleRackScope(transaction, Number(created.id), payload);
+    await transaction.commit();
   } catch (error) {
     await transaction.rollback();
     throw error;
   }
-}
 
+  const schedules = await listSchedules(payload.locCode);
+  return schedules.find((schedule) => schedule.id === String(createdId))!;
+}
 export async function updateSchedule(
   scheduleId: number,
   payload: ScheduleMutatePayload,
@@ -428,6 +614,7 @@ export async function updateSchedule(
     schedule.stockTypeValue = payload.stockType;
     schedule.categoryId = categoryValue(payload);
     schedule.status = payload.status;
+    await applyMockScheduleRackScope(String(scheduleId), payload);
     const schedules = await listSchedules(payload.locCode);
     return schedules.find((item) => item.id === String(scheduleId))!;
   }
@@ -456,36 +643,45 @@ export async function updateSchedule(
     throw new AppError(409, "Schedule sudah memiliki data scan.", "SCHEDULE_HAS_SCANS");
   }
 
-  await pool
-    .request()
-    .input("scheduleId", sql.BigInt, scheduleId)
-    .input("locCode", sql.Char(4), payload.locCode)
-    .input("scheduleDesc", sql.NVarChar(250), payload.scheduleDesc)
-    .input("scheduleDate", sql.Date, payload.startDate)
-    .input("endDate", sql.Date, payload.endDate)
-    .input("startTime", sql.VarChar(19), combineDateTime(payload.startDate, payload.startTime))
-    .input("endTime", sql.VarChar(19), combineDateTime(payload.endDate, payload.endTime))
-    .input("stockTypeId", sql.SmallInt, stockTypeId(payload.stockType))
-    .input("stockTypeValue", sql.VarChar(50), payload.stockType)
-    .input("categoryId", sql.VarChar(sql.MAX), categoryValue(payload))
-    .input("status", sql.VarChar(20), payload.status)
-    .input("username", sql.VarChar(100), payload.username)
-    .query(`
-      UPDATE dbo.TR_STOCK_SCHEDULE
-      SET SCHEDULE_DESC = @scheduleDesc,
-          SCHEDULE_DATE = @scheduleDate,
-          END_DATE = @endDate,
-          START_TIME = CASE WHEN @startTime IS NULL THEN NULL ELSE CONVERT(datetime2, @startTime, 126) END,
-          END_TIME = CASE WHEN @endTime IS NULL THEN NULL ELSE CONVERT(datetime2, @endTime, 126) END,
-          STOCK_TYPE_ID = @stockTypeId,
-          STOCK_TYPE_VALUE = @stockTypeValue,
-          STATUS = @status,
-          CATEGORY_ID = @categoryId,
-          USER_MODIFIED = @username,
-          DATE_MODIFIED = SYSUTCDATETIME()
-      WHERE ID = @scheduleId
-        AND LOC_CODE = @locCode;
-    `);
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+  try {
+    await transaction
+      .request()
+      .input("scheduleId", sql.BigInt, scheduleId)
+      .input("locCode", sql.Char(4), payload.locCode)
+      .input("scheduleDesc", sql.NVarChar(250), payload.scheduleDesc)
+      .input("scheduleDate", sql.Date, payload.startDate)
+      .input("endDate", sql.Date, payload.endDate)
+      .input("startTime", sql.VarChar(19), combineDateTime(payload.startDate, payload.startTime))
+      .input("endTime", sql.VarChar(19), combineDateTime(payload.endDate, payload.endTime))
+      .input("stockTypeId", sql.SmallInt, stockTypeId(payload.stockType))
+      .input("stockTypeValue", sql.VarChar(50), payload.stockType)
+      .input("categoryId", sql.VarChar(sql.MAX), categoryValue(payload))
+      .input("status", sql.VarChar(20), payload.status)
+      .input("username", sql.VarChar(100), payload.username)
+      .query(`
+        UPDATE dbo.TR_STOCK_SCHEDULE
+        SET SCHEDULE_DESC = @scheduleDesc,
+            SCHEDULE_DATE = @scheduleDate,
+            END_DATE = @endDate,
+            START_TIME = CASE WHEN @startTime IS NULL THEN NULL ELSE CONVERT(datetime2, @startTime, 126) END,
+            END_TIME = CASE WHEN @endTime IS NULL THEN NULL ELSE CONVERT(datetime2, @endTime, 126) END,
+            STOCK_TYPE_ID = @stockTypeId,
+            STOCK_TYPE_VALUE = @stockTypeValue,
+            STATUS = @status,
+            CATEGORY_ID = @categoryId,
+            USER_MODIFIED = @username,
+            DATE_MODIFIED = SYSUTCDATETIME()
+        WHERE ID = @scheduleId
+          AND LOC_CODE = @locCode;
+      `);
+    await applySqlScheduleRackScope(transaction, scheduleId, payload);
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 
   const schedules = await listSchedules(payload.locCode);
   return schedules.find((schedule) => schedule.id === String(scheduleId))!;

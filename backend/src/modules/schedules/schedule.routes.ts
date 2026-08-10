@@ -26,6 +26,7 @@ const schedulePayloadSchema = z
     endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
     stockType: z.enum(["ALL", "PARTIAL"]),
     categoryIds: z.array(z.string().trim().min(1)).default([]),
+    rackIds: z.array(z.string().trim().regex(/^\d+$/)).default([]),
     status: z.enum(["DRAFT", "OPEN"]).default("OPEN"),
   })
   .superRefine((value, context) => {
@@ -34,6 +35,13 @@ const schedulePayloadSchema = z
         code: "custom",
         path: ["categoryIds"],
         message: "Schedule PARTIAL wajib memilih category.",
+      });
+    }
+    if (value.stockType === "PARTIAL" && value.rackIds.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["rackIds"],
+        message: "Schedule PARTIAL wajib memilih rack.",
       });
     }
     if (value.endDate < value.startDate) {

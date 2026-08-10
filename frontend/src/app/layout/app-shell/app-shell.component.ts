@@ -22,6 +22,7 @@ export class AppShellComponent {
   readonly navigation: NavigationItem[] = [
     { label: 'Dashboard', icon: 'space_dashboard', route: '/dashboard' },
     { label: 'Schedule', icon: 'event_note', route: '/schedules' },
+    { label: 'Master Rack', icon: 'inventory_2', route: '/master-racks' },
     { label: 'Monitoring Rack', icon: 'grid_view', route: '/schedules', hint: 'Pilih schedule' },
     { label: 'Data Scan', icon: 'barcode_scanner', hint: 'Tahap berikutnya' },
     { label: 'Rekonsiliasi', icon: 'difference', hint: 'Tahap berikutnya' },

@@ -19,6 +19,7 @@ export interface ActiveSchedule {
     value: string | null;
   };
   categoryIds: string[];
+  rackIds: string[];
   categories: Array<{
     id: string;
     name: string;
@@ -60,6 +61,7 @@ export interface ScheduleMutatePayload {
   endTime: string | null;
   stockType: ScheduleStockType;
   categoryIds: string[];
+  rackIds: string[];
   status: EditableScheduleStatus;
   username: string;
 }

@@ -8,9 +8,13 @@ import {
   DashboardSnapshot,
   Location,
   PrintRackResponse,
+  RackBulkCreatePayload,
+  RackCreatePayload,
   RackFinalQtyPayload,
   RackListResponse,
+  RackMaster,
   RackScanListResponse,
+  ScheduleRackScopeResponse,
   SchedulePayload,
   UserOption
 } from '../models/api.models';
@@ -52,6 +56,31 @@ export class StockTakeApiService {
   getLocations(): Observable<Location[]> {
     return this.http
       .get<ApiEnvelope<Location[]>>('/api/stock-take/locations')
+      .pipe(map(({ data }) => data));
+  }
+
+  getRackMasters(locCode?: string): Observable<RackMaster[]> {
+    const options = locCode ? { params: { locCode } } : undefined;
+    return this.http
+      .get<ApiEnvelope<RackMaster[]>>('/api/stock-take/racks', options)
+      .pipe(map(({ data }) => data));
+  }
+
+  createRack(payload: RackCreatePayload): Observable<RackMaster> {
+    return this.http
+      .post<ApiEnvelope<RackMaster>>('/api/stock-take/racks', payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  createRacksBulk(payload: RackBulkCreatePayload): Observable<RackMaster[]> {
+    return this.http
+      .post<ApiEnvelope<RackMaster[]>>('/api/stock-take/racks/bulk', payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  addRackToSchedule(scheduleId: string, rackId: string): Observable<ScheduleRackScopeResponse> {
+    return this.http
+      .post<ApiEnvelope<ScheduleRackScopeResponse>>(`/api/stock-take/schedules/${scheduleId}/racks/scope`, { rackId })
       .pipe(map(({ data }) => data));
   }
 

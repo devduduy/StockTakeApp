@@ -153,11 +153,13 @@ describe("Hero Stock Take API (mock mode)", () => {
         endTime: null,
         stockType: "PARTIAL",
         categoryIds: ["40601"],
+        rackIds: ["1", "2"],
         status: "OPEN",
       });
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.data.stockType.name).toBe("PARTIAL");
     expect(createResponse.body.data.categoryIds).toEqual(["40601"]);
+    expect(createResponse.body.data.rackIds).toEqual(["1", "2"]);
 
     const scheduleId = createResponse.body.data.id as string;
     const updateResponse = await request(app)
@@ -172,6 +174,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         endTime: "17:00",
         stockType: "ALL",
         categoryIds: [],
+        rackIds: [],
         status: "DRAFT",
       });
     expect(updateResponse.status).toBe(200);

@@ -1,0 +1,245 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">MASTER DATA</p>
+    <h1>Master Rack</h1>
+    <p>Kelola nomor dan nama rack per lokasi sebagai sumber pilihan untuk schedule stock take.</p>
+  </div>
+  <div class="page-heading__actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+      <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
+      Perbarui
+    </button>
+    <button class="primary-button" type="button" (click)="openCreateForm()">
+      <span class="material-symbols-outlined">add</span>
+      Tambah Rack
+    </button>
+  </div>
+</section>
+
+@if (successMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Berhasil</strong><span>{{ successMessage() }}</span></div>
+    <button type="button" (click)="successMessage.set('')">Tutup</button>
+  </div>
+}
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">error</span>
+    <div><strong>Master rack bermasalah</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="refresh()">Coba lagi</button>
+  </div>
+}
+
+<section class="rack-metrics">
+  <article>
+    <span class="material-symbols-outlined">inventory_2</span>
+    <div><strong>{{ racks().length | number }}</strong><small>Total rack</small></div>
+  </article>
+  <article>
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>{{ activeCount() | number }}</strong><small>Rack aktif</small></div>
+  </article>
+  <article>
+    <span class="material-symbols-outlined">block</span>
+    <div><strong>{{ inactiveCount() | number }}</strong><small>Rack inactive</small></div>
+  </article>
+</section>
+
+<section class="content-card master-rack-panel">
+  <div class="rack-toolbar">
+    <label class="search-control">
+      <span class="material-symbols-outlined">search</span>
+      <input
+        type="search"
+        placeholder="Cari kode rack, nama rack, atau lokasi..."
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+      />
+      @if (search()) {
+        <button type="button" aria-label="Hapus pencarian" (click)="search.set('')">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      }
+    </label>
+
+    @if (locations().length > 1) {
+      <label class="location-filter">
+        <span>Lokasi</span>
+        <select [value]="locationFilter()" (change)="setLocationFilter($any($event.target).value)">
+          <option value="">Semua lokasi</option>
+          @for (location of locations(); track location.code) {
+            <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+          }
+        </select>
+      </label>
+    }
+
+    <div class="segmented-control">
+      <button type="button" [class.active]="statusFilter() === 'ALL'" (click)="setStatusFilter('ALL')">Semua</button>
+      <button type="button" [class.active]="statusFilter() === 'ACTIVE'" (click)="setStatusFilter('ACTIVE')">Aktif</button>
+      <button type="button" [class.active]="statusFilter() === 'INACTIVE'" (click)="setStatusFilter('INACTIVE')">Inactive</button>
+    </div>
+    <span class="result-count">{{ filteredRacks().length | number }} rack</span>
+  </div>
+
+  @if (loading()) {
+    <div class="rack-list">
+      @for (item of [1,2,3,4,5]; track item) { <div class="skeleton skeleton--scan"></div> }
+    </div>
+  } @else {
+    <div class="rack-list" role="list">
+      @for (rack of filteredRacks(); track rack.id) {
+        <article class="rack-card" role="listitem">
+          <div class="rack-card__icon">
+            <span class="material-symbols-outlined">shelves</span>
+          </div>
+          <div class="rack-card__main">
+            <div>
+              <strong>{{ rack.rackCode }}</strong>
+              <span class="rack-status" [class.rack-status--inactive]="rack.status !== 'ACTIVE'">{{ rack.status }}</span>
+            </div>
+            <p>{{ rack.rackName }}</p>
+          </div>
+          <div class="rack-card__location">
+            <small>Lokasi</small>
+            <span>{{ locationName(rack.locCode) }} ({{ rack.locCode }})</span>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state compact">
+          <span class="material-symbols-outlined">inventory_2</span>
+          <h3>Rack tidak ditemukan</h3>
+          <p>Ubah filter pencarian atau tambahkan rack baru untuk lokasi ini.</p>
+        </div>
+      }
+    </div>
+  }
+</section>
+
+@if (formOpen()) {
+  <button class="modal-backdrop" type="button" aria-label="Tutup form rack" (click)="closeForm()"></button>
+  <section class="rack-modal" role="dialog" aria-modal="true" aria-labelledby="rack-modal-title">
+    <form [formGroup]="rackForm" (ngSubmit)="createMode() === 'SINGLE' ? createRack() : createBulkRacks()" novalidate>
+      <header>
+        <div>
+          <p class="eyebrow">MASTER RACK</p>
+          <h2 id="rack-modal-title">Tambah Rack</h2>
+          <span>Rack akan tersimpan di master dan bisa dipakai oleh schedule yang belum close.</span>
+        </div>
+        <button type="button" aria-label="Tutup" (click)="closeForm()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      <div class="rack-modal__mode segmented-control" aria-label="Mode tambah rack">
+        <button type="button" [class.active]="createMode() === 'SINGLE'" (click)="setCreateMode('SINGLE')">Manual</button>
+        <button type="button" [class.active]="createMode() === 'BULK'" (click)="setCreateMode('BULK')">Generate Banyak</button>
+      </div>
+
+      @if (formErrorMessage()) {
+        <div class="form-alert" role="alert">
+          <span class="material-symbols-outlined">error</span>
+          <strong>{{ formErrorMessage() }}</strong>
+        </div>
+      }
+
+      @if (createMode() === 'SINGLE') {
+      <div class="rack-modal__body">
+        <label class="form-field">
+          <span>Lokasi <b>*</b></span>
+          <select formControlName="locCode">
+            @for (location of locations(); track location.code) {
+              <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          <span>Kode Rack <b>*</b></span>
+          <input formControlName="rackCode" type="text" placeholder="Contoh: RCK-FR-001" (blur)="normalizeSingleRackCode()" />
+          @if (rackForm.controls.rackCode.touched && rackForm.controls.rackCode.invalid) {
+            <small>Format wajib RCK-XX-000, contoh RCK-FR-001.</small>
+          }
+        </label>
+        <label class="form-field">
+          <span>Nama Rack <b>*</b></span>
+          <input formControlName="rackName" type="text" placeholder="Contoh: Rack Fresh A1-01" />
+          @if (rackForm.controls.rackName.touched && rackForm.controls.rackName.invalid) {
+            <small>Nama rack wajib diisi minimal 2 karakter.</small>
+          }
+        </label>
+        <label class="form-field">
+          <span>Status <b>*</b></span>
+          <select formControlName="status">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </label>
+      </div>
+      } @else {
+      <div class="rack-modal__body rack-modal__body--bulk" [formGroup]="bulkRackForm">
+        <label class="form-field">
+          <span>Lokasi <b>*</b></span>
+          <select formControlName="locCode">
+            @for (location of locations(); track location.code) {
+              <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          <span>Kode Huruf <b>*</b></span>
+          <input formControlName="letterCode" type="text" maxlength="2" placeholder="Contoh: FR" (blur)="normalizeBulkLetterCode()" />
+          @if (bulkRackForm.controls.letterCode.touched && bulkRackForm.controls.letterCode.invalid) {
+            <small>Isi tepat 2 huruf. Hasil: RCK-FR-001.</small>
+          }
+        </label>
+        <label class="form-field">
+          <span>Sequence Awal <b>*</b></span>
+          <input formControlName="startSequence" type="number" min="1" max="999" placeholder="1" />
+        </label>
+        <label class="form-field">
+          <span>Jumlah Rack <b>*</b></span>
+          <input formControlName="count" type="number" min="1" max="200" placeholder="10" />
+          @if (bulkRackForm.controls.count.touched && bulkRackForm.controls.count.invalid) {
+            <small>Jumlah generate 1 sampai 200 rack.</small>
+          }
+        </label>
+        <label class="form-field">
+          <span>Prefix Nama Rack <b>*</b></span>
+          <input formControlName="rackNamePrefix" type="text" placeholder="Contoh: Rack Fresh" />
+        </label>
+        <label class="form-field">
+          <span>Status <b>*</b></span>
+          <select formControlName="status">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </label>
+        <div class="bulk-preview">
+          <span>Preview kode</span>
+          <div>
+            @for (code of bulkPreviewCodes(); track code) {
+              <strong>{{ code }}</strong>
+            } @empty {
+              <small>Isi kode huruf dan sequence untuk melihat preview.</small>
+            }
+            @if (bulkRackForm.controls.count.value > bulkPreviewCodes().length && bulkPreviewCodes().length > 0) {
+              <small>+{{ bulkRackForm.controls.count.value - bulkPreviewCodes().length }} kode berikutnya</small>
+            }
+          </div>
+        </div>
+      </div>
+      }
+
+      <footer>
+        <button class="secondary-button" type="button" (click)="closeForm()" [disabled]="saving()">Batal</button>
+        <button class="primary-button" type="submit" [disabled]="saving()">
+          @if (saving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+          @else if (createMode() === 'BULK') { <span class="material-symbols-outlined">auto_awesome</span> Generate Rack }
+          @else { <span class="material-symbols-outlined">save</span> Simpan Rack }
+        </button>
+      </footer>
+    </form>
+  </section>
+}

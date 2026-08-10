@@ -5,7 +5,7 @@ import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { isInventoryControl } from "../../shared/roles.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
-import { findRackById } from "../racks/rack.repository.js";
+import { findRackById, isRackInScheduleScope } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
 import { confirmRackScans, isRackPrinted, listRackScans, printRackScans, rejectRackScans, submitRackScans, updateRackFinalQuantities } from "./scan.repository.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
@@ -65,6 +65,19 @@ function assertCanPrint(roleCode: string | undefined): void {
   }
 }
 
+async function assertRackInScheduleScope(
+  scheduleId: number,
+  rackId: number,
+): Promise<void> {
+  if (!(await isRackInScheduleScope(scheduleId, rackId))) {
+    throw new AppError(
+      422,
+      "Rack tidak termasuk scope schedule ini.",
+      "RACK_NOT_IN_SCHEDULE_SCOPE",
+    );
+  }
+}
+
 scanRouter.get(
   "/:scheduleId/racks/:rackId/scans",
   authenticate,
@@ -91,6 +104,7 @@ scanRouter.get(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
 
     const scans = await listRackScans(scheduleId, rackId);
     response.status(200).json({ data: { scans } });
@@ -134,6 +148,7 @@ scanRouter.post(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
     if (await isRackPrinted(scheduleId, rackId)) {
       throw new AppError(
         409,
@@ -214,6 +229,7 @@ scanRouter.post(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
 
     const result = await printRackScans({
       scheduleId,
@@ -259,6 +275,7 @@ scanRouter.patch(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
     if (!(await isRackPrinted(scheduleId, rackId))) {
       throw new AppError(
         409,
@@ -306,6 +323,7 @@ scanRouter.post(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
 
     const scans = await confirmRackScans({
       scheduleId,
@@ -345,6 +363,7 @@ scanRouter.post(
         "RACK_LOCATION_MISMATCH",
       );
     }
+    await assertRackInScheduleScope(scheduleId, rackId);
 
     await rejectRackScans({
       scheduleId,

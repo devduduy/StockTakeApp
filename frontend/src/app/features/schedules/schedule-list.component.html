@@ -157,6 +157,7 @@
           <label class="form-field">
             <span>Lokasi <b>*</b></span>
             <select formControlName="locCode">
+              <option value="" disabled>Pilih lokasi terlebih dahulu</option>
               @for (location of locations(); track location.code) {
                 <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
               }
@@ -190,23 +191,152 @@
           </label>
         </div>
 
-        <section class="stock-type-panel">
+        <section class="stock-type-panel" [class.stock-type-panel--disabled]="!locationReady()">
           <span>Tipe Stock Take <b>*</b></span>
+          @if (!locationReady()) {
+            <div class="flow-note">
+              <span class="material-symbols-outlined">lock</span>
+              Pilih lokasi dulu supaya pilihan tipe, category, dan rack scope sesuai lokasi.
+            </div>
+          }
           <div class="stock-type-toggle">
-            <label [class.active]="scheduleForm.controls.stockType.value === 'ALL'">
-              <input type="radio" formControlName="stockType" value="ALL" />
+            <label [class.active]="scheduleForm.controls.stockType.value === 'ALL'" [class.disabled]="!locationReady()">
+              <input type="radio" formControlName="stockType" value="ALL" [disabled]="!locationReady()" />
               <strong>ALL</strong>
               <small>Semua kategori boleh discan.</small>
             </label>
-            <label [class.active]="scheduleForm.controls.stockType.value === 'PARTIAL'">
-              <input type="radio" formControlName="stockType" value="PARTIAL" />
+            <label [class.active]="scheduleForm.controls.stockType.value === 'PARTIAL'" [class.disabled]="!locationReady()">
+              <input type="radio" formControlName="stockType" value="PARTIAL" [disabled]="!locationReady()" />
               <strong>PARTIAL</strong>
               <small>Hanya category terpilih yang valid.</small>
             </label>
           </div>
         </section>
 
-        @if (scheduleForm.controls.stockType.value === 'PARTIAL') {
+        @if (locationReady()) {
+        <section class="rack-scope-panel">
+          <div class="rack-scope-panel__header">
+            <div>
+              <strong>Rack Scope <b>*</b></strong>
+              @if (scheduleForm.controls.stockType.value === 'ALL') {
+                <span>Semua rack aktif di {{ locationName(scheduleForm.controls.locCode.value) }} otomatis dipakai.</span>
+              } @else {
+                <span>{{ selectedRackIds().length }} dari {{ rackMasters().length }} rack dipilih untuk schedule ini.</span>
+              }
+            </div>
+            <button class="secondary-button" type="button" (click)="openRackForm()">
+              <span class="material-symbols-outlined">add</span>
+              Tambah Rack
+            </button>
+          </div>
+
+          @if (rackFormOpen()) {
+            <div class="rack-create-box" [formGroup]="rackForm">
+              @if (rackFormErrorMessage()) {
+                <div class="rack-form-alert" role="alert">
+                  <span class="material-symbols-outlined">error</span>
+                  <strong>{{ rackFormErrorMessage() }}</strong>
+                </div>
+              }
+              <label class="form-field">
+                <span>Kode Rack <b>*</b></span>
+                <input formControlName="rackCode" type="text" placeholder="Contoh: RCK-FR-001" (blur)="normalizeRackCode()" />
+                @if (rackForm.controls.rackCode.touched && rackForm.controls.rackCode.invalid) {
+                  <small>Format wajib RCK-XX-000, contoh RCK-FR-001.</small>
+                }
+              </label>
+              <label class="form-field">
+                <span>Nama Rack <b>*</b></span>
+                <input formControlName="rackName" type="text" placeholder="Contoh: Rack Fresh A1-01" />
+                @if (rackForm.controls.rackName.touched && rackForm.controls.rackName.invalid) {
+                  <small>Nama rack wajib diisi minimal 2 karakter.</small>
+                }
+              </label>
+              <label class="form-field">
+                <span>Status <b>*</b></span>
+                <select formControlName="status">
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </label>
+              <div class="rack-create-box__actions">
+                <button class="secondary-button" type="button" (click)="closeRackForm()" [disabled]="rackSaving()">Batal</button>
+                <button class="primary-button" type="button" (click)="createRack()" [disabled]="rackSaving()">
+                  @if (rackSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+                  @else { <span class="material-symbols-outlined">save</span> Simpan Rack }
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (scheduleForm.controls.stockType.value === 'ALL') {
+            <div class="rack-auto-scope">
+              <span class="material-symbols-outlined">select_all</span>
+              <div>
+                <strong>{{ rackMasters().length | number }} rack aktif akan masuk schedule.</strong>
+                <small>Kalau stock take hanya area tertentu, pilih tipe PARTIAL lalu tentukan rack yang ikut.</small>
+              </div>
+            </div>
+          } @else {
+            @if (selectedRackMasters().length > 0) {
+              <div class="selected-rack-list" aria-label="Rack terpilih">
+                @for (rack of selectedRackMasters(); track rack.id) {
+                  <button type="button" (click)="removeRack(rack.id)">
+                    <span>{{ rack.rackCode }}</span>
+                    {{ rack.rackName }}
+                    <i class="material-symbols-outlined">close</i>
+                  </button>
+                }
+              </div>
+            }
+
+            <div class="rack-scope-toolbar">
+              <label class="search-control rack-search">
+                <span class="material-symbols-outlined">search</span>
+                <input
+                  type="search"
+                  placeholder="Cari kode atau nama rack..."
+                  [value]="rackSearch()"
+                  (input)="rackSearch.set($any($event.target).value)"
+                />
+                @if (rackSearch()) {
+                  <button type="button" aria-label="Hapus pencarian rack" (click)="rackSearch.set('')">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                }
+              </label>
+              <button class="secondary-button" type="button" (click)="toggleAllFilteredRacks(true)">Pilih tampil</button>
+              <button class="secondary-button" type="button" (click)="clearRacks()">Kosongkan</button>
+            </div>
+
+            <div class="rack-options">
+              @if (racksLoading()) {
+                @for (item of [1,2,3]; track item) { <div class="skeleton skeleton--scan"></div> }
+              } @else {
+                @for (rack of filteredRackMasters(); track rack.id) {
+                  <label>
+                    <input
+                      type="checkbox"
+                      [checked]="rackChecked(rack.id)"
+                      (change)="toggleRack(rack.id, $any($event.target).checked)"
+                    />
+                    <span>{{ rack.rackCode }}</span>
+                    <strong>{{ rack.rackName }}</strong>
+                  </label>
+                } @empty {
+                  <div class="empty-state compact">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    <h3>Rack tidak ditemukan</h3>
+                    <p>Tambah rack baru atau ubah pencarian.</p>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </section>
+        }
+
+        @if (locationReady() && scheduleForm.controls.stockType.value === 'PARTIAL') {
           <section class="category-panel">
             <div class="category-panel__header">
               <div>

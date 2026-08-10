@@ -26,6 +26,12 @@ export const routes: Routes = [
           import('./features/schedules/schedule-list.component').then((component) => component.ScheduleListComponent)
       },
       {
+        path: 'master-racks',
+        title: 'Master Rack | Hero Stock Take',
+        loadComponent: () =>
+          import('./features/master-racks/master-rack.component').then((component) => component.MasterRackComponent)
+      },
+      {
         path: 'schedules/:scheduleId/racks',
         title: 'Monitoring Rack | Hero Stock Take',
         loadComponent: () =>

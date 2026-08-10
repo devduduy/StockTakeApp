@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, EMPTY, forkJoin, interval, of, switchMap, tap } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, forkJoin, interval, of, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
-import { ActiveSchedule, Category, Location, SchedulePayload } from '../../core/models/api.models';
+import { ActiveSchedule, Category, Location, RackMaster, SchedulePayload } from '../../core/models/api.models';
 
 interface CategoryGroup {
   divisionId: string;
@@ -33,18 +33,24 @@ export class ScheduleListComponent {
   readonly schedules = signal<ActiveSchedule[]>([]);
   readonly categories = signal<Category[]>([]);
   readonly locations = signal<Location[]>([]);
+  readonly rackMasters = signal<RackMaster[]>([]);
   readonly loading = signal(true);
+  readonly racksLoading = signal(false);
   readonly refreshing = signal(false);
   readonly saving = signal(false);
+  readonly rackSaving = signal(false);
   readonly errorMessage = signal('');
   readonly formErrorMessage = signal('');
+  readonly rackFormErrorMessage = signal('');
   readonly successMessage = signal('');
   readonly search = signal('');
   readonly categorySearch = signal('');
+  readonly rackSearch = signal('');
   readonly expandedDivisions = signal<Set<string>>(new Set());
   readonly typeFilter = signal<'ALL' | 'PARTIAL' | ''>('');
   readonly formOpen = signal(false);
   readonly editingSchedule = signal<ActiveSchedule | null>(null);
+  readonly rackFormOpen = signal(false);
   readonly scheduleForm = this.fb.nonNullable.group({
     scheduleDesc: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(250)]],
     locCode: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{4}$/)]],
@@ -54,7 +60,13 @@ export class ScheduleListComponent {
     endTime: [''],
     stockType: ['ALL' as 'ALL' | 'PARTIAL', [Validators.required]],
     status: ['OPEN' as 'DRAFT' | 'OPEN', [Validators.required]],
-    categoryIds: this.fb.nonNullable.control<string[]>([])
+    categoryIds: this.fb.nonNullable.control<string[]>([]),
+    rackIds: this.fb.nonNullable.control<string[]>([])
+  });
+  readonly rackForm = this.fb.nonNullable.group({
+    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
+    rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+    status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
   });
   readonly filteredSchedules = computed(() => {
     const keyword = this.search().trim().toLowerCase();
@@ -102,6 +114,16 @@ export class ScheduleListComponent {
     }
     return [...grouped.values()];
   });
+  readonly filteredRackMasters = computed(() => {
+    const keyword = this.rackSearch().trim().toLowerCase();
+    return this.rackMasters()
+      .filter((rack) => rack.status === 'ACTIVE')
+      .filter((rack) => !keyword || [
+        rack.rackCode,
+        rack.rackName,
+        rack.locCode
+      ].some((value) => value.toLowerCase().includes(keyword)));
+  });
 
   constructor() {
     interval(30_000)
@@ -120,8 +142,20 @@ export class ScheduleListComponent {
         this.categories.set(categories);
         this.locations.set(locations);
         this.expandedDivisions.set(new Set(categories.slice(0, 1).map((category) => category.division.id)));
-        if (locations[0]) this.scheduleForm.controls.locCode.setValue(locations[0].code);
+        if (locations.length === 1) this.scheduleForm.controls.locCode.setValue(locations[0].code);
       });
+
+    this.scheduleForm.controls.locCode.valueChanges
+      .pipe(
+        distinctUntilChanged(),
+        tap(() => {
+          this.scheduleForm.controls.rackIds.setValue([]);
+          this.rackSearch.set('');
+          this.loadRackMasters();
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   refresh(): void {
@@ -134,9 +168,12 @@ export class ScheduleListComponent {
 
   openCreateForm(): void {
     const today = new Date().toISOString().slice(0, 10);
-    const location = this.locations()[0];
+    const location = this.locations().length === 1 ? this.locations()[0] : null;
     this.editingSchedule.set(null);
     this.formErrorMessage.set('');
+    this.rackSearch.set('');
+    this.rackFormErrorMessage.set('');
+    this.rackFormOpen.set(false);
     this.scheduleForm.reset({
       scheduleDesc: '',
       locCode: location?.code ?? '',
@@ -146,14 +183,19 @@ export class ScheduleListComponent {
       endTime: '',
       stockType: 'ALL',
       status: 'OPEN',
-      categoryIds: []
+      categoryIds: [],
+      rackIds: []
     });
+    this.loadRackMasters();
     this.formOpen.set(true);
   }
 
   openEditForm(schedule: ActiveSchedule): void {
     this.editingSchedule.set(schedule);
     this.formErrorMessage.set('');
+    this.rackSearch.set('');
+    this.rackFormErrorMessage.set('');
+    this.rackFormOpen.set(false);
     this.scheduleForm.reset({
       scheduleDesc: schedule.scheduleDesc,
       locCode: schedule.locCode,
@@ -163,8 +205,11 @@ export class ScheduleListComponent {
       endTime: this.timeValue(schedule.endTime),
       stockType: this.stockTypeLabel(schedule),
       status: schedule.status === 'DRAFT' ? 'DRAFT' : 'OPEN',
-      categoryIds: [...schedule.categoryIds]
+      categoryIds: [...schedule.categoryIds],
+      rackIds: [...schedule.rackIds]
     });
+    this.scheduleForm.controls.rackIds.setValue([...schedule.rackIds]);
+    this.loadRackMasters();
     this.formOpen.set(true);
   }
 
@@ -174,6 +219,19 @@ export class ScheduleListComponent {
 
   selectedCategoryIds(): string[] {
     return this.scheduleForm.controls.categoryIds.value;
+  }
+
+  locationReady(): boolean {
+    return this.scheduleForm.controls.locCode.valid && Boolean(this.scheduleForm.controls.locCode.value);
+  }
+
+  selectedRackIds(): string[] {
+    return this.scheduleForm.controls.rackIds.value;
+  }
+
+  selectedRackMasters(): RackMaster[] {
+    const selected = new Set(this.selectedRackIds());
+    return this.rackMasters().filter((rack) => selected.has(rack.id));
   }
 
   selectedCategories(): Category[] {
@@ -226,6 +284,98 @@ export class ScheduleListComponent {
     this.toggleCategory(categoryId, false);
   }
 
+  rackChecked(rackId: string): boolean {
+    return this.selectedRackIds().includes(rackId);
+  }
+
+  toggleRack(rackId: string, checked: boolean): void {
+    const current = new Set(this.selectedRackIds());
+    checked ? current.add(rackId) : current.delete(rackId);
+    this.scheduleForm.controls.rackIds.setValue([...current]);
+    this.scheduleForm.controls.rackIds.markAsDirty();
+  }
+
+  toggleAllFilteredRacks(checked: boolean): void {
+    const current = new Set(this.selectedRackIds());
+    for (const rack of this.filteredRackMasters()) {
+      checked ? current.add(rack.id) : current.delete(rack.id);
+    }
+    this.scheduleForm.controls.rackIds.setValue([...current]);
+    this.scheduleForm.controls.rackIds.markAsDirty();
+  }
+
+  clearRacks(): void {
+    this.scheduleForm.controls.rackIds.setValue([]);
+  }
+
+  removeRack(rackId: string): void {
+    this.toggleRack(rackId, false);
+  }
+
+  openRackForm(): void {
+    if (!this.locationReady()) {
+      this.formErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menambah rack.');
+      return;
+    }
+    this.rackFormErrorMessage.set('');
+    this.rackForm.reset({
+      rackCode: '',
+      rackName: '',
+      status: 'ACTIVE'
+    });
+    this.rackFormOpen.set(true);
+  }
+
+  closeRackForm(): void {
+    if (!this.rackSaving()) this.rackFormOpen.set(false);
+  }
+
+  createRack(): void {
+    if (!this.locationReady()) {
+      this.rackFormErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menambah rack.');
+      return;
+    }
+    this.normalizeRackCode();
+    if (this.rackForm.invalid || this.rackSaving()) {
+      this.rackForm.markAllAsTouched();
+      return;
+    }
+    const locCode = this.scheduleForm.controls.locCode.value;
+    const raw = this.rackForm.getRawValue();
+    this.rackSaving.set(true);
+    this.rackFormErrorMessage.set('');
+    this.api.createRack({
+      rackCode: raw.rackCode.trim(),
+      rackName: raw.rackName.trim(),
+      locCode,
+      status: raw.status
+    })
+      .pipe(
+        switchMap((rack) => {
+          if (this.scheduleForm.controls.stockType.value === 'PARTIAL') {
+            this.toggleRack(rack.id, true);
+          }
+          return this.fetchRackMasters(locCode);
+        }),
+        tap(() => {
+          this.rackSaving.set(false);
+          this.rackFormOpen.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.rackFormErrorMessage.set(apiErrorMessage(error, 'Rack gagal dibuat.'));
+          this.rackSaving.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  normalizeRackCode(): void {
+    const value = this.rackForm.controls.rackCode.value.trim().toUpperCase();
+    this.rackForm.controls.rackCode.setValue(value);
+  }
+
   divisionCategories(group: CategoryGroup): Category[] {
     return group.departments.flatMap((department) => department.categories);
   }
@@ -252,6 +402,10 @@ export class ScheduleListComponent {
     }
     if (payload.stockType === 'PARTIAL' && payload.categoryIds.length === 0) {
       this.formErrorMessage.set('Pilih minimal satu category untuk schedule PARTIAL.');
+      return;
+    }
+    if (payload.stockType === 'PARTIAL' && payload.rackIds.length === 0) {
+      this.formErrorMessage.set('Pilih minimal satu rack untuk schedule PARTIAL.');
       return;
     }
     this.saving.set(true);
@@ -315,6 +469,32 @@ export class ScheduleListComponent {
     );
   }
 
+  private loadRackMasters(): void {
+    this.fetchRackMasters(this.scheduleForm.controls.locCode.value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
+  }
+
+  private fetchRackMasters(locCode: string) {
+    if (!locCode) {
+      this.rackMasters.set([]);
+      return of([]);
+    }
+    this.racksLoading.set(true);
+    return this.api.getRackMasters(locCode).pipe(
+      tap((racks) => {
+        this.rackMasters.set(racks);
+        this.racksLoading.set(false);
+      }),
+      catchError((error: unknown) => {
+        this.formErrorMessage.set(apiErrorMessage(error, 'Rack lokasi gagal dimuat.'));
+        this.rackMasters.set([]);
+        this.racksLoading.set(false);
+        return of([]);
+      })
+    );
+  }
+
   private schedulePayload(): SchedulePayload {
     const raw = this.scheduleForm.getRawValue();
     return {
@@ -326,6 +506,7 @@ export class ScheduleListComponent {
       endTime: raw.endTime || null,
       stockType: raw.stockType,
       categoryIds: raw.stockType === 'ALL' ? [] : raw.categoryIds,
+      rackIds: raw.stockType === 'ALL' ? [] : raw.rackIds,
       status: raw.status
     };
   }

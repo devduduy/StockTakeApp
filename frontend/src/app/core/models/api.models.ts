@@ -60,6 +60,7 @@ export interface SchedulePayload {
   endTime: string | null;
   stockType: 'ALL' | 'PARTIAL';
   categoryIds: string[];
+  rackIds: string[];
   status: 'DRAFT' | 'OPEN';
 }
 
@@ -81,6 +82,7 @@ export interface ActiveSchedule {
     value: string | null;
   };
   categoryIds: string[];
+  rackIds: string[];
   categories: Category[];
   status: string;
   progress: {
@@ -88,6 +90,35 @@ export interface ActiveSchedule {
     rackWithSubmittedScan: number;
     percentage: number;
   };
+}
+
+export interface RackMaster {
+  id: string;
+  rackCode: string;
+  rackName: string;
+  locCode: string;
+  status: string;
+}
+
+export interface RackCreatePayload {
+  rackCode: string;
+  rackName: string;
+  locCode: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface RackBulkCreatePayload {
+  letterCode: string;
+  startSequence: number;
+  count: number;
+  rackNamePrefix: string;
+  locCode: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface ScheduleRackScopeResponse {
+  added: boolean;
+  rack: RackMaster;
 }
 
 export interface ScheduleLocation {
