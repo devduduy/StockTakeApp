@@ -162,6 +162,9 @@
                 <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
               }
             </select>
+            @if (scheduleForm.controls.locCode.touched && scheduleForm.controls.locCode.invalid) {
+              <small>Lokasi wajib dipilih sebelum menentukan tipe stock take dan rack.</small>
+            }
           </label>
           <label class="form-field">
             <span>Status <b>*</b></span>
@@ -270,7 +273,7 @@
           }
 
           @if (scheduleForm.controls.stockType.value === 'ALL') {
-            <div class="rack-auto-scope">
+            <div class="rack-auto-scope" [class.rack-auto-scope--warning]="filteredActiveRackCount() === 0">
               <span class="material-symbols-outlined">{{ filteredActiveRackCount() === 0 ? 'warning' : 'select_all' }}</span>
               <div>
                 @if (filteredActiveRackCount() === 0) {

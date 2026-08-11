@@ -135,7 +135,7 @@
 
       <div class="rack-modal__mode segmented-control" aria-label="Mode tambah rack">
         <button type="button" [class.active]="createMode() === 'SINGLE'" (click)="setCreateMode('SINGLE')">Manual</button>
-        <button type="button" [class.active]="createMode() === 'BULK'" (click)="setCreateMode('BULK')">Generate Banyak</button>
+        <button type="button" [class.active]="createMode() === 'BULK'" (click)="setCreateMode('BULK')">Generate</button>
       </div>
 
       @if (formErrorMessage()) {

@@ -387,12 +387,13 @@ export class ScheduleListComponent {
   submitSchedule(): void {
     this.formErrorMessage.set('');
     this.successMessage.set('');
-    if (this.scheduleForm.invalid) {
-      this.scheduleForm.markAllAsTouched();
+    if (!this.locationReady()) {
+      this.scheduleForm.controls.locCode.markAsTouched();
+      this.formErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menyimpan schedule.');
       return;
     }
-    if (!this.locationReady()) {
-      this.formErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menyimpan schedule.');
+    if (this.scheduleForm.invalid) {
+      this.scheduleForm.markAllAsTouched();
       return;
     }
     const payload = this.schedulePayload();
