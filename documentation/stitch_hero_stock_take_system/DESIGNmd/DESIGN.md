@@ -195,3 +195,18 @@ The shape language is **Soft (0.25rem)**. This provides a professional, modern l
     - Swipe actions: Left-swipe to delete/remove, Right-swipe to edit/flag.
 - **Variance Indicators:**
     - Always pair a color (Red/Green) with a symbol (+/-) or icon (Up/Down arrow) to ensure accessibility for colorblind users.
+
+## Current Product Implementation Notes
+
+The implemented product now spans Android HHT and Angular web. Design decisions should keep both surfaces visually related while respecting their different usage contexts.
+
+- **Web navigation:** Use a collapsible hamburger/sidebar pattern. The main content must keep enough horizontal space for operational tables and rack monitoring.
+- **Schedule creation:** The form is intentionally sequential. Location must be selected before stock type, rack scope, and category scope become active.
+- **Master Rack:** Rack code creation must feel controlled and data-safe. The code pattern is `RCK-{two letters}-{three digits}`, for example `RCK-FR-001`. Bulk generation should show a preview before save.
+- **Validation placement:** Field and duplicate errors should appear inside the active form section, not as detached global dashboard alerts.
+- **Rack monitoring:** Dense item lists should prioritize scanning/recheck speed. Use compact rows, strong mono identifiers, and clear status chips.
+- **Recheck correction:** `SCAN_QTY` and `FINAL_QTY` should be visually distinct. Corrections must highlight variance without making the table noisy.
+- **Print output:** The print sheet is intentionally economical. Avoid decorative boxes that waste paper; keep labels readable and table headers black.
+- **Mobile HHT:** Keep primary scan input ready by default, with clean clear actions, editable quantity, and bottom-pinned submit behavior where relevant.
+
+Design polish should avoid generic AI-looking ornaments. Favor simple hierarchy, precise spacing, authentic operational language, and components that feel maintained by a retail systems team.

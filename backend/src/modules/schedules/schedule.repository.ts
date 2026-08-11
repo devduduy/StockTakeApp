@@ -174,6 +174,13 @@ async function applyMockScheduleRackScope(
   const racks = mockRacks.filter(
     (rack) => rackIds.includes(rack.id) && rack.locCode === payload.locCode && rack.status === "ACTIVE",
   );
+  if (racks.length === 0) {
+    throw new AppError(
+      400,
+      "Lokasi schedule belum memiliki rack aktif. Buat master rack terlebih dahulu.",
+      "RACK_SCOPE_REQUIRED",
+    );
+  }
   if (racks.length !== rackIds.length) {
     throw new AppError(
       400,
@@ -213,12 +220,12 @@ async function applySqlScheduleRackScope(
     `);
 
   if (payload.stockType === "ALL") {
-    await transaction
+    const insertResult = await transaction
       .request()
       .input("scheduleId", sql.BigInt, scheduleId)
       .input("locCode", sql.Char(4), payload.locCode)
       .input("username", sql.VarChar(100), payload.username)
-      .query(`
+      .query<{ inserted_rack_count: number }>(`
         INSERT INTO dbo.TR_STOCK_SCHEDULE_RACK (
           SCHEDULE_ID,
           RACK_ID,
@@ -239,7 +246,16 @@ async function applySqlScheduleRackScope(
         FROM dbo.MST_RACK rack
         WHERE rack.LOC_CODE = @locCode
           AND rack.STATUS = 'ACTIVE';
+
+        SELECT @@ROWCOUNT AS inserted_rack_count;
       `);
+    if (Number(insertResult.recordset[0]?.inserted_rack_count ?? 0) === 0) {
+      throw new AppError(
+        400,
+        "Lokasi schedule belum memiliki rack aktif. Buat master rack terlebih dahulu.",
+        "RACK_SCOPE_REQUIRED",
+      );
+    }
     return;
   }
 
@@ -494,6 +510,7 @@ export async function createSchedule(
     const nextId = String(Math.max(...mockSchedules.map((schedule) => Number(schedule.id)), 0) + 1);
     const sequence = String(mockSchedules.length + 1).padStart(4, "0");
     const scheduleNo = `ST/${payload.startDate.slice(0, 4)}/${payload.startDate.slice(5, 7)}/${sequence}`;
+    await applyMockScheduleRackScope(nextId, payload);
     mockSchedules.push({
       id: nextId,
       scheduleNo,
@@ -511,7 +528,6 @@ export async function createSchedule(
       categoryId: categoryValue(payload),
       status: payload.status,
     });
-    await applyMockScheduleRackScope(nextId, payload);
     const schedule = await listSchedules(payload.locCode);
     return schedule.find((item) => item.id === nextId)!;
   }

@@ -271,10 +271,15 @@
 
           @if (scheduleForm.controls.stockType.value === 'ALL') {
             <div class="rack-auto-scope">
-              <span class="material-symbols-outlined">select_all</span>
+              <span class="material-symbols-outlined">{{ filteredActiveRackCount() === 0 ? 'warning' : 'select_all' }}</span>
               <div>
-                <strong>{{ rackMasters().length | number }} rack aktif akan masuk schedule.</strong>
-                <small>Kalau stock take hanya area tertentu, pilih tipe PARTIAL lalu tentukan rack yang ikut.</small>
+                @if (filteredActiveRackCount() === 0) {
+                  <strong>Belum ada rack aktif di lokasi ini.</strong>
+                  <small>Buat Master Rack terlebih dahulu, lalu simpan schedule.</small>
+                } @else {
+                  <strong>{{ filteredActiveRackCount() | number }} rack aktif akan masuk schedule.</strong>
+                  <small>Kalau stock take hanya area tertentu, pilih tipe PARTIAL lalu tentukan rack yang ikut.</small>
+                }
               </div>
             </div>
           } @else {

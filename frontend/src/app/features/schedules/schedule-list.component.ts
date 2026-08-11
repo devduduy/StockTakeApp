@@ -391,6 +391,10 @@ export class ScheduleListComponent {
       this.scheduleForm.markAllAsTouched();
       return;
     }
+    if (!this.locationReady()) {
+      this.formErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menyimpan schedule.');
+      return;
+    }
     const payload = this.schedulePayload();
     if (payload.endDate < payload.startDate) {
       this.formErrorMessage.set('Tanggal selesai tidak boleh lebih kecil dari tanggal mulai.');
@@ -406,6 +410,10 @@ export class ScheduleListComponent {
     }
     if (payload.stockType === 'PARTIAL' && payload.rackIds.length === 0) {
       this.formErrorMessage.set('Pilih minimal satu rack untuk schedule PARTIAL.');
+      return;
+    }
+    if (payload.stockType === 'ALL' && this.filteredActiveRackCount() === 0) {
+      this.formErrorMessage.set('Lokasi ini belum memiliki rack aktif. Buat Master Rack terlebih dahulu sebelum membuat schedule.');
       return;
     }
     this.saving.set(true);
@@ -449,6 +457,10 @@ export class ScheduleListComponent {
     const names = schedule.categories.slice(0, 2).map((category) => category.name).join(', ');
     const remaining = schedule.categories.length - 2;
     return remaining > 0 ? `${names} +${remaining} lainnya` : names;
+  }
+
+  filteredActiveRackCount(): number {
+    return this.rackMasters().filter((rack) => rack.status === 'ACTIVE').length;
   }
 
   private fetchSchedules(initial: boolean) {

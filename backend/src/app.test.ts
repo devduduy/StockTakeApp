@@ -186,6 +186,32 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(updateResponse.body.data.status).toBe("DRAFT");
   });
 
+  it("rejects schedule creation when the selected location has no active rack", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "inventory_control01",
+      password: "prototype",
+    });
+    expect(loginResponse.status).toBe(200);
+    const token = loginResponse.body.data.accessToken as string;
+
+    const createResponse = await request(app)
+      .post("/api/stock-take/schedules")
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        scheduleDesc: "Schedule Without Rack",
+        locCode: "1001",
+        startDate: "2026-08-07",
+        endDate: "2026-08-07",
+        startTime: "08:00",
+        endTime: "17:00",
+        stockType: "ALL",
+        categoryIds: [],
+        status: "OPEN",
+      });
+    expect(createResponse.status).toBe(400);
+    expect(createResponse.body.error.code).toBe("RACK_SCOPE_REQUIRED");
+  });
+
   it("lets inventory control access every location and create cross-location schedules", async () => {
     const loginResponse = await request(app).post("/api/auth/login").send({
       username: "inventory_control01",
@@ -199,6 +225,17 @@ describe("Hero Stock Take API (mock mode)", () => {
       .set("authorization", `Bearer ${token}`);
     expect(locationsResponse.status).toBe(200);
     expect(locationsResponse.body.data.length).toBeGreaterThan(1);
+
+    const rackResponse = await request(app)
+      .post("/api/stock-take/racks")
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        locCode: "1001",
+        rackCode: "RCK-IC-901",
+        rackName: "Rack Inventory Control Test",
+        status: "ACTIVE",
+      });
+    expect(rackResponse.status).toBe(201);
 
     const createResponse = await request(app)
       .post("/api/stock-take/schedules")

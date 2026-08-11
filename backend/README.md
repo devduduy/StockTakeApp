@@ -1,23 +1,36 @@
 # Hero Stock Take API
 
-Backend awal untuk aplikasi Mobile & Web Stock Take Hero Supermarket. Struktur
-operasional mengikuti pola project Data Workspace Portal: konfigurasi `.env`,
-mode SQL/mock, command seed terpisah, endpoint REST, build TypeScript, dan secret
-tidak disimpan di source code.
+Backend Express.js + TypeScript untuk mobile HHT dan web Hero Stock Take. Backend menjadi satu-satunya akses aplikasi ke SQL Server agar rules bisnis, auth, validasi scan, dan status lifecycle tidak tersebar di client.
 
 ## Scope saat ini
 
 - Login JWT dari `dbo.MST_USERS` + `dbo.MST_ROLE`.
-- Active schedule dari `dbo.TR_STOCK_SCHEDULE` sesuai `MST_USERS.LOC_CODE`.
-- Rack aktif berdasarkan `LOC_CODE` schedule dari `dbo.MST_RACK`.
-- Lookup item scanner dari `MasterData.dbo.MFBARCODE` dan `MasterData.dbo.MFPLU`.
-- Validasi scanner untuk schedule `STOCK_PARTIAL` berdasarkan `TR_STOCK_SCHEDULE.CATEGORY_ID`.
-- Master category dari `MasterData.dbo.MFDIVISION -> MFDEPARTMENT -> MFCATEGORY`.
-- Seed dummy idempotent untuk lookup, user, rack, dan schedule.
-- Mode `mock` untuk development tanpa SQL Server.
-- CORS untuk Angular dev server `http://localhost:4200`.
+- Role dan lokasi:
+  - `SCANNER` hanya untuk scan mobile.
+  - Store role mengikuti `MST_USERS.LOC_CODE`.
+  - `INVENTORY_CONTROL` dapat akses semua lokasi.
+- Schedule:
+  - Nomor unik format `ST/yyyy/MM/0001`.
+  - `START_DATE` memakai kolom `SCHEDULE_DATE`.
+  - `END_DATE` wajib tersedia lewat migration.
+  - Stock type hanya `ALL` dan `PARTIAL`.
+  - `CATEGORY_ID` menyimpan multi category untuk schedule PARTIAL.
+- Rack:
+  - Master rack di `dbo.MST_RACK`.
+  - Format kode rack wajib `RCK-{2 huruf}-{3 angka}`, contoh `RCK-FR-001`.
+  - Bulk generator rack tersedia via API.
+  - Scope rack per schedule disimpan di `dbo.TR_STOCK_SCHEDULE_RACK`.
+- Scan:
+  - Lookup barcode/PLU dari `MasterData.dbo.MFBARCODE` dan `MasterData.dbo.MFPLU`.
+  - Validasi category untuk schedule PARTIAL.
+  - Submit mobile tersimpan ke `dbo.TR_STOCK_TAKE_SCAN`.
+  - `RACK_SEQ` menyimpan urutan waktu scan dan tidak berubah saat edit qty.
+- Recheck web:
+  - Print rack menerbitkan/memperbarui print metadata.
+  - Final qty correction mengubah `FINAL_QTY`, tidak mengubah `SCAN_QTY`.
+  - Confirm/reject rack tersedia untuk flow recheck.
 
-## First Run
+## First run
 
 ```powershell
 npm.cmd --prefix backend install
@@ -27,73 +40,147 @@ npm.cmd --prefix backend run db:seed
 npm.cmd --prefix backend run dev
 ```
 
-Buka health check:
+Health check:
 
 ```text
-http://127.0.0.1:3000/api/health
+GET http://127.0.0.1:3000/api/health
 ```
 
 ## Konfigurasi SQL Server
 
-File `.env.example` mendukung dua cara:
+`backend/.env.example` mendukung dua cara konfigurasi:
 
 1. `STOCKTAKE_CONNECTION_FILE` menunjuk ke file koneksi lokal.
-2. Isi `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, dan
-   `SQL_PASSWORD` secara langsung.
+2. Isi langsung `SQL_SERVER`, `SQL_PORT`, `SQL_DATABASE`, `SQL_USER`, dan `SQL_PASSWORD`.
 
-`SQL_SERVER` dapat berupa hostname biasa atau JDBC URL
-`jdbc:sqlserver://...`. Secret tetap berada di `.env` atau file koneksi yang
-di-ignore dari source control.
-
-Untuk memakai dummy data in-memory tanpa database:
+Untuk dummy in-memory tanpa SQL Server:
 
 ```env
 SQL_MODE=mock
 ```
 
-## Seed
+Untuk koneksi SQL real:
 
-## Migration
+```env
+SQL_MODE=sql
+STOCKTAKE_CONNECTION_FILE=../documentation/connection DB.txt
+```
+
+Secret harus tetap di `.env` atau file koneksi lokal yang tidak di-commit.
+
+`backend/.env` sudah di-ignore oleh Git. Gunakan file itu untuk value lokal yang boleh kamu edit bebas. Jika ingin mulai ulang template:
+
+```powershell
+Copy-Item backend\.env.example backend\.env -Force
+```
+
+Bagian yang biasanya perlu kamu edit:
+
+```env
+SQL_MODE=sql
+STOCKTAKE_CONNECTION_FILE=../documentation/connection DB.txt
+SEED_LOC_CODES=6168,23
+SEED_PASSWORD=prototype
+JWT_SECRET=change-this-local-development-secret-at-least-32-characters
+CORS_ORIGINS=http://127.0.0.1:4200,http://localhost:4200
+```
+
+Kalau memakai SQL value langsung, kosongkan/comment `STOCKTAKE_CONNECTION_FILE`, lalu isi:
+
+```env
+SQL_SERVER=nama-server-atau-ip
+SQL_PORT=1433
+SQL_DATABASE=StockTake
+SQL_USER=your_sql_user
+SQL_PASSWORD=your_sql_password
+```
+
+## Command database
+
+Migration:
 
 ```powershell
 npm.cmd --prefix backend run db:migrate
 ```
 
-Migration saat ini memastikan `TR_STOCK_SCHEDULE.CATEGORY_ID varchar(max) NULL`
-tersedia dan `MST_STOCK_TYPE` memakai `STOCK_ALL` / `STOCK_PARTIAL`.
-
-`CATEGORY_ID` boleh disimpan sebagai comma-separated `fcatcd`, misalnya
-`40601,40602`, atau JSON array seperti `["40601","40602"]`. Untuk `STOCK_ALL`,
-`CATEGORY_ID` harus `NULL`.
-
-## Seed
+Seed dummy idempotent:
 
 ```powershell
 npm.cmd --prefix backend run db:seed
 ```
 
-Seed menggunakan transaction `SERIALIZABLE` dan hanya mengisi suatu tabel bila
-tabel tersebut benar-benar kosong. Menjalankan command berulang tidak
-menambahkan duplikat.
+Seed hanya mengisi data minimum yang dibutuhkan sistem:
 
-Credential dummy:
+- `MST_ROLE`
+- `MST_STOCK_TYPE`
+- `MST_USERS`
+
+Seed tidak lagi membuat `MST_RACK`, `TR_STOCK_SCHEDULE`, atau data transaksi karena data tersebut sudah bisa dibuat dari UI web.
+
+Untuk membuat user test di beberapa lokasi:
+
+```powershell
+$env:SEED_LOC_CODES="6168,23"
+npm.cmd --prefix backend run db:seed
+```
+
+Nilai numerik pendek akan dinormalisasi menjadi 4 digit, jadi `23` menjadi `0023`. Dengan contoh di atas, seed membuat/memperbarui user:
+
+- `inventory_control01` dengan `LOC_CODE=0000`.
+- `scanner01` dan `store_manager01` untuk lokasi pertama di `SEED_LOC_CODES`.
+- `scanner_6168`, `store_manager_6168`, `admin_store_6168`.
+- `scanner_0023`, `store_manager_0023`, `admin_store_0023`.
+
+Password default adalah `prototype`. Untuk mengganti password seed:
+
+```powershell
+$env:SEED_PASSWORD="password-test-baru"
+$env:SEED_LOC_CODES="6168,23"
+npm.cmd --prefix backend run db:seed
+```
+
+Reset data testing semua lokasi, dry-run default:
+
+```powershell
+npm.cmd --prefix backend run db:reset:test
+```
+
+Reset delete betulan:
+
+```powershell
+$env:CONFIRM_RESET="YES"
+$env:RESET_SCOPE="ALL"
+$env:RESET_DRY_RUN="NO"
+npm.cmd --prefix backend run db:reset:test
+```
+
+Tabel aplikasi yang dihapus oleh reset:
+
+- `dbo.TR_STOCK_TAKE_SCAN`
+- `dbo.TR_STOCK_SCHEDULE_RACK`
+- `dbo.TR_STOCK_SCHEDULE`
+- `dbo.MST_SOH`
+- `dbo.MST_RACK`
+- `dbo.MST_USERS`
+- `dbo.MST_STOCK_TYPE`
+- `dbo.MST_ROLE`
+
+Reset tidak menyentuh `MasterData..MFPLU`, `MasterData..MFBARCODE`, `MasterData..MFCATEGORY`, atau master lama lain.
+
+Credential seed:
 
 | Username | Password | Role |
 |---|---|---|
 | `scanner01` | `prototype` | Scanner |
 | `store_manager01` | `prototype` | Store Manager |
 | `inventory_control01` | `prototype` | Inventory Control |
+| `scanner_<locCode>` | `prototype` | Scanner lokasi terkait |
+| `store_manager_<locCode>` | `prototype` | Store Manager lokasi terkait |
+| `admin_store_<locCode>` | `prototype` | Admin Store lokasi terkait |
 
-Ganti seluruh password dummy dan `JWT_SECRET` sebelum production.
+Ganti password dummy dan `JWT_SECRET` sebelum production.
 
-## Endpoint
-
-- `GET /api/health`
-- `POST /api/auth/login`
-- `GET /api/stock-take/schedules/active?locCode=6168`
-- `GET /api/stock-take/schedules/:scheduleId/racks`
-- `GET /api/stock-take/items/lookup?barcode=100234&scheduleId=1`
-- `GET /api/stock-take/categories`
+## Endpoint utama
 
 Semua endpoint stock-take membutuhkan:
 
@@ -101,44 +188,64 @@ Semua endpoint stock-take membutuhkan:
 Authorization: Bearer <accessToken>
 ```
 
-Contoh login:
+Auth:
 
-```json
-{
-  "username": "scanner01",
-  "password": "prototype"
-}
-```
+- `POST /api/auth/login`
+- `GET /api/auth/recheckers`
 
-Lookup item menerima barcode atau PLU. Urutan pencarian adalah
-`MasterData.dbo.MFBARCODE.FBARCODE`, lalu direct PLU ke
-`MasterData.dbo.MFPLU.fplu`. Field `erpQty` diambil dari `dbo.MST_SOH` untuk
-schedule terkait bila tersedia. Karena collation database berbeda, query
-MasterData memakai `COLLATE DATABASE_DEFAULT` pada perbandingan string
-cross-database. Jika schedule bertipe `STOCK_PARTIAL`, category item
-`MFPLU.fcatcd` wajib ada di `TR_STOCK_SCHEDULE.CATEGORY_ID`; selain itu backend
-mengembalikan `ITEM_CATEGORY_NOT_ALLOWED`. Fallback mock hanya aktif di mode
-non-production.
+Reference:
 
-## Build dan Test
+- `GET /api/health`
+- `GET /api/stock-take/locations`
+- `GET /api/stock-take/categories`
+
+Schedule:
+
+- `GET /api/stock-take/schedules`
+- `GET /api/stock-take/schedules/active`
+- `POST /api/stock-take/schedules`
+- `PUT /api/stock-take/schedules/:scheduleId`
+
+Rack:
+
+- `GET /api/stock-take/racks?locCode=6168`
+- `POST /api/stock-take/racks`
+- `POST /api/stock-take/racks/bulk`
+- `GET /api/stock-take/schedules/:scheduleId/racks`
+- `POST /api/stock-take/schedules/:scheduleId/racks/scope`
+
+Item dan scan:
+
+- `GET /api/stock-take/items/lookup?barcode=<barcode-atau-plu>&scheduleId=<scheduleId>`
+- `GET /api/stock-take/schedules/:scheduleId/racks/:rackId/scans`
+- `POST /api/stock-take/schedules/:scheduleId/racks/:rackId/scans`
+- `POST /api/stock-take/schedules/:scheduleId/racks/:rackId/submit`
+- `POST /api/stock-take/schedules/:scheduleId/racks/:rackId/print`
+- `PATCH /api/stock-take/schedules/:scheduleId/racks/:rackId/scans/final-qty`
+- `POST /api/stock-take/schedules/:scheduleId/racks/:rackId/confirm`
+- `POST /api/stock-take/schedules/:scheduleId/racks/:rackId/reject`
+
+## Rules penting
+
+- Mobile dan web tidak boleh query database langsung.
+- `SCAN_QTY` adalah hasil scan mobile dan tidak diubah saat recheck.
+- `FINAL_QTY` adalah qty akhir setelah correction.
+- Rack yang sudah printed terkunci untuk tambah/edit/delete scan di mobile.
+- Rack yang belum close masih bisa ditambahkan ke schedule melalui web.
+- Kode rack harus unik per lokasi.
+- Schedule `PARTIAL` wajib punya minimal satu category dan minimal satu rack scope.
+
+## Build, test, dan smoke
 
 ```powershell
-npm.cmd --prefix backend run test
 npm.cmd --prefix backend run build
+npm.cmd --prefix backend run test
 ```
 
-Smoke test end-to-end terhadap SQL Server (login, active schedule, dan rack
-list):
+Smoke test SQL:
 
 ```powershell
 $env:SQL_MODE="sql"
 $env:STOCKTAKE_CONNECTION_FILE="../documentation/connection DB.txt"
 npm.cmd --prefix backend run smoke:sql
 ```
-
-## Catatan untuk Angular 18
-
-Angular standalone nantinya cukup menyediakan interceptor untuk menambahkan
-Bearer token dan menggunakan base URL `http://127.0.0.1:3000/api`. Response
-sukses menggunakan envelope `{ "data": ... }`, sedangkan error menggunakan
-`{ "error": { "code", "message", "details", "requestId" } }`.

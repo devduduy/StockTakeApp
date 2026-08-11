@@ -2,10 +2,12 @@
 .gradle/
 .idea/
 local.properties
+backend/.env
+backend/.env.local
+backend/.env.*.local
 build/
 captures/
 .externalNativeBuild/
 .cxx/
 app/build/
 .codex_tmp/
-
