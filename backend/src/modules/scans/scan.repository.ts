@@ -106,7 +106,7 @@ export async function listRackScans(
           date_modified: scan.dateModified ?? null,
         }),
       )
-      .sort((left, right) => right.rackSeq - left.rackSeq);
+      .sort((left, right) => left.rackSeq - right.rackSeq);
   }
 
   const pool = await getSqlPool();
@@ -136,7 +136,7 @@ export async function listRackScans(
       WHERE SCHEDULE_ID = @scheduleId
         AND RACK_ID = @rackId
         AND SCAN_STATUS = 'SYNCED'
-      ORDER BY RACK_SEQ DESC, ID DESC;
+      ORDER BY RACK_SEQ ASC, ID ASC;
     `);
   return result.recordset.map(mapScanLine);
 }

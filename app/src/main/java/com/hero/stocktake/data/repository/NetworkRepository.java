@@ -241,6 +241,8 @@ public class NetworkRepository {
                 firstNonBlank(dto.scheduleDesc, "Stock Take"),
                 locCode,
                 locationName,
+                startDate,
+                endDate,
                 displayDateRange(startDate, endDate),
                 displayTimeRange(dto.startTime, dto.endTime),
                 stockTypeCode,

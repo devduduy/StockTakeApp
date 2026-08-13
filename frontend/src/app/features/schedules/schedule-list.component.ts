@@ -46,16 +46,19 @@ export class ScheduleListComponent {
   readonly search = signal('');
   readonly categorySearch = signal('');
   readonly rackSearch = signal('');
+  readonly locationSearch = signal('');
+  readonly locationDropdownOpen = signal(false);
   readonly expandedDivisions = signal<Set<string>>(new Set());
   readonly typeFilter = signal<'ALL' | 'PARTIAL' | ''>('');
   readonly formOpen = signal(false);
   readonly editingSchedule = signal<ActiveSchedule | null>(null);
   readonly rackFormOpen = signal(false);
   readonly scheduleForm = this.fb.nonNullable.group({
-    scheduleDesc: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(250)]],
+    scheduleDesc: [''],
     locCode: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{4}$/)]],
     startDate: ['', [Validators.required]],
     endDate: ['', [Validators.required]],
+    cutOffDate: ['', [Validators.required]],
     startTime: [''],
     endTime: [''],
     stockType: ['ALL' as 'ALL' | 'PARTIAL', [Validators.required]],
@@ -124,6 +127,15 @@ export class ScheduleListComponent {
         rack.locCode
       ].some((value) => value.toLowerCase().includes(keyword)));
   });
+  readonly filteredLocations = computed(() => {
+    const keyword = this.locationSearch().trim().toLowerCase();
+    if (!keyword) return this.locations();
+    return this.locations().filter((location) =>
+      this.locationDisplay(location).toLowerCase().includes(keyword)
+      || location.code.toLowerCase().includes(keyword)
+      || location.name.toLowerCase().includes(keyword)
+    );
+  });
 
   constructor() {
     interval(30_000)
@@ -142,7 +154,7 @@ export class ScheduleListComponent {
         this.categories.set(categories);
         this.locations.set(locations);
         this.expandedDivisions.set(new Set(categories.slice(0, 1).map((category) => category.division.id)));
-        if (locations.length === 1) this.scheduleForm.controls.locCode.setValue(locations[0].code);
+        if (locations.length === 1) this.selectLocation(locations[0], false);
       });
 
     this.scheduleForm.controls.locCode.valueChanges
@@ -179,6 +191,7 @@ export class ScheduleListComponent {
       locCode: location?.code ?? '',
       startDate: today,
       endDate: today,
+      cutOffDate: today,
       startTime: '08:00',
       endTime: '',
       stockType: 'ALL',
@@ -186,6 +199,8 @@ export class ScheduleListComponent {
       categoryIds: [],
       rackIds: []
     });
+    this.locationDropdownOpen.set(false);
+    this.locationSearch.set(location ? this.locationDisplay(location) : '');
     this.loadRackMasters();
     this.formOpen.set(true);
   }
@@ -201,6 +216,7 @@ export class ScheduleListComponent {
       locCode: schedule.locCode,
       startDate: schedule.startDate ?? schedule.scheduleDate,
       endDate: schedule.endDate ?? schedule.scheduleDate,
+      cutOffDate: schedule.cutOffDate ?? schedule.scheduleDate,
       startTime: this.timeValue(schedule.startTime),
       endTime: this.timeValue(schedule.endTime),
       stockType: this.stockTypeLabel(schedule),
@@ -208,6 +224,7 @@ export class ScheduleListComponent {
       categoryIds: [...schedule.categoryIds],
       rackIds: [...schedule.rackIds]
     });
+    this.locationSearch.set(this.locationDisplayByCode(schedule.locCode));
     this.scheduleForm.controls.rackIds.setValue([...schedule.rackIds]);
     this.loadRackMasters();
     this.formOpen.set(true);
@@ -222,7 +239,57 @@ export class ScheduleListComponent {
   }
 
   locationReady(): boolean {
-    return this.scheduleForm.controls.locCode.valid && Boolean(this.scheduleForm.controls.locCode.value);
+    return this.scheduleForm.controls.locCode.valid
+      && Boolean(this.scheduleForm.controls.locCode.value)
+      && this.locations().some((location) => location.code === this.scheduleForm.controls.locCode.value);
+  }
+
+  locationDisplay(location: Location): string {
+    return `${location.name} (${location.code})`;
+  }
+
+  locationDisplayByCode(locCode: string): string {
+    const location = this.locations().find((item) => item.code === locCode);
+    return location ? this.locationDisplay(location) : '';
+  }
+
+  onLocationFocus(): void {
+    this.locationDropdownOpen.set(true);
+  }
+
+  onLocationInput(value: string): void {
+    this.locationSearch.set(value);
+    this.locationDropdownOpen.set(true);
+    const matched = this.matchLocation(value);
+    this.scheduleForm.controls.locCode.setValue(matched?.code ?? '');
+    if (!matched) {
+      this.scheduleForm.controls.locCode.markAsTouched();
+    }
+  }
+
+  onLocationBlur(): void {
+    window.setTimeout(() => {
+      const matched = this.matchLocation(this.locationSearch());
+      if (matched) {
+        this.selectLocation(matched);
+      } else if (!this.locationSearch().trim()) {
+        this.scheduleForm.controls.locCode.setValue('');
+      } else {
+        this.scheduleForm.controls.locCode.setValue('');
+        this.scheduleForm.controls.locCode.markAsTouched();
+      }
+      this.locationDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectLocation(location: Location, markTouched = true): void {
+    this.locationSearch.set(this.locationDisplay(location));
+    this.locationDropdownOpen.set(false);
+    this.scheduleForm.controls.locCode.setValue(location.code);
+    if (markTouched) {
+      this.scheduleForm.controls.locCode.markAsTouched();
+      this.scheduleForm.controls.locCode.markAsDirty();
+    }
   }
 
   selectedRackIds(): string[] {
@@ -314,7 +381,7 @@ export class ScheduleListComponent {
 
   openRackForm(): void {
     if (!this.locationReady()) {
-      this.formErrorMessage.set('Pilih lokasi terlebih dahulu sebelum menambah rack.');
+      this.scheduleForm.controls.locCode.markAsTouched();
       return;
     }
     this.rackFormErrorMessage.set('');
@@ -441,7 +508,7 @@ export class ScheduleListComponent {
   }
 
   statusLabel(status: string): string {
-    return ({ DRAFT: 'Draft', OPEN: 'Open', IN_PROGRESS: 'Inprogress', COMPLETED: 'Completed' } as Record<string, string>)[status] || status;
+    return ({ DRAFT: 'Draft', OPEN: 'Open', IN_PROGRESS: 'Inprogress', COMPLETED: 'Completed', CLOSED: 'Closed' } as Record<string, string>)[status] || status;
   }
 
   stockTypeLabel(schedule: ActiveSchedule): 'ALL' | 'PARTIAL' {
@@ -464,10 +531,14 @@ export class ScheduleListComponent {
     return this.rackMasters().filter((rack) => rack.status === 'ACTIVE').length;
   }
 
+  generatedScheduleDescription(): string {
+    return this.buildScheduleDescription();
+  }
+
   private fetchSchedules(initial: boolean) {
     initial ? this.loading.set(true) : this.refreshing.set(true);
     this.errorMessage.set('');
-    return this.api.getSchedules().pipe(
+    return this.api.getActiveSchedules().pipe(
       tap((schedules) => {
         this.schedules.set(schedules);
         this.loading.set(false);
@@ -500,7 +571,7 @@ export class ScheduleListComponent {
         this.racksLoading.set(false);
       }),
       catchError((error: unknown) => {
-        this.formErrorMessage.set(apiErrorMessage(error, 'Rack lokasi gagal dimuat.'));
+        console.warn(apiErrorMessage(error, 'Rack lokasi gagal dimuat.'));
         this.rackMasters.set([]);
         this.racksLoading.set(false);
         return of([]);
@@ -511,10 +582,11 @@ export class ScheduleListComponent {
   private schedulePayload(): SchedulePayload {
     const raw = this.scheduleForm.getRawValue();
     return {
-      scheduleDesc: raw.scheduleDesc.trim(),
+      scheduleDesc: this.buildScheduleDescription(),
       locCode: raw.locCode,
       startDate: raw.startDate,
       endDate: raw.endDate,
+      cutOffDate: raw.cutOffDate,
       startTime: raw.startTime || null,
       endTime: raw.endTime || null,
       stockType: raw.stockType,
@@ -526,5 +598,22 @@ export class ScheduleListComponent {
 
   private timeValue(value: string | null): string {
     return value ? new Date(value).toISOString().slice(11, 16) : '';
+  }
+
+  private buildScheduleDescription(): string {
+    const raw = this.scheduleForm.getRawValue();
+    if (!raw.locCode || !raw.stockType || !raw.cutOffDate) {
+      return '';
+    }
+    return `STOCK TAKE ${raw.locCode.toUpperCase()} ${raw.stockType} ${raw.cutOffDate}`;
+  }
+
+  private matchLocation(value: string): Location | undefined {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return undefined;
+    return this.locations().find((location) =>
+      location.code.toLowerCase() === normalized
+      || this.locationDisplay(location).toLowerCase() === normalized
+    );
   }
 }

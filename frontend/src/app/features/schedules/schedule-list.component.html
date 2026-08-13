@@ -145,25 +145,54 @@
       }
 
       <div class="drawer-body">
-        <label class="form-field">
-          <span>Deskripsi <b>*</b></span>
-          <input formControlName="scheduleDesc" type="text" placeholder="Contoh: Stock Take Fresh Minggu 1" />
-          @if (scheduleForm.controls.scheduleDesc.touched && scheduleForm.controls.scheduleDesc.invalid) {
-            <small>Deskripsi wajib diisi minimal 3 karakter.</small>
-          }
-        </label>
+        <div class="generated-description">
+          <span>Deskripsi</span>
+          <strong>{{ generatedScheduleDescription() }}</strong>
+        </div>
 
         <div class="form-grid">
           <label class="form-field">
             <span>Lokasi <b>*</b></span>
-            <select formControlName="locCode">
-              <option value="" disabled>Pilih lokasi terlebih dahulu</option>
-              @for (location of locations(); track location.code) {
-                <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+            <div class="location-combobox" [class.location-combobox--open]="locationDropdownOpen()">
+              <div class="location-combobox__field">
+                <span class="material-symbols-outlined">storefront</span>
+                <input
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Cari nama atau kode lokasi..."
+                  [value]="locationSearch()"
+                  (focus)="onLocationFocus()"
+                  (blur)="onLocationBlur()"
+                  (input)="onLocationInput($any($event.target).value)"
+                />
+                <button type="button" aria-label="Buka pilihan lokasi" (mousedown)="$event.preventDefault()" (click)="locationDropdownOpen.set(!locationDropdownOpen())">
+                  <span class="material-symbols-outlined">expand_more</span>
+                </button>
+              </div>
+              @if (locationDropdownOpen()) {
+                <div class="location-combobox__panel" role="listbox">
+                  @for (location of filteredLocations(); track location.code) {
+                    <button
+                      type="button"
+                      role="option"
+                      [class.active]="scheduleForm.controls.locCode.value === location.code"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="selectLocation(location)"
+                    >
+                      <strong>{{ location.name }}</strong>
+                      <span>{{ location.code }}</span>
+                    </button>
+                  } @empty {
+                    <div class="location-combobox__empty">
+                      <span class="material-symbols-outlined">search_off</span>
+                      Lokasi tidak ditemukan
+                    </div>
+                  }
+                </div>
               }
-            </select>
+            </div>
             @if (scheduleForm.controls.locCode.touched && scheduleForm.controls.locCode.invalid) {
-              <small>Lokasi wajib dipilih sebelum menentukan tipe stock take dan rack.</small>
+              <small>Pilih lokasi dari daftar yang tersedia.</small>
             }
           </label>
           <label class="form-field">
@@ -183,6 +212,10 @@
           <label class="form-field">
             <span>Tanggal Selesai <b>*</b></span>
             <input formControlName="endDate" type="date" />
+          </label>
+          <label class="form-field">
+            <span>Cut-off SOH <b>*</b></span>
+            <input formControlName="cutOffDate" type="date" />
           </label>
           <label class="form-field">
             <span>Jam Mulai</span>
@@ -215,6 +248,97 @@
             </label>
           </div>
         </section>
+
+        @if (locationReady() && scheduleForm.controls.stockType.value === 'PARTIAL') {
+          <section class="category-panel">
+            <div class="category-panel__header">
+              <div>
+                <strong>Category <b>*</b></strong>
+                <span>{{ selectedCategoryIds().length }} dipilih</span>
+              </div>
+              <button type="button" (click)="clearCategories()">Kosongkan</button>
+            </div>
+
+            @if (selectedCategories().length > 0) {
+              <div class="selected-category-list" aria-label="Category terpilih">
+                @for (category of selectedCategories(); track category.id) {
+                  <button type="button" (click)="removeCategory(category.id)">
+                    <span>{{ category.id }}</span>
+                    {{ category.name }}
+                    <i class="material-symbols-outlined">close</i>
+                  </button>
+                }
+              </div>
+            }
+
+            <label class="search-control category-search">
+              <span class="material-symbols-outlined">search</span>
+              <input
+                type="search"
+                placeholder="Cari division, department, category..."
+                [value]="categorySearch()"
+                (input)="categorySearch.set($any($event.target).value)"
+              />
+            </label>
+            <div class="category-tree">
+              @for (group of filteredCategoryGroups(); track group.divisionId) {
+                <section class="division-group" [class.division-group--open]="divisionExpanded(group.divisionId)">
+                  <div class="division-group__header">
+                    <label>
+                      <input
+                        type="checkbox"
+                        [checked]="checkedState(divisionCategories(group)) === 'all'"
+                        [indeterminate]="checkedState(divisionCategories(group)) === 'partial'"
+                        (change)="toggleCategoryGroup(divisionCategories(group), $any($event.target).checked)"
+                      />
+                      <span>{{ group.divisionName }}</span>
+                    </label>
+                    <button type="button" (click)="toggleDivision(group.divisionId)" [attr.aria-expanded]="divisionExpanded(group.divisionId)">
+                      <small>{{ divisionCategories(group).length }} category</small>
+                      <i class="material-symbols-outlined">expand_more</i>
+                    </button>
+                  </div>
+                  @if (divisionExpanded(group.divisionId)) {
+                    @for (department of group.departments; track department.departmentId) {
+                      <div class="department-group">
+                        <div class="department-group__title">
+                          <label>
+                            <input
+                              type="checkbox"
+                              [checked]="checkedState(department.categories) === 'all'"
+                              [indeterminate]="checkedState(department.categories) === 'partial'"
+                              (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
+                            />
+                            <span>{{ department.departmentName }}</span>
+                          </label>
+                        </div>
+                        <div class="category-options">
+                          @for (category of department.categories; track category.id) {
+                            <label>
+                              <input
+                                type="checkbox"
+                                [checked]="categoryChecked(category.id)"
+                                (change)="toggleCategory(category.id, $any($event.target).checked)"
+                              />
+                              <span>{{ category.id }}</span>
+                              {{ category.name }}
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+                </section>
+              } @empty {
+                <div class="empty-state compact">
+                  <span class="material-symbols-outlined">search_off</span>
+                  <h3>Category tidak ditemukan</h3>
+                  <p>Coba kata pencarian lain.</p>
+                </div>
+              }
+            </div>
+          </section>
+        }
 
         @if (locationReady()) {
         <section class="rack-scope-panel">
@@ -313,7 +437,7 @@
                   </button>
                 }
               </label>
-              <button class="secondary-button" type="button" (click)="toggleAllFilteredRacks(true)">Pilih tampil</button>
+              <button class="secondary-button" type="button" (click)="toggleAllFilteredRacks(true)">Pilih hasil cari</button>
               <button class="secondary-button" type="button" (click)="clearRacks()">Kosongkan</button>
             </div>
 
@@ -342,97 +466,6 @@
             </div>
           }
         </section>
-        }
-
-        @if (locationReady() && scheduleForm.controls.stockType.value === 'PARTIAL') {
-          <section class="category-panel">
-            <div class="category-panel__header">
-              <div>
-                <strong>Category <b>*</b></strong>
-                <span>{{ selectedCategoryIds().length }} dipilih</span>
-              </div>
-              <button type="button" (click)="clearCategories()">Kosongkan</button>
-            </div>
-
-            @if (selectedCategories().length > 0) {
-              <div class="selected-category-list" aria-label="Category terpilih">
-                @for (category of selectedCategories(); track category.id) {
-                  <button type="button" (click)="removeCategory(category.id)">
-                    <span>{{ category.id }}</span>
-                    {{ category.name }}
-                    <i class="material-symbols-outlined">close</i>
-                  </button>
-                }
-              </div>
-            }
-
-            <label class="search-control category-search">
-              <span class="material-symbols-outlined">search</span>
-              <input
-                type="search"
-                placeholder="Cari division, department, category..."
-                [value]="categorySearch()"
-                (input)="categorySearch.set($any($event.target).value)"
-              />
-            </label>
-            <div class="category-tree">
-              @for (group of filteredCategoryGroups(); track group.divisionId) {
-                <section class="division-group" [class.division-group--open]="divisionExpanded(group.divisionId)">
-                  <div class="division-group__header">
-                    <label>
-                      <input
-                        type="checkbox"
-                        [checked]="checkedState(divisionCategories(group)) === 'all'"
-                        [indeterminate]="checkedState(divisionCategories(group)) === 'partial'"
-                        (change)="toggleCategoryGroup(divisionCategories(group), $any($event.target).checked)"
-                      />
-                      <span>{{ group.divisionName }}</span>
-                    </label>
-                    <button type="button" (click)="toggleDivision(group.divisionId)" [attr.aria-expanded]="divisionExpanded(group.divisionId)">
-                      <small>{{ divisionCategories(group).length }} category</small>
-                      <i class="material-symbols-outlined">expand_more</i>
-                    </button>
-                  </div>
-                  @if (divisionExpanded(group.divisionId)) {
-                    @for (department of group.departments; track department.departmentId) {
-                      <div class="department-group">
-                        <div class="department-group__title">
-                          <label>
-                            <input
-                              type="checkbox"
-                              [checked]="checkedState(department.categories) === 'all'"
-                              [indeterminate]="checkedState(department.categories) === 'partial'"
-                              (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
-                            />
-                            <span>{{ department.departmentName }}</span>
-                          </label>
-                        </div>
-                        <div class="category-options">
-                          @for (category of department.categories; track category.id) {
-                            <label>
-                              <input
-                                type="checkbox"
-                                [checked]="categoryChecked(category.id)"
-                                (change)="toggleCategory(category.id, $any($event.target).checked)"
-                              />
-                              <span>{{ category.id }}</span>
-                              {{ category.name }}
-                            </label>
-                          }
-                        </div>
-                      </div>
-                    }
-                  }
-                </section>
-              } @empty {
-                <div class="empty-state compact">
-                  <span class="material-symbols-outlined">search_off</span>
-                  <h3>Category tidak ditemukan</h3>
-                  <p>Coba kata pencarian lain.</p>
-                </div>
-              }
-            </div>
-          </section>
         }
       </div>
 

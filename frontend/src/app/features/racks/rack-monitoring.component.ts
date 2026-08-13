@@ -38,6 +38,8 @@ export class RackMonitoringComponent {
   readonly rackCreateOpen = signal(false);
   readonly scansLoading = signal(false);
   readonly printing = signal(false);
+  readonly bulkConfirming = signal(false);
+  readonly closingSchedule = signal(false);
   readonly correctionSaving = signal(false);
   readonly confirming = signal(false);
   readonly rejecting = signal(false);
@@ -61,6 +63,9 @@ export class RackMonitoringComponent {
   readonly recheckers = signal<UserOption[]>([]);
   readonly selectedRecheckUser = signal('');
   readonly actionConfirm = signal<'CONFIRM' | 'REJECT' | null>(null);
+  readonly selectedBulkRackIds = signal<Set<string>>(new Set());
+  readonly printQtyVisible = signal(true);
+  readonly closeScheduleConfirm = signal(false);
   readonly rackCreateForm = this.fb.nonNullable.group({
     rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
     rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
@@ -92,6 +97,12 @@ export class RackMonitoringComponent {
     }, 0)
   );
   readonly correctionCount = computed(() => this.racks().filter((rack) => rack.discrepancyQuantity !== 0).length);
+  readonly confirmedCount = computed(() => this.racks().filter((rack) => rack.rackStatus === 'CONFIRMED').length);
+  readonly emptyCount = computed(() => this.racks().filter((rack) => rack.rackStatus === 'EMPTY').length);
+  readonly selectedBulkRacks = computed(() => {
+    const selected = this.selectedBulkRackIds();
+    return this.racks().filter((rack) => selected.has(rack.id) && this.canBulkConfirmRack(rack));
+  });
   readonly filteredScans = computed(() => {
     const keyword = this.itemSearch().trim().toLowerCase();
     if (!keyword) return this.scans();
@@ -176,6 +187,41 @@ export class RackMonitoringComponent {
       return;
     }
     this.printConfirmRack.set(rack);
+  }
+
+  openPrintFromList(rack: Rack, event: Event): void {
+    event.stopPropagation();
+    if (rack.submittedLineCount === 0 || this.printing()) return;
+    const preopenedPopup = rack.printed ? window.open('', '_blank', 'width=980,height=720') : null;
+    if (rack.printed && !preopenedPopup) {
+      this.printErrorMessage.set('Popup browser diblokir. Izinkan popup untuk mencetak rack.');
+      return;
+    }
+    this.selectedRack.set(rack);
+    this.selectedRecheckUser.set('');
+    this.itemSearch.set('');
+    this.dirtyFinalQtyDrafts.set(new Set());
+    this.finalQtyDrafts.set({});
+    this.scansLoading.set(true);
+    this.api.getRackScans(this.scheduleId, rack.id)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ scans }) => {
+          this.scans.set(scans);
+          this.syncFinalQtyDrafts(scans);
+          this.scansLoading.set(false);
+          if (rack.printed) {
+            this.printRackPaper(rack, preopenedPopup ?? undefined);
+          } else {
+            this.openPrintConfirm(rack);
+          }
+        },
+        error: (error: unknown) => {
+          preopenedPopup?.close();
+          this.printErrorMessage.set(apiErrorMessage(error, 'Data rack gagal dimuat untuk print.'));
+          this.scansLoading.set(false);
+        }
+      });
   }
 
   closePrintConfirm(): void {
@@ -311,6 +357,111 @@ export class RackMonitoringComponent {
       submitted: 'Sudah Submit',
       empty: 'Belum Scan'
     })[this.rackState(rack)];
+  }
+
+  rackPercent(count: number): number {
+    const total = this.racks().length;
+    return total <= 0 ? 0 : Math.round((count / total) * 100);
+  }
+
+  canBulkConfirmRack(rack: Rack): boolean {
+    return rack.printed && rack.rackStatus !== 'CONFIRMED' && rack.submittedLineCount > 0;
+  }
+
+  bulkRackChecked(rack: Rack): boolean {
+    return this.selectedBulkRackIds().has(rack.id);
+  }
+
+  toggleBulkRack(rack: Rack, checked: boolean, event: Event): void {
+    event.stopPropagation();
+    if (!this.canBulkConfirmRack(rack)) return;
+    this.selectedBulkRackIds.update((current) => {
+      const next = new Set(current);
+      checked ? next.add(rack.id) : next.delete(rack.id);
+      return next;
+    });
+  }
+
+  toggleAllBulkRack(checked: boolean): void {
+    this.selectedBulkRackIds.set(
+      checked
+        ? new Set(this.filteredRacks().filter((rack) => this.canBulkConfirmRack(rack)).map((rack) => rack.id))
+        : new Set()
+    );
+  }
+
+  bulkConfirmSelected(): void {
+    const racks = this.selectedBulkRacks();
+    const recheckUser = this.auth.user()?.username || '';
+    if (racks.length === 0 || this.bulkConfirming()) return;
+    if (!recheckUser) {
+      this.printErrorMessage.set('Session user tidak tersedia untuk bulk confirm.');
+      return;
+    }
+    this.bulkConfirming.set(true);
+    this.printErrorMessage.set('');
+    forkJoin(
+      racks.map((rack) =>
+        this.api.getRackScans(this.scheduleId, rack.id).pipe(
+          switchMap(({ scans }) => this.api.confirmRack(this.scheduleId, rack.id, {
+            recheckUser,
+            lines: scans.map((scan) => ({ scanId: scan.id, finalQty: scan.finalQty }))
+          }))
+        )
+      )
+    )
+      .pipe(
+        switchMap(() => this.fetchPage(false)),
+        tap(() => {
+          this.printMessage.set(`${racks.length} rack berhasil di-confirm.`);
+          this.selectedBulkRackIds.set(new Set());
+          this.bulkConfirming.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.printErrorMessage.set(apiErrorMessage(error, 'Bulk confirm gagal diproses.'));
+          this.bulkConfirming.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  canCloseSchedule(): boolean {
+    const status = this.scheduleLocation()?.status ?? this.schedule()?.status ?? '';
+    return this.racks().length > 0
+      && this.racks().every((rack) => rack.rackStatus === 'CONFIRMED')
+      && !['CLOSED', 'COMPLETED', 'CANCELLED'].includes(status);
+  }
+
+  openCloseScheduleConfirm(): void {
+    if (this.canCloseSchedule()) this.closeScheduleConfirm.set(true);
+  }
+
+  closeCloseScheduleConfirm(): void {
+    if (!this.closingSchedule()) this.closeScheduleConfirm.set(false);
+  }
+
+  closeSchedule(): void {
+    if (!this.canCloseSchedule() || this.closingSchedule()) return;
+    this.closingSchedule.set(true);
+    this.printErrorMessage.set('');
+    this.api.closeSchedule(this.scheduleId)
+      .pipe(
+        switchMap(() => this.fetchPage(false)),
+        tap(() => {
+          this.printMessage.set('Schedule berhasil di-close.');
+          this.closeScheduleConfirm.set(false);
+          this.closingSchedule.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.printErrorMessage.set(apiErrorMessage(error, 'Schedule gagal di-close.'));
+          this.closingSchedule.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   finalQtyDraft(scanId: string): string {
@@ -462,14 +613,15 @@ export class RackMonitoringComponent {
     }
   }
 
-  private printRackPaper(rack: Rack): void {
+  private printRackPaper(rack: Rack, preopenedPopup?: Window): void {
     const scans = this.scans();
     if (scans.length === 0) {
+      preopenedPopup?.close();
       this.printErrorMessage.set('Data item belum siap untuk dicetak. Tunggu detail rack selesai dimuat.');
       return;
     }
 
-    const popup = window.open('', '_blank', 'width=980,height=720');
+    const popup = preopenedPopup ?? window.open('', '_blank', 'width=980,height=720');
     if (!popup) {
       this.printErrorMessage.set('Popup browser diblokir. Izinkan popup untuk mencetak rack.');
       return;
@@ -519,12 +671,15 @@ export class RackMonitoringComponent {
         this.schedule.set(schedules.find((schedule) => schedule.id === this.scheduleId) ?? null);
         this.scheduleLocation.set(rackResponse.schedule);
         this.racks.set(rackResponse.racks);
+        this.selectedBulkRackIds.update((current) => new Set(
+          [...current].filter((rackId) => rackResponse.racks.some((rack) => rack.id === rackId && this.canBulkConfirmRack(rack)))
+        ));
         const selected = this.selectedRack();
         if (selected) {
           const current = rackResponse.racks.find((rack) => rack.id === selected.id);
           if (current) {
             this.selectedRack.set(current);
-            this.loadRackScans(current.id, false);
+            if (!this.printing()) this.loadRackScans(current.id, false);
           } else {
             this.closeDetail();
           }
@@ -635,9 +790,9 @@ export class RackMonitoringComponent {
           <td>${this.escapeHtml(scan.plu)}</td>
           <td>${this.escapeHtml(scan.barcode)}</td>
           <td>${this.escapeHtml(scan.pluDescription)}</td>
-          <td class="number">${scan.scanQty.toLocaleString('id-ID')}</td>
-          <td>${this.formatDateTime(scan.dateCreated)}</td>
+          ${this.printQtyVisible() ? `<td class="number">${scan.scanQty.toLocaleString('id-ID')}</td>` : ''}
           <td class="qty-checker"></td>
+          <td class="notes"></td>
         </tr>
       `)
       .join('');
@@ -653,6 +808,7 @@ export class RackMonitoringComponent {
             main { padding: 16px 18px; }
             header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 2px solid #000; padding-bottom: 8px; }
             h1 { margin: 0; color: #000; font-size: 18px; }
+            .rack-title { margin: 8px 0 0; color: #000; font-size: 26px; font-weight: 800; }
             .subtitle { margin-top: 4px; color: #000; font-size: 10px; }
             .print-no { text-align: right; }
             .print-no span, .print-no small { color: #000; }
@@ -666,7 +822,8 @@ export class RackMonitoringComponent {
             th, td { border: 1px solid #000; padding: 4px 5px; vertical-align: top; }
             td.number, th.number { text-align: right; }
             tfoot td { font-weight: 700; }
-            th.qty-checker, td.qty-checker { width: 76px; }
+            th.qty-checker, td.qty-checker { width: 78px; }
+            th.notes, td.notes { width: 108px; }
             @page { size: A4; margin: 12mm; }
           </style>
         </head>
@@ -675,6 +832,7 @@ export class RackMonitoringComponent {
             <header>
               <div>
                 <h1>Hero Stock Take - Print Rack</h1>
+                <div class="rack-title">${this.escapeHtml(rack.rackCode)}</div>
                 <div class="subtitle">${this.escapeHtml(schedule?.scheduleNo || this.scheduleLocation()?.scheduleNo || '-')} &middot; ${this.escapeHtml(schedule?.scheduleDesc || '-')}</div>
               </div>
               <div class="print-no">
@@ -691,9 +849,9 @@ export class RackMonitoringComponent {
               <div><span>Printed By</span><strong>${this.escapeHtml(printedBy)}</strong></div>
             </section>
             <table>
-              <thead><tr><th class="number">Seq</th><th>PLU</th><th>Barcode</th><th>Deskripsi</th><th class="number">Qty</th><th>Waktu Scan</th><th class="qty-checker">Qty Checker</th></tr></thead>
+              <thead><tr><th class="number">Seq</th><th>PLU</th><th>Barcode</th><th>Deskripsi</th>${this.printQtyVisible() ? '<th class="number">Qty</th>' : ''}<th class="qty-checker">Qty Checker</th><th class="notes">Notes</th></tr></thead>
               <tbody>${rows}</tbody>
-              <tfoot><tr><td colspan="4">Total</td><td class="number">${totalQuantity.toLocaleString('id-ID')}</td><td></td><td></td></tr></tfoot>
+              <tfoot><tr><td colspan="4">Total</td>${this.printQtyVisible() ? `<td class="number">${totalQuantity.toLocaleString('id-ID')}</td>` : ''}<td></td><td></td></tr></tfoot>
             </table>
           </main>
         </body>

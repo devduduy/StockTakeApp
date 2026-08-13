@@ -28,6 +28,9 @@ import com.hero.stocktake.ui.scanner.ScannerFragment;
 import com.hero.stocktake.ui.schedule.ScheduleListFragment;
 import com.hero.stocktake.ui.submit.SubmissionSuccessFragment;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 public class MainActivity extends AppCompatActivity {
     private DrawerLayout drawerLayout;
     private View menuDashboard;
@@ -122,12 +125,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openRackList(Schedule schedule) {
+        if (!isSchedulePeriodOpen(schedule)) {
+            Toast.makeText(
+                    this,
+                    "Stock take hanya bisa dimulai pada periode " + schedule.scheduleDate() + ".",
+                    Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
         activeScheduleId = schedule.id();
         activeRackId = null;
         activeRackCode = null;
         activeRackSubmitted = false;
         activeRackPrinted = false;
         showDetail(RackListFragment.newInstance(schedule.id(), schedule.stockType(), schedule.number()), menuSchedules, "Rack List");
+    }
+
+    private boolean isSchedulePeriodOpen(Schedule schedule) {
+        try {
+            LocalDate today = LocalDate.now();
+            LocalDate startDate = LocalDate.parse(schedule.startDate());
+            LocalDate endDate = LocalDate.parse(schedule.endDate());
+            return !today.isBefore(startDate) && !today.isAfter(endDate);
+        } catch (DateTimeParseException | NullPointerException ignored) {
+            return true;
+        }
     }
 
     public void openRackDetail() {

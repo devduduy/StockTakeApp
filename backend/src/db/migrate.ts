@@ -6,6 +6,7 @@ export interface MigrationResult {
   mode: "mock" | "sql";
   addedScheduleCategoryColumn: boolean;
   addedScheduleEndDateColumn: boolean;
+  addedScheduleCutOffDateColumn: boolean;
   normalizedScheduleNumbers: boolean;
   ensuredScheduleNoUniqueIndex: boolean;
   normalizedStockTypes: boolean;
@@ -20,6 +21,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       mode: "mock",
       addedScheduleCategoryColumn: false,
       addedScheduleEndDateColumn: false,
+      addedScheduleCutOffDateColumn: false,
       normalizedScheduleNumbers: false,
       ensuredScheduleNoUniqueIndex: false,
       normalizedStockTypes: false,
@@ -33,6 +35,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
   const result = await pool.request().query<{
     added_schedule_category_column: number;
     added_schedule_end_date_column: number;
+    added_schedule_cut_off_date_column: number;
     normalized_schedule_numbers: number;
     ensured_schedule_no_unique_index: number;
     normalized_stock_types: number;
@@ -44,6 +47,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
 
     DECLARE @added_schedule_category_column bit = 0;
     DECLARE @added_schedule_end_date_column bit = 0;
+    DECLARE @added_schedule_cut_off_date_column bit = 0;
     DECLARE @normalized_schedule_numbers bit = 0;
     DECLARE @ensured_schedule_no_unique_index bit = 0;
     DECLARE @normalized_stock_types bit = 0;
@@ -85,6 +89,36 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       BEGIN
         ALTER TABLE dbo.TR_STOCK_SCHEDULE
           ALTER COLUMN END_DATE date NOT NULL;
+      END;
+    END;
+
+    IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'CUT_OFF_SOH_DATE') IS NULL
+    BEGIN
+      ALTER TABLE dbo.TR_STOCK_SCHEDULE
+        ADD CUT_OFF_SOH_DATE date NULL;
+
+      SET @added_schedule_cut_off_date_column = 1;
+    END;
+
+    IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'CUT_OFF_SOH_DATE') IS NOT NULL
+    BEGIN
+      EXEC sp_executesql N'
+        UPDATE dbo.TR_STOCK_SCHEDULE
+        SET CUT_OFF_SOH_DATE = SCHEDULE_DATE
+        WHERE CUT_OFF_SOH_DATE IS NULL;
+      ';
+
+      IF EXISTS (
+        SELECT 1
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = 'dbo'
+          AND TABLE_NAME = 'TR_STOCK_SCHEDULE'
+          AND COLUMN_NAME = 'CUT_OFF_SOH_DATE'
+          AND IS_NULLABLE = 'YES'
+      )
+      BEGIN
+        ALTER TABLE dbo.TR_STOCK_SCHEDULE
+          ALTER COLUMN CUT_OFF_SOH_DATE date NOT NULL;
       END;
     END;
 
@@ -360,6 +394,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     SELECT
       CAST(@added_schedule_category_column AS int) AS added_schedule_category_column,
       CAST(@added_schedule_end_date_column AS int) AS added_schedule_end_date_column,
+      CAST(@added_schedule_cut_off_date_column AS int) AS added_schedule_cut_off_date_column,
       CAST(@normalized_schedule_numbers AS int) AS normalized_schedule_numbers,
       CAST(@ensured_schedule_no_unique_index AS int) AS ensured_schedule_no_unique_index,
       CAST(@normalized_stock_types AS int) AS normalized_stock_types,
@@ -373,6 +408,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     mode: "sql",
     addedScheduleCategoryColumn: row?.added_schedule_category_column === 1,
     addedScheduleEndDateColumn: row?.added_schedule_end_date_column === 1,
+    addedScheduleCutOffDateColumn: row?.added_schedule_cut_off_date_column === 1,
     normalizedScheduleNumbers: row?.normalized_schedule_numbers === 1,
     ensuredScheduleNoUniqueIndex: row?.ensured_schedule_no_unique_index === 1,
     normalizedStockTypes: row?.normalized_stock_types === 1,

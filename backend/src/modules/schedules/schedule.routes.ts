@@ -6,6 +6,7 @@ import { asyncHandler } from "../../shared/async-handler.js";
 import { isInventoryControl } from "../../shared/roles.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import {
+  closeSchedule,
   createSchedule,
   listActiveSchedules,
   listSchedules,
@@ -18,10 +19,11 @@ const querySchema = z.object({
 
 const schedulePayloadSchema = z
   .object({
-    scheduleDesc: z.string().trim().min(3).max(250),
+    scheduleDesc: z.string().trim().min(3).max(250).optional(),
     locCode: z.string().trim().regex(/^[A-Za-z0-9]{4}$/).optional(),
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    cutOffDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     startTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
     endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
     stockType: z.enum(["ALL", "PARTIAL"]),
@@ -114,6 +116,17 @@ scheduleRouter.get(
     const locCode = resolveReadableLocCode(request.auth, query.locCode);
     const schedules = await listSchedules(locCode);
     response.status(200).json({ data: schedules });
+  }),
+);
+
+scheduleRouter.post(
+  "/:scheduleId/close",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanManageSchedule(request.auth?.roleCode);
+    const params = z.object({ scheduleId: z.coerce.number().int().positive() }).parse(request.params);
+    const schedule = await closeSchedule(params.scheduleId, request.auth?.username ?? "SYSTEM");
+    response.status(200).json({ data: schedule });
   }),
 );
 

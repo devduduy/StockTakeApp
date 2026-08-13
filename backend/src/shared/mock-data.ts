@@ -44,6 +44,7 @@ export interface MockSchedule {
   locationName: string;
   scheduleDate: string;
   endDate: string;
+  cutOffDate: string;
   startTime: string | null;
   endTime: string | null;
   stockTypeId: number;
@@ -63,6 +64,7 @@ export const mockSchedules: MockSchedule[] = [
     locationName: "HERO SUPERMARKET 6168",
     scheduleDate: "2026-07-29",
     endDate: "2026-07-29",
+    cutOffDate: "2026-07-29",
     startTime: "2026-07-29T08:00:00.000Z",
     endTime: null,
     stockTypeId: 1,

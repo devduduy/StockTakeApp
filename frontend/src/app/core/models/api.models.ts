@@ -52,10 +52,11 @@ export interface Location {
 }
 
 export interface SchedulePayload {
-  scheduleDesc: string;
+  scheduleDesc?: string;
   locCode: string;
   startDate: string;
   endDate: string;
+  cutOffDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: 'ALL' | 'PARTIAL';
@@ -73,6 +74,7 @@ export interface ActiveSchedule {
   scheduleDate: string;
   startDate: string;
   endDate: string;
+  cutOffDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: {

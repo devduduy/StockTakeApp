@@ -10,6 +10,7 @@ export interface ActiveSchedule {
   scheduleDate: string;
   startDate: string;
   endDate: string;
+  cutOffDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: {
@@ -53,10 +54,10 @@ export type ScheduleStockType = "ALL" | "PARTIAL";
 export type EditableScheduleStatus = "DRAFT" | "OPEN";
 
 export interface ScheduleMutatePayload {
-  scheduleDesc: string;
   locCode: string;
   startDate: string;
   endDate: string;
+  cutOffDate: string;
   startTime: string | null;
   endTime: string | null;
   stockType: ScheduleStockType;

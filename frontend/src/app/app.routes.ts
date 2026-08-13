@@ -26,6 +26,12 @@ export const routes: Routes = [
           import('./features/schedules/schedule-list.component').then((component) => component.ScheduleListComponent)
       },
       {
+        path: 'closed-schedules',
+        title: 'Schedule Close | Hero Stock Take',
+        loadComponent: () =>
+          import('./features/closed-schedules/closed-schedule-list.component').then((component) => component.ClosedScheduleListComponent)
+      },
+      {
         path: 'master-racks',
         title: 'Master Rack | Hero Stock Take',
         loadComponent: () =>

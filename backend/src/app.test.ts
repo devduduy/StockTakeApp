@@ -149,6 +149,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         locCode: "6168",
         startDate: "2026-08-04",
         endDate: "2026-08-05",
+        cutOffDate: "2026-08-04",
         startTime: "08:00",
         endTime: null,
         stockType: "PARTIAL",
@@ -158,6 +159,7 @@ describe("Hero Stock Take API (mock mode)", () => {
       });
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.data.stockType.name).toBe("PARTIAL");
+    expect(createResponse.body.data.scheduleDesc).toBe("STOCK TAKE 6168 PARTIAL 2026-08-04");
     expect(createResponse.body.data.categoryIds).toEqual(["40601"]);
     expect(createResponse.body.data.rackIds).toEqual(["1", "2"]);
 
@@ -170,6 +172,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         locCode: "6168",
         startDate: "2026-08-05",
         endDate: "2026-08-05",
+        cutOffDate: "2026-08-05",
         startTime: "09:00",
         endTime: "17:00",
         stockType: "ALL",
@@ -178,9 +181,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         status: "DRAFT",
       });
     expect(updateResponse.status).toBe(200);
-    expect(updateResponse.body.data.scheduleDesc).toBe(
-      "Stock Take Partial Fresh Updated",
-    );
+    expect(updateResponse.body.data.scheduleDesc).toBe("STOCK TAKE 6168 ALL 2026-08-05");
     expect(updateResponse.body.data.stockType.name).toBe("ALL");
     expect(updateResponse.body.data.categoryIds).toEqual([]);
     expect(updateResponse.body.data.status).toBe("DRAFT");
@@ -202,6 +203,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         locCode: "1001",
         startDate: "2026-08-07",
         endDate: "2026-08-07",
+        cutOffDate: "2026-08-07",
         startTime: "08:00",
         endTime: "17:00",
         stockType: "ALL",
@@ -245,6 +247,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         locCode: "1001",
         startDate: "2026-08-04",
         endDate: "2026-08-06",
+        cutOffDate: "2026-08-03",
         startTime: "08:00",
         endTime: "17:00",
         stockType: "ALL",
@@ -464,6 +467,7 @@ describe("Hero Stock Take API (mock mode)", () => {
         locCode: "6168",
         startDate: "2026-08-04",
         endDate: "2026-08-04",
+        cutOffDate: "2026-08-04",
         stockType: "ALL",
         categoryIds: [],
         status: "OPEN",

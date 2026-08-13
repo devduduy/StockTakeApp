@@ -6,6 +6,8 @@ public record Schedule(
         String description,
         String locCode,
         String locationName,
+        String startDate,
+        String endDate,
         String scheduleDate,
         String scheduleTime,
         String stockTypeCode,

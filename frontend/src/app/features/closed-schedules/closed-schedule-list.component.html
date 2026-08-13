@@ -1,0 +1,104 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">ARSIP STOCK TAKE</p>
+    <h1>Schedule Close</h1>
+    <p>Schedule yang sudah selesai dipisahkan dari card aktif agar monitoring harian tetap ringan.</p>
+  </div>
+  <div class="page-heading__actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+      <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
+      Perbarui
+    </button>
+  </div>
+</section>
+
+<section class="filter-bar" aria-label="Filter schedule close">
+  <label class="search-control">
+    <span class="material-symbols-outlined">search</span>
+    <input
+      type="search"
+      placeholder="Cari nomor, deskripsi, lokasi, atau status..."
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)"
+    />
+    @if (search()) {
+      <button type="button" aria-label="Hapus pencarian" (click)="search.set('')">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    }
+  </label>
+  <div class="segmented-control" aria-label="Filter tipe stock take">
+    <button type="button" [class.active]="typeFilter() === ''" (click)="setTypeFilter('')">Semua</button>
+    <button type="button" [class.active]="typeFilter() === 'ALL'" (click)="setTypeFilter('ALL')">ALL</button>
+    <button type="button" [class.active]="typeFilter() === 'PARTIAL'" (click)="setTypeFilter('PARTIAL')">PARTIAL</button>
+  </div>
+  <span class="result-count">{{ filteredSchedules().length }} schedule</span>
+</section>
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">cloud_off</span>
+    <div><strong>Schedule close tidak dapat dimuat</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="refresh()">Coba lagi</button>
+  </div>
+}
+
+<section class="content-card closed-panel">
+  @if (loading()) {
+    <div class="closed-loading">
+      @for (item of [1,2,3,4]; track item) { <div class="skeleton skeleton--scan"></div> }
+    </div>
+  } @else {
+    <div class="closed-table-wrap">
+      <table class="data-table closed-table">
+        <thead>
+          <tr>
+            <th>Schedule</th>
+            <th>Lokasi</th>
+            <th>Periode</th>
+            <th>Cut-off SOH</th>
+            <th>Tipe</th>
+            <th>Status</th>
+            <th class="number">Rack</th>
+            <th class="number">Progress</th>
+            <th aria-label="Aksi"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (schedule of filteredSchedules(); track schedule.id) {
+            <tr>
+              <td>
+                <div class="schedule-cell">
+                  <span>{{ schedule.scheduleNo }}</span>
+                  <strong>{{ schedule.scheduleDesc }}</strong>
+                </div>
+              </td>
+              <td>{{ schedule.location.name }} <span class="mono">({{ schedule.locCode }})</span></td>
+              <td>{{ schedule.startDate | date:'dd MMM yyyy' }} - {{ schedule.endDate | date:'dd MMM yyyy' }}</td>
+              <td>{{ schedule.cutOffDate | date:'dd MMM yyyy' }}</td>
+              <td><span class="type-pill" [class.type-pill--partial]="stockTypeLabel(schedule) === 'PARTIAL'">{{ stockTypeLabel(schedule) }}</span></td>
+              <td><span class="closed-status">{{ statusLabel(schedule.status) }}</span></td>
+              <td class="number mono">{{ schedule.progress.totalRack | number }}</td>
+              <td class="number mono">{{ schedule.progress.percentage | number }}%</td>
+              <td class="action">
+                <a [routerLink]="['/schedules', schedule.id, 'racks']" aria-label="Buka monitoring rack">
+                  <span class="material-symbols-outlined">open_in_new</span>
+                </a>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9">
+                <div class="empty-state compact">
+                  <span class="material-symbols-outlined">inventory</span>
+                  <h3>Belum ada schedule close</h3>
+                  <p>Schedule akan masuk ke sini setelah semua rack confirm lalu schedule di-close.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

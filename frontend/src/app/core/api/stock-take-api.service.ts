@@ -35,6 +35,12 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
+  closeSchedule(scheduleId: string): Observable<ActiveSchedule> {
+    return this.http
+      .post<ApiEnvelope<ActiveSchedule>>(`/api/stock-take/schedules/${scheduleId}/close`, {})
+      .pipe(map(({ data }) => data));
+  }
+
   createSchedule(payload: SchedulePayload): Observable<ActiveSchedule> {
     return this.http
       .post<ApiEnvelope<ActiveSchedule>>('/api/stock-take/schedules', payload)

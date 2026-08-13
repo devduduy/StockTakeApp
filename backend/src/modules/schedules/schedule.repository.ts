@@ -19,6 +19,7 @@ interface ScheduleRow {
   loc_name: string | null;
   schedule_date: Date | string;
   end_date: Date | string | null;
+  cut_off_date: Date | string | null;
   start_time: Date | string | null;
   end_time: Date | string | null;
   stock_type_id: number;
@@ -58,6 +59,10 @@ function stockTypeName(stockType: "ALL" | "PARTIAL"): string {
 
 function categoryValue(payload: ScheduleMutatePayload): string | null {
   return payload.stockType === "ALL" ? null : payload.categoryIds.join(",");
+}
+
+function scheduleDescription(payload: ScheduleMutatePayload): string {
+  return `STOCK TAKE ${payload.locCode} ${payload.stockType} ${payload.cutOffDate}`;
 }
 
 function combineDateTime(date: string, time: string | null): string | null {
@@ -113,6 +118,7 @@ async function mapSchedule(row: ScheduleRow): Promise<ActiveSchedule> {
   const categoryIds = parseCategoryIds(row.category_id);
   const startDate = isoDate(row.schedule_date);
   const endDate = row.end_date ? isoDate(row.end_date) : startDate;
+  const cutOffDate = row.cut_off_date ? isoDate(row.cut_off_date) : startDate;
   return {
     id: String(row.id),
     scheduleNo: row.schedule_no,
@@ -125,6 +131,7 @@ async function mapSchedule(row: ScheduleRow): Promise<ActiveSchedule> {
     scheduleDate: startDate,
     startDate,
     endDate,
+    cutOffDate,
     startTime: isoDateTime(row.start_time),
     endTime: isoDateTime(row.end_time),
     stockType: {
@@ -340,6 +347,7 @@ export async function listActiveSchedules(
           loc_name: schedule.locationName ?? schedule.locCode,
           schedule_date: schedule.scheduleDate,
           end_date: schedule.endDate,
+          cut_off_date: schedule.cutOffDate ?? schedule.scheduleDate,
           start_time: schedule.startTime,
           end_time: schedule.endTime,
           stock_type_id: schedule.stockTypeId,
@@ -377,6 +385,7 @@ export async function listActiveSchedules(
       loc.flocname AS loc_name,
       s.SCHEDULE_DATE AS schedule_date,
       ISNULL(s.END_DATE, s.SCHEDULE_DATE) AS end_date,
+      ISNULL(s.CUT_OFF_SOH_DATE, s.SCHEDULE_DATE) AS cut_off_date,
       s.START_TIME AS start_time,
       s.END_TIME AS end_time,
       s.STOCK_TYPE_ID AS stock_type_id,
@@ -427,6 +436,7 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
           loc_name: schedule.locationName ?? schedule.locCode,
           schedule_date: schedule.scheduleDate,
           end_date: schedule.endDate,
+          cut_off_date: schedule.cutOffDate ?? schedule.scheduleDate,
           start_time: schedule.startTime,
           end_time: schedule.endTime,
           stock_type_id: schedule.stockTypeId,
@@ -464,6 +474,7 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
       loc.flocname AS loc_name,
       s.SCHEDULE_DATE AS schedule_date,
       ISNULL(s.END_DATE, s.SCHEDULE_DATE) AS end_date,
+      ISNULL(s.CUT_OFF_SOH_DATE, s.SCHEDULE_DATE) AS cut_off_date,
       s.START_TIME AS start_time,
       s.END_TIME AS end_time,
       s.STOCK_TYPE_ID AS stock_type_id,
@@ -505,6 +516,7 @@ export async function createSchedule(
 ): Promise<ActiveSchedule> {
   assertValidSchedulePeriod(payload);
   await assertValidCategories(payload);
+  const generatedScheduleDesc = scheduleDescription(payload);
 
   if (env.SQL_MODE === "mock") {
     const nextId = String(Math.max(...mockSchedules.map((schedule) => Number(schedule.id)), 0) + 1);
@@ -514,11 +526,12 @@ export async function createSchedule(
     mockSchedules.push({
       id: nextId,
       scheduleNo,
-      scheduleDesc: payload.scheduleDesc,
+      scheduleDesc: generatedScheduleDesc,
       locCode: payload.locCode,
       locationName: `HERO SUPERMARKET ${payload.locCode}`,
       scheduleDate: payload.startDate,
       endDate: payload.endDate,
+      cutOffDate: payload.cutOffDate,
       startTime: combineDateTime(payload.startDate, payload.startTime),
       endTime: combineDateTime(payload.endDate, payload.endTime),
       stockTypeId: stockTypeId(payload.stockType),
@@ -540,9 +553,10 @@ export async function createSchedule(
     const result = await transaction
       .request()
       .input("locCode", sql.Char(4), payload.locCode)
-      .input("scheduleDesc", sql.NVarChar(250), payload.scheduleDesc)
+      .input("scheduleDesc", sql.NVarChar(250), generatedScheduleDesc)
       .input("scheduleDate", sql.Date, payload.startDate)
       .input("endDate", sql.Date, payload.endDate)
+      .input("cutOffDate", sql.Date, payload.cutOffDate)
       .input("startTime", sql.VarChar(19), combineDateTime(payload.startDate, payload.startTime))
       .input("endTime", sql.VarChar(19), combineDateTime(payload.endDate, payload.endTime))
       .input("stockTypeId", sql.SmallInt, stockTypeId(payload.stockType))
@@ -565,6 +579,7 @@ export async function createSchedule(
           LOC_CODE,
           SCHEDULE_DATE,
           END_DATE,
+          CUT_OFF_SOH_DATE,
           START_TIME,
           END_TIME,
           STOCK_TYPE_ID,
@@ -580,6 +595,7 @@ export async function createSchedule(
           @locCode,
           @scheduleDate,
           @endDate,
+          @cutOffDate,
           CASE WHEN @startTime IS NULL THEN NULL ELSE CONVERT(datetime2, @startTime, 126) END,
           CASE WHEN @endTime IS NULL THEN NULL ELSE CONVERT(datetime2, @endTime, 126) END,
           @stockTypeId,
@@ -610,6 +626,7 @@ export async function updateSchedule(
 ): Promise<ActiveSchedule> {
   assertValidSchedulePeriod(payload);
   await assertValidCategories(payload);
+  const generatedScheduleDesc = scheduleDescription(payload);
 
   if (env.SQL_MODE === "mock") {
     if (mockScanSubmissions.some((scan) => Number(scan.scheduleId) === scheduleId)) {
@@ -619,9 +636,10 @@ export async function updateSchedule(
     if (!schedule || schedule.locCode !== payload.locCode) {
       throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
     }
-    schedule.scheduleDesc = payload.scheduleDesc;
+    schedule.scheduleDesc = generatedScheduleDesc;
     schedule.scheduleDate = payload.startDate;
     schedule.endDate = payload.endDate;
+    schedule.cutOffDate = payload.cutOffDate;
     schedule.startTime = combineDateTime(payload.startDate, payload.startTime);
     schedule.endTime = combineDateTime(payload.endDate, payload.endTime);
     schedule.stockTypeId = stockTypeId(payload.stockType);
@@ -666,9 +684,10 @@ export async function updateSchedule(
       .request()
       .input("scheduleId", sql.BigInt, scheduleId)
       .input("locCode", sql.Char(4), payload.locCode)
-      .input("scheduleDesc", sql.NVarChar(250), payload.scheduleDesc)
+      .input("scheduleDesc", sql.NVarChar(250), generatedScheduleDesc)
       .input("scheduleDate", sql.Date, payload.startDate)
       .input("endDate", sql.Date, payload.endDate)
+      .input("cutOffDate", sql.Date, payload.cutOffDate)
       .input("startTime", sql.VarChar(19), combineDateTime(payload.startDate, payload.startTime))
       .input("endTime", sql.VarChar(19), combineDateTime(payload.endDate, payload.endTime))
       .input("stockTypeId", sql.SmallInt, stockTypeId(payload.stockType))
@@ -681,6 +700,7 @@ export async function updateSchedule(
         SET SCHEDULE_DESC = @scheduleDesc,
             SCHEDULE_DATE = @scheduleDate,
             END_DATE = @endDate,
+            CUT_OFF_SOH_DATE = @cutOffDate,
             START_TIME = CASE WHEN @startTime IS NULL THEN NULL ELSE CONVERT(datetime2, @startTime, 126) END,
             END_TIME = CASE WHEN @endTime IS NULL THEN NULL ELSE CONVERT(datetime2, @endTime, 126) END,
             STOCK_TYPE_ID = @stockTypeId,
@@ -701,6 +721,125 @@ export async function updateSchedule(
 
   const schedules = await listSchedules(payload.locCode);
   return schedules.find((schedule) => schedule.id === String(scheduleId))!;
+}
+
+export async function closeSchedule(
+  scheduleId: number,
+  username: string,
+): Promise<ActiveSchedule> {
+  if (env.SQL_MODE === "mock") {
+    const schedule = mockSchedules.find((candidate) => Number(candidate.id) === scheduleId);
+    if (!schedule) {
+      throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
+    }
+    const scopedRacks = mockScheduleRacks.filter(
+      (scope) => Number(scope.scheduleId) === scheduleId && scope.status === "ACTIVE",
+    );
+    if (scopedRacks.length === 0) {
+      throw new AppError(409, "Schedule belum memiliki rack scope.", "SCHEDULE_RACK_SCOPE_EMPTY");
+    }
+    const readyRackCount = scopedRacks.filter((scope) => {
+      const activeScans = mockScanSubmissions.filter(
+        (scan) =>
+          scan.scheduleId === schedule.id &&
+          scan.rackId === scope.rackId &&
+          scan.scanStatus === "SYNCED",
+      );
+      return activeScans.length > 0 &&
+        activeScans.every((scan) => Boolean(scan.printNo?.trim()) && Boolean(scan.confirmTime));
+    }).length;
+    if (readyRackCount !== scopedRacks.length) {
+      throw new AppError(
+        409,
+        "Schedule hanya bisa di-close jika semua rack sudah print dan confirm.",
+        "SCHEDULE_CLOSE_NOT_READY",
+      );
+    }
+    schedule.status = "CLOSED";
+    const schedules = await listSchedules(schedule.locCode);
+    return schedules.find((item) => item.id === String(scheduleId))!;
+  }
+
+  const pool = await getSqlPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+  try {
+    const validation = await transaction
+      .request()
+      .input("scheduleId", sql.BigInt, scheduleId)
+      .query<{
+        schedule_id: string | number;
+        loc_code: string;
+        status: string;
+        total_rack: number;
+        ready_rack: number;
+      }>(`
+        ;WITH rack_state AS (
+          SELECT
+            scope.RACK_ID,
+            COUNT(scan.ID) AS submitted_line_count,
+            SUM(CASE WHEN NULLIF(LTRIM(RTRIM(scan.PRINT_NO)), '') IS NOT NULL THEN 1 ELSE 0 END) AS printed_line_count,
+            SUM(CASE WHEN scan.CONFIRM_TIME IS NOT NULL THEN 1 ELSE 0 END) AS confirmed_line_count
+          FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+          LEFT JOIN dbo.TR_STOCK_TAKE_SCAN scan
+            ON scan.SCHEDULE_ID = scope.SCHEDULE_ID
+           AND scan.RACK_ID = scope.RACK_ID
+           AND scan.SCAN_STATUS = 'SYNCED'
+          WHERE scope.SCHEDULE_ID = @scheduleId
+            AND scope.STATUS = 'ACTIVE'
+          GROUP BY scope.RACK_ID
+        )
+        SELECT TOP (1)
+          CAST(schedule.ID AS varchar(30)) AS schedule_id,
+          schedule.LOC_CODE AS loc_code,
+          schedule.STATUS AS status,
+          (SELECT COUNT(1) FROM rack_state) AS total_rack,
+          (
+            SELECT COUNT(1)
+            FROM rack_state
+            WHERE submitted_line_count > 0
+              AND printed_line_count = submitted_line_count
+              AND confirmed_line_count = submitted_line_count
+          ) AS ready_rack
+        FROM dbo.TR_STOCK_SCHEDULE schedule
+        WHERE schedule.ID = @scheduleId;
+      `);
+    const row = validation.recordset[0];
+    if (!row) {
+      throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
+    }
+    if (["CLOSED", "COMPLETED", "CANCELLED"].includes(row.status)) {
+      throw new AppError(409, "Schedule sudah close.", "SCHEDULE_ALREADY_CLOSED");
+    }
+    if (Number(row.total_rack) === 0) {
+      throw new AppError(409, "Schedule belum memiliki rack scope.", "SCHEDULE_RACK_SCOPE_EMPTY");
+    }
+    if (Number(row.ready_rack) !== Number(row.total_rack)) {
+      throw new AppError(
+        409,
+        "Schedule hanya bisa di-close jika semua rack sudah print dan confirm.",
+        "SCHEDULE_CLOSE_NOT_READY",
+      );
+    }
+
+    await transaction
+      .request()
+      .input("scheduleId", sql.BigInt, scheduleId)
+      .input("username", sql.VarChar(100), username)
+      .query(`
+        UPDATE dbo.TR_STOCK_SCHEDULE
+        SET STATUS = 'CLOSED',
+            USER_MODIFIED = @username,
+            DATE_MODIFIED = SYSUTCDATETIME()
+        WHERE ID = @scheduleId;
+      `);
+    await transaction.commit();
+    const schedules = await listSchedules(row.loc_code.trim());
+    return schedules.find((schedule) => schedule.id === String(scheduleId))!;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 export async function findScheduleLocation(
