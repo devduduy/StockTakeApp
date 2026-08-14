@@ -452,6 +452,47 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(resubmitResponse.status).toBe(200);
   });
 
+  it("rejects rack mutations when schedule is already closed", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    const token = loginResponse.body.data.accessToken as string;
+    const mockData = await import("./shared/mock-data.js");
+    const schedule = mockData.mockSchedules.find((item) => item.id === "1");
+    expect(schedule).toBeTruthy();
+    if (!schedule) return;
+    const previousStatus = schedule.status;
+    schedule.status = "CLOSED";
+
+    try {
+      const submitResponse = await request(app)
+        .post("/api/stock-take/schedules/1/racks/1/scans/submit")
+        .set("authorization", `Bearer ${token}`)
+        .send({
+          lines: [
+            {
+              clientScanId: "closed-schedule-scan-1",
+              barcode: "383800000013",
+              scanQty: 1,
+              inputType: "SCAN",
+            },
+          ],
+        });
+      expect(submitResponse.status).toBe(409);
+      expect(submitResponse.body.error.code).toBe("SCHEDULE_NOT_EDITABLE");
+
+      const printResponse = await request(app)
+        .post("/api/stock-take/schedules/1/racks/1/print")
+        .set("authorization", `Bearer ${token}`)
+        .send({});
+      expect(printResponse.status).toBe(409);
+      expect(printResponse.body.error.code).toBe("SCHEDULE_NOT_EDITABLE");
+    } finally {
+      schedule.status = previousStatus;
+    }
+  });
+
   it("prevents scanners from managing schedules", async () => {
     const loginResponse = await request(app).post("/api/auth/login").send({
       username: "scanner01",

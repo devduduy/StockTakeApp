@@ -65,6 +65,16 @@ function assertCanPrint(roleCode: string | undefined): void {
   }
 }
 
+function assertScheduleAllowsRackAction(status: string): void {
+  if (["CLOSED", "COMPLETED", "CANCELLED"].includes(status)) {
+    throw new AppError(
+      409,
+      "Schedule sudah selesai atau dibatalkan. Aksi rack tidak bisa diproses.",
+      "SCHEDULE_NOT_EDITABLE",
+    );
+  }
+}
+
 async function assertRackInScheduleScope(
   scheduleId: number,
   rackId: number,
@@ -125,13 +135,7 @@ scanRouter.post(
         "SCHEDULE_NOT_FOUND",
       );
     }
-    if (schedule.status === "CANCELLED") {
-      throw new AppError(
-        409,
-        "Schedule sudah dibatalkan.",
-        "SCHEDULE_CANCELLED",
-      );
-    }
+    assertScheduleAllowsRackAction(schedule.status);
     assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
@@ -209,13 +213,7 @@ scanRouter.post(
         "SCHEDULE_NOT_FOUND",
       );
     }
-    if (schedule.status === "CANCELLED") {
-      throw new AppError(
-        409,
-        "Schedule sudah dibatalkan.",
-        "SCHEDULE_CANCELLED",
-      );
-    }
+    assertScheduleAllowsRackAction(schedule.status);
     assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
@@ -255,13 +253,7 @@ scanRouter.patch(
         "SCHEDULE_NOT_FOUND",
       );
     }
-    if (schedule.status === "CANCELLED") {
-      throw new AppError(
-        409,
-        "Schedule sudah dibatalkan.",
-        "SCHEDULE_CANCELLED",
-      );
-    }
+    assertScheduleAllowsRackAction(schedule.status);
     assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
@@ -310,6 +302,7 @@ scanRouter.post(
         "SCHEDULE_NOT_FOUND",
       );
     }
+    assertScheduleAllowsRackAction(schedule.status);
     assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);
@@ -350,6 +343,7 @@ scanRouter.post(
         "SCHEDULE_NOT_FOUND",
       );
     }
+    assertScheduleAllowsRackAction(schedule.status);
     assertCanAccessScheduleLocation(request.auth, schedule.locCode);
 
     const rack = await findRackById(rackId);

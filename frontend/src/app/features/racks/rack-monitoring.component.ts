@@ -406,6 +406,10 @@ export class RackMonitoringComponent {
     })[this.rackState(rack)];
   }
 
+  isCorrectedRack(rack: Rack): boolean {
+    return rack.rackStatus === 'CONFIRMED' || (rack.printed && rack.discrepancyQuantity !== 0);
+  }
+
   rackPercent(count: number): number {
     const total = this.racks().length;
     return total <= 0 ? 0 : Math.round((count / total) * 100);

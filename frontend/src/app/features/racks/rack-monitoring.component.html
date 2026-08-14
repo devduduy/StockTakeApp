@@ -49,6 +49,14 @@
   </div>
 }
 
+@if (printErrorMessage() && !selectedRack()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">error</span>
+    <div><strong>Aksi rack gagal</strong><span>{{ printErrorMessage() }}</span></div>
+    <button type="button" (click)="printErrorMessage.set('')">Tutup</button>
+  </div>
+}
+
 @if (errorMessage()) {
   <div class="inline-alert" role="alert">
     <span class="material-symbols-outlined">cloud_off</span>
@@ -117,7 +125,7 @@
               <td><div class="rack-name"><span class="rack-code">{{ rack.rackCode }}</span><strong>{{ rack.rackName }}</strong></div></td>
               <td>
                 <span class="rack-state" [class]="'rack-state rack-state--' + rackState(rack)"><i></i>{{ rackStateLabel(rack) }}</span>
-                @if (rack.discrepancyQuantity !== 0 && rack.printed) { <span class="corrected-label">Sudah dikoreksi</span> }
+                @if (isCorrectedRack(rack)) { <span class="corrected-label">Sudah dikoreksi</span> }
               </td>
               <td class="number mono">{{ rack.submittedLineCount | number }}</td>
               <td class="number mono">{{ rack.finalQuantity | number }}</td>
