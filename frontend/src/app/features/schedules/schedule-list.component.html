@@ -367,9 +367,53 @@
               }
               <label class="form-field">
                 <span>Kode Rack <b>*</b></span>
-                <input formControlName="rackCode" type="text" placeholder="Contoh: RCK-FR-001" (blur)="normalizeRackCode()" />
+                <div class="rack-code-builder">
+                  <span class="rack-code-builder__prefix">RCK</span>
+                  <div class="rack-letter-combobox" [class.rack-letter-combobox--open]="rackCreateLetterDropdownOpen()">
+                    <div class="rack-letter-combobox__field">
+                      <input
+                        type="text"
+                        autocomplete="off"
+                        maxlength="2"
+                        placeholder="AA"
+                        [value]="rackCreateLetterSearch()"
+                        (focus)="onRackCreateLetterFocus()"
+                        (blur)="onRackCreateLetterBlur()"
+                        (input)="onRackCreateLetterInput($any($event.target).value)"
+                      />
+                      <button type="button" aria-label="Buka pilihan kode huruf rack" (mousedown)="$event.preventDefault()" (click)="rackCreateLetterDropdownOpen.set(!rackCreateLetterDropdownOpen())">
+                        <span class="material-symbols-outlined">expand_more</span>
+                      </button>
+                    </div>
+                    @if (rackCreateLetterDropdownOpen()) {
+                      <div class="rack-letter-combobox__panel" role="listbox">
+                        @for (letterCode of filteredRackCreateLetterCodes(); track letterCode) {
+                          <button
+                            type="button"
+                            role="option"
+                            [class.active]="rackCreateLetterSearch() === letterCode"
+                            (mousedown)="$event.preventDefault()"
+                            (click)="selectRackCreateLetterCode(letterCode)"
+                          >
+                            {{ letterCode }}
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <input
+                    class="rack-code-builder__seq"
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="3"
+                    placeholder="001"
+                    [value]="rackCreateSequence()"
+                    (input)="onRackCreateSequenceInput($any($event.target).value)"
+                    (blur)="normalizeRackCode()"
+                  />
+                </div>
                 @if (rackForm.controls.rackCode.touched && rackForm.controls.rackCode.invalid) {
-                  <small>Format wajib RCK-XX-000, contoh RCK-FR-001.</small>
+                  <small>Format wajib RCK-XX-000 dengan huruf sama, contoh RCK-AA-001.</small>
                 }
               </label>
               <label class="form-field">
@@ -411,34 +455,99 @@
             </div>
           } @else {
             @if (selectedRackMasters().length > 0) {
-              <div class="selected-rack-list" aria-label="Rack terpilih">
-                @for (rack of selectedRackMasters(); track rack.id) {
-                  <button type="button" (click)="removeRack(rack.id)">
-                    <span>{{ rack.rackCode }}</span>
-                    {{ rack.rackName }}
-                    <i class="material-symbols-outlined">close</i>
-                  </button>
-                }
+              <div class="selected-rack-preview">
+                <div class="selected-rack-preview__head">
+                  <div>
+                    <strong>Preview rack terpilih</strong>
+                    <span>{{ selectedRackMasters().length }} rack akan masuk schedule.</span>
+                  </div>
+                  <button class="secondary-button" type="button" (click)="clearRacks()">Kosongkan</button>
+                </div>
+                <div class="selected-rack-list" aria-label="Rack terpilih">
+                  @for (rack of selectedRackMasters(); track rack.id) {
+                    <button type="button" (click)="removeRack(rack.id)">
+                      <span>{{ rack.rackCode }}</span>
+                      {{ rack.rackName }}
+                      <i class="material-symbols-outlined">close</i>
+                    </button>
+                  }
+                </div>
               </div>
             }
 
-            <div class="rack-scope-toolbar">
-              <label class="search-control rack-search">
-                <span class="material-symbols-outlined">search</span>
-                <input
-                  type="search"
-                  placeholder="Cari kode atau nama rack..."
-                  [value]="rackSearch()"
-                  (input)="rackSearch.set($any($event.target).value)"
-                />
-                @if (rackSearch()) {
-                  <button type="button" aria-label="Hapus pencarian rack" (click)="rackSearch.set('')">
-                    <span class="material-symbols-outlined">close</span>
-                  </button>
-                }
+            <div class="rack-range-picker">
+              <div>
+                <strong>Pilih rack by range</strong>
+                <span>Pilih kode huruf rack yang tersedia, lalu isi range sequence. Setelah itu masih bisa uncheck manual.</span>
+              </div>
+              <label>
+                <span>Kode huruf</span>
+                <div class="rack-letter-combobox" [class.rack-letter-combobox--open]="rackRangeLetterDropdownOpen()">
+                  <div class="rack-letter-combobox__field">
+                    <input
+                      type="text"
+                      autocomplete="off"
+                      maxlength="2"
+                      placeholder="AA, BB, CC..."
+                      [value]="rackRangeLetterSearch()"
+                      (focus)="onRackLetterFocus()"
+                      (blur)="onRackLetterBlur()"
+                      (input)="onRackLetterInput($any($event.target).value)"
+                    />
+                    <button type="button" aria-label="Buka pilihan kode huruf rack" (mousedown)="$event.preventDefault()" (click)="rackRangeLetterDropdownOpen.set(!rackRangeLetterDropdownOpen())">
+                      <span class="material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  @if (rackRangeLetterDropdownOpen()) {
+                    <div class="rack-letter-combobox__panel" role="listbox">
+                      @for (letterCode of filteredRackLetterCodes(); track letterCode) {
+                        <button
+                          type="button"
+                          role="option"
+                          [class.active]="rackRangeLetterCode() === letterCode"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="selectRackLetterCode(letterCode)"
+                        >
+                          {{ letterCode }}
+                        </button>
+                      } @empty {
+                        <div class="rack-letter-combobox__empty">Belum ada pattern rack</div>
+                      }
+                    </div>
+                  }
+                </div>
               </label>
-              <button class="secondary-button" type="button" (click)="toggleAllFilteredRacks(true)">Pilih hasil cari</button>
-              <button class="secondary-button" type="button" (click)="clearRacks()">Kosongkan</button>
+              <label>
+                <span>Dari seq</span>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="3"
+                  placeholder="001"
+                  [value]="rackRangeFrom()"
+                  (input)="onRackRangeFromInput($any($event.target).value)"
+                  (blur)="normalizeRackRangeInputs()"
+                />
+              </label>
+              <label>
+                <span>Sampai seq</span>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="3"
+                  placeholder="020"
+                  [value]="rackRangeTo()"
+                  (input)="onRackRangeToInput($any($event.target).value)"
+                  (blur)="normalizeRackRangeInputs()"
+                />
+              </label>
+              <button class="secondary-button" type="button" (click)="applyRackRange()">Terapkan</button>
+              @if (rackScopeErrorMessage()) {
+                <small class="rack-range-picker__error">
+                  <span class="material-symbols-outlined">error</span>
+                  {{ rackScopeErrorMessage() }}
+                </small>
+              }
             </div>
 
             <div class="rack-options">
@@ -459,7 +568,7 @@
                   <div class="empty-state compact">
                     <span class="material-symbols-outlined">inventory_2</span>
                     <h3>Rack tidak ditemukan</h3>
-                    <p>Tambah rack baru atau ubah pencarian.</p>
+                    <p>Tambah rack baru atau pilih kode huruf lain.</p>
                   </div>
                 }
               }

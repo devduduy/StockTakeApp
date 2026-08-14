@@ -23,9 +23,9 @@ public final class DummyData {
 
     public static List<Rack> racks() {
         return List.of(
-                new Rack("A1-01", "RCK-FF-A101", "Rack A1-01", "SUBMITTED", 42, 78, "10:45", true, false),
-                new Rack(ACTIVE_RACK_ID, "RCK-FF-A102", "Rack A1-02", "IN PROGRESS", 2, 36, "Active now", false, false),
-                new Rack("A1-03", "RCK-FF-A103", "Rack A1-03", "NOT STARTED", 0, 0, "-", false, false)
+                new Rack("A1-01", "RCK-FF-101", "Rack A1-01", "SUBMITTED", 42, 78, "10:45", true, false),
+                new Rack(ACTIVE_RACK_ID, "RCK-FF-102", "Rack A1-02", "IN PROGRESS", 2, 36, "Active now", false, false),
+                new Rack("A1-03", "RCK-FF-103", "Rack A1-03", "NOT STARTED", 0, 0, "-", false, false)
         );
     }
 }

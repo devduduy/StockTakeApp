@@ -233,7 +233,7 @@ describe("Hero Stock Take API (mock mode)", () => {
       .set("authorization", `Bearer ${token}`)
       .send({
         locCode: "1001",
-        rackCode: "RCK-IC-901",
+        rackCode: "RCK-II-901",
         rackName: "Rack Inventory Control Test",
         status: "ACTIVE",
       });

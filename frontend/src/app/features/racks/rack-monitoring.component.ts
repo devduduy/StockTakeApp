@@ -30,6 +30,8 @@ export class RackMonitoringComponent {
   readonly rackMasters = signal<RackMaster[]>([]);
   readonly scans = signal<RackScan[]>([]);
   readonly selectedRack = signal<Rack | null>(null);
+  readonly pendingPrintScans = signal<RackScan[]>([]);
+  readonly rowConfirmRack = signal<Rack | null>(null);
   readonly loading = signal(true);
   readonly refreshing = signal(false);
   readonly addRackOpen = signal(false);
@@ -55,6 +57,9 @@ export class RackMonitoringComponent {
   readonly correctionErrorMessage = signal('');
   readonly search = signal('');
   readonly addRackSearch = signal('');
+  readonly rackCreateLetterSearch = signal('');
+  readonly rackCreateLetterDropdownOpen = signal(false);
+  readonly rackCreateSequence = signal('001');
   readonly itemSearch = signal('');
   readonly statusFilter = signal<'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED'>('ALL');
   readonly lastUpdated = signal<Date | null>(null);
@@ -66,8 +71,9 @@ export class RackMonitoringComponent {
   readonly selectedBulkRackIds = signal<Set<string>>(new Set());
   readonly printQtyVisible = signal(true);
   readonly closeScheduleConfirm = signal(false);
+  readonly rackLetterCodes = this.buildRackLetterCodes();
   readonly rackCreateForm = this.fb.nonNullable.group({
-    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
+    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-([A-Z])\1-\d{3}$/)]],
     rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
     status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
   });
@@ -96,7 +102,7 @@ export class RackMonitoringComponent {
       return sum + (draft === '' ? scan.finalQty : Number(draft));
     }, 0)
   );
-  readonly correctionCount = computed(() => this.racks().filter((rack) => rack.discrepancyQuantity !== 0).length);
+  readonly correctionCount = computed(() => this.racks().filter((rack) => rack.discrepancyQuantity !== 0 || rack.rackStatus === 'CONFIRMED').length);
   readonly confirmedCount = computed(() => this.racks().filter((rack) => rack.rackStatus === 'CONFIRMED').length);
   readonly emptyCount = computed(() => this.racks().filter((rack) => rack.rackStatus === 'EMPTY').length);
   readonly selectedBulkRacks = computed(() => {
@@ -137,6 +143,10 @@ export class RackMonitoringComponent {
         rack.rackName,
         rack.locCode
       ].some((value) => value.toLowerCase().includes(keyword)));
+  });
+  readonly filteredRackCreateLetterCodes = computed(() => {
+    const keyword = this.rackCreateLetterSearch().trim().toUpperCase();
+    return this.rackLetterCodes.filter((letterCode) => !keyword || letterCode.includes(keyword));
   });
 
   constructor() {
@@ -183,9 +193,10 @@ export class RackMonitoringComponent {
     if (rack.submittedLineCount === 0 || this.scansLoading() || this.printing()) return;
     this.printErrorMessage.set('');
     if (rack.printed) {
-      this.printRackPaper(rack);
+      this.printRackPaper(rack, undefined, this.scans());
       return;
     }
+    this.pendingPrintScans.set(this.scans());
     this.printConfirmRack.set(rack);
   }
 
@@ -197,23 +208,18 @@ export class RackMonitoringComponent {
       this.printErrorMessage.set('Popup browser diblokir. Izinkan popup untuk mencetak rack.');
       return;
     }
-    this.selectedRack.set(rack);
-    this.selectedRecheckUser.set('');
-    this.itemSearch.set('');
-    this.dirtyFinalQtyDrafts.set(new Set());
-    this.finalQtyDrafts.set({});
     this.scansLoading.set(true);
     this.api.getRackScans(this.scheduleId, rack.id)
       .pipe(take(1), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ scans }) => {
-          this.scans.set(scans);
-          this.syncFinalQtyDrafts(scans);
+          this.pendingPrintScans.set(scans);
           this.scansLoading.set(false);
           if (rack.printed) {
-            this.printRackPaper(rack, preopenedPopup ?? undefined);
+            this.printRackPaper(rack, preopenedPopup ?? undefined, scans);
           } else {
-            this.openPrintConfirm(rack);
+            this.printErrorMessage.set('');
+            this.printConfirmRack.set(rack);
           }
         },
         error: (error: unknown) => {
@@ -231,7 +237,7 @@ export class RackMonitoringComponent {
   confirmPrint(): void {
     const rack = this.printConfirmRack();
     if (!rack || this.printing()) return;
-    this.printRackPaper(rack);
+    this.printRackPaper(rack, undefined, this.pendingPrintScans());
   }
 
   setStatusFilter(status: 'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED'): void {
@@ -256,6 +262,9 @@ export class RackMonitoringComponent {
       rackName: '',
       status: 'ACTIVE'
     });
+    this.rackCreateLetterSearch.set('');
+    this.rackCreateLetterDropdownOpen.set(false);
+    this.rackCreateSequence.set('001');
     this.addRackOpen.set(true);
     this.loadRackMastersForSchedule();
   }
@@ -337,8 +346,46 @@ export class RackMonitoringComponent {
   }
 
   normalizeRackCreateCode(): void {
-    const value = this.rackCreateForm.controls.rackCode.value.trim().toUpperCase();
-    this.rackCreateForm.controls.rackCode.setValue(value);
+    this.rackCreateSequence.set(this.normalizeRackSequence(this.rackCreateSequence()));
+    this.composeRackCreateCode();
+  }
+
+  onRackCreateLetterFocus(): void {
+    this.rackCreateLetterDropdownOpen.set(true);
+  }
+
+  onRackCreateLetterInput(value: string): void {
+    const normalized = value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    this.rackCreateLetterSearch.set(normalized);
+    this.rackCreateLetterDropdownOpen.set(true);
+    this.composeRackCreateCode();
+  }
+
+  onRackCreateLetterBlur(): void {
+    window.setTimeout(() => {
+      const value = this.rackCreateLetterSearch().trim().toUpperCase();
+      if (this.rackLetterCodes.includes(value)) {
+        this.selectRackCreateLetterCode(value);
+      } else if (!value) {
+        this.rackCreateForm.controls.rackCode.setValue('');
+      } else {
+        this.rackCreateLetterSearch.set('');
+        this.rackCreateForm.controls.rackCode.setValue('');
+        this.rackCreateForm.controls.rackCode.markAsTouched();
+      }
+      this.rackCreateLetterDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectRackCreateLetterCode(letterCode: string): void {
+    this.rackCreateLetterSearch.set(letterCode);
+    this.rackCreateLetterDropdownOpen.set(false);
+    this.composeRackCreateCode(true);
+  }
+
+  onRackCreateSequenceInput(value: string): void {
+    this.rackCreateSequence.set(value.replace(/\D/g, '').slice(0, 3));
+    this.composeRackCreateCode();
   }
 
   rackState(rack: Rack): 'confirmed' | 'rejected' | 'printed' | 'submitted' | 'empty' {
@@ -366,6 +413,49 @@ export class RackMonitoringComponent {
 
   canBulkConfirmRack(rack: Rack): boolean {
     return rack.printed && rack.rackStatus !== 'CONFIRMED' && rack.submittedLineCount > 0;
+  }
+
+  openRowConfirm(rack: Rack, event: Event): void {
+    event.stopPropagation();
+    if (!this.canBulkConfirmRack(rack) || this.confirming()) return;
+    this.printErrorMessage.set('');
+    this.rowConfirmRack.set(rack);
+  }
+
+  closeRowConfirm(): void {
+    if (!this.confirming()) this.rowConfirmRack.set(null);
+  }
+
+  confirmRackFromList(): void {
+    const rack = this.rowConfirmRack();
+    const recheckUser = this.auth.user()?.username || '';
+    if (!rack || !this.canBulkConfirmRack(rack) || this.confirming()) return;
+    if (!recheckUser) {
+      this.printErrorMessage.set('Session user tidak tersedia untuk confirm rack.');
+      return;
+    }
+    this.confirming.set(true);
+    this.printErrorMessage.set('');
+    this.api.getRackScans(this.scheduleId, rack.id)
+      .pipe(
+        switchMap(({ scans }) => this.api.confirmRack(this.scheduleId, rack.id, {
+          recheckUser,
+          lines: scans.map((scan) => ({ scanId: scan.id, finalQty: scan.finalQty }))
+        })),
+        switchMap(() => this.fetchPage(false)),
+        tap(() => {
+          this.printMessage.set(`Rack ${rack.rackCode} berhasil di-confirm.`);
+          this.rowConfirmRack.set(null);
+          this.confirming.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.printErrorMessage.set(apiErrorMessage(error, 'Rack gagal di-confirm.'));
+          this.confirming.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   bulkRackChecked(rack: Rack): boolean {
@@ -613,8 +703,8 @@ export class RackMonitoringComponent {
     }
   }
 
-  private printRackPaper(rack: Rack, preopenedPopup?: Window): void {
-    const scans = this.scans();
+  private printRackPaper(rack: Rack, preopenedPopup?: Window, scanLines?: RackScan[]): void {
+    const scans = scanLines ?? this.scans();
     if (scans.length === 0) {
       preopenedPopup?.close();
       this.printErrorMessage.set('Data item belum siap untuk dicetak. Tunggu detail rack selesai dimuat.');
@@ -643,6 +733,7 @@ export class RackMonitoringComponent {
               : `Rack ${rack.rackCode} berhasil diprint dengan nomor ${result.printNo}.`
           );
           this.printConfirmRack.set(null);
+          this.pendingPrintScans.set([]);
           return this.fetchPage(false);
         }),
         tap(() => {
@@ -877,5 +968,26 @@ export class RackMonitoringComponent {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  private buildRackLetterCodes(): string[] {
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => `${letter}${letter}`);
+  }
+
+  private composeRackCreateCode(markDirty = false): void {
+    const letterCode = this.rackCreateLetterSearch().trim().toUpperCase();
+    const sequence = this.normalizeRackSequence(this.rackCreateSequence());
+    const rackCode = this.rackLetterCodes.includes(letterCode) && sequence ? `RCK-${letterCode}-${sequence}` : '';
+    this.rackCreateForm.controls.rackCode.setValue(rackCode);
+    if (markDirty) {
+      this.rackCreateForm.controls.rackCode.markAsTouched();
+      this.rackCreateForm.controls.rackCode.markAsDirty();
+    }
+  }
+
+  private normalizeRackSequence(value: string): string {
+    const numberValue = Number(value.replace(/\D/g, ''));
+    if (!Number.isFinite(numberValue) || numberValue < 1 || numberValue > 999) return '';
+    return String(numberValue).padStart(3, '0');
   }
 }

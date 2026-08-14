@@ -79,21 +79,21 @@ export const mockSchedules: MockSchedule[] = [
 export const mockRacks = [
   {
     id: "1",
-    rackCode: "RCK-FF-A101",
+    rackCode: "RCK-FF-101",
     rackName: "Rack A1-01",
     locCode: "6168",
     status: "ACTIVE",
   },
   {
     id: "2",
-    rackCode: "RCK-FF-A102",
+    rackCode: "RCK-FF-102",
     rackName: "Rack A1-02",
     locCode: "6168",
     status: "ACTIVE",
   },
   {
     id: "3",
-    rackCode: "RCK-FF-A103",
+    rackCode: "RCK-FF-103",
     rackName: "Rack A1-03",
     locCode: "6168",
     status: "ACTIVE",

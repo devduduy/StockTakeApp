@@ -69,10 +69,10 @@ function normalizeRackCode(rackCode: string): string {
 }
 
 function assertRackCodePattern(rackCode: string): void {
-  if (!/^RCK-[A-Z]{2}-\d{3}$/.test(rackCode)) {
+  if (!/^RCK-([A-Z])\1-\d{3}$/.test(rackCode)) {
     throw new AppError(
       400,
-      "Format kode rack harus RCK-{2 huruf}-{3 angka}, contoh RCK-FR-001.",
+      "Format kode rack harus RCK-{2 huruf sama}-{3 angka}, contoh RCK-AA-001.",
       "RACK_CODE_INVALID_FORMAT",
     );
   }
@@ -334,8 +334,8 @@ export async function createRackMastersBulk(
   payload: CreateRackBulkPayload,
 ): Promise<RackMasterResponse[]> {
   const normalizedLetterCode = payload.letterCode.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(normalizedLetterCode)) {
-    throw new AppError(400, "Kode huruf wajib tepat 2 huruf, contoh FR.", "RACK_LETTER_CODE_INVALID");
+  if (!/^([A-Z])\1$/.test(normalizedLetterCode)) {
+    throw new AppError(400, "Kode huruf wajib 2 huruf sama, contoh AA.", "RACK_LETTER_CODE_INVALID");
   }
   if (payload.startSequence < 1 || payload.startSequence > 999) {
     throw new AppError(400, "Sequence awal harus di antara 001 sampai 999.", "RACK_SEQUENCE_INVALID");

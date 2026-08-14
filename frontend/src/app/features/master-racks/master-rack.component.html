@@ -157,9 +157,53 @@
         </label>
         <label class="form-field">
           <span>Kode Rack <b>*</b></span>
-          <input formControlName="rackCode" type="text" placeholder="Contoh: RCK-FR-001" (blur)="normalizeSingleRackCode()" />
+          <div class="rack-code-builder">
+            <span class="rack-code-builder__prefix">RCK</span>
+            <div class="letter-combobox" [class.letter-combobox--open]="singleLetterDropdownOpen()">
+              <div class="letter-combobox__field">
+                <input
+                  type="text"
+                  autocomplete="off"
+                  maxlength="2"
+                  placeholder="AA"
+                  [value]="singleLetterSearch()"
+                  (focus)="onSingleLetterFocus()"
+                  (blur)="onSingleLetterBlur()"
+                  (input)="onSingleLetterInput($any($event.target).value)"
+                />
+                <button type="button" aria-label="Buka pilihan kode huruf" (mousedown)="$event.preventDefault()" (click)="singleLetterDropdownOpen.set(!singleLetterDropdownOpen())">
+                  <span class="material-symbols-outlined">expand_more</span>
+                </button>
+              </div>
+              @if (singleLetterDropdownOpen()) {
+                <div class="letter-combobox__panel" role="listbox">
+                  @for (letterCode of filteredSingleLetterCodes(); track letterCode) {
+                    <button
+                      type="button"
+                      role="option"
+                      [class.active]="singleLetterSearch() === letterCode"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="selectSingleLetterCode(letterCode)"
+                    >
+                      {{ letterCode }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            <input
+              class="rack-code-builder__seq"
+              type="text"
+              inputmode="numeric"
+              maxlength="3"
+              placeholder="001"
+              [value]="singleRackSequence()"
+              (input)="onSingleSequenceInput($any($event.target).value)"
+              (blur)="normalizeSingleRackCode()"
+            />
+          </div>
           @if (rackForm.controls.rackCode.touched && rackForm.controls.rackCode.invalid) {
-            <small>Format wajib RCK-XX-000, contoh RCK-FR-001.</small>
+            <small>Format wajib RCK-XX-000 dengan huruf sama, contoh RCK-AA-001.</small>
           }
         </label>
         <label class="form-field">
@@ -189,9 +233,40 @@
         </label>
         <label class="form-field">
           <span>Kode Huruf <b>*</b></span>
-          <input formControlName="letterCode" type="text" maxlength="2" placeholder="Contoh: FR" (blur)="normalizeBulkLetterCode()" />
+          <div class="letter-combobox" [class.letter-combobox--open]="bulkLetterDropdownOpen()">
+            <div class="letter-combobox__field">
+              <input
+                type="text"
+                autocomplete="off"
+                maxlength="2"
+                placeholder="AA, BB, CC..."
+                [value]="bulkLetterSearch()"
+                (focus)="onBulkLetterFocus()"
+                (blur)="onBulkLetterBlur()"
+                (input)="onBulkLetterInput($any($event.target).value)"
+              />
+              <button type="button" aria-label="Buka pilihan kode huruf" (mousedown)="$event.preventDefault()" (click)="bulkLetterDropdownOpen.set(!bulkLetterDropdownOpen())">
+                <span class="material-symbols-outlined">expand_more</span>
+              </button>
+            </div>
+            @if (bulkLetterDropdownOpen()) {
+              <div class="letter-combobox__panel" role="listbox">
+                @for (letterCode of filteredBulkLetterCodes(); track letterCode) {
+                  <button
+                    type="button"
+                    role="option"
+                    [class.active]="bulkRackForm.controls.letterCode.value === letterCode"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectBulkLetterCode(letterCode)"
+                  >
+                    {{ letterCode }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
           @if (bulkRackForm.controls.letterCode.touched && bulkRackForm.controls.letterCode.invalid) {
-            <small>Isi tepat 2 huruf. Hasil: RCK-FR-001.</small>
+            <small>Pilih kode huruf dari daftar AA, BB, CC sampai ZZ. Hasil: RCK-AA-001.</small>
           }
         </label>
         <label class="form-field">

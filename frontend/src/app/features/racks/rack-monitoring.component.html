@@ -100,7 +100,7 @@
 
     <div class="rack-table-wrap">
       <table class="data-table rack-table">
-        <thead><tr><th class="select-col"><input type="checkbox" aria-label="Pilih semua rack siap confirm" (change)="toggleAllBulkRack($any($event.target).checked)" /></th><th>Rack</th><th>Status</th><th class="number">Item terscan</th><th class="number">Final quantity</th><th>Print</th><th aria-label="Aksi"></th></tr></thead>
+        <thead><tr><th class="select-col"><input type="checkbox" aria-label="Pilih semua rack siap confirm" (change)="toggleAllBulkRack($any($event.target).checked)" /></th><th>Rack</th><th>Status</th><th class="number">Item terscan</th><th class="number">Final quantity</th><th>Recheck</th><th aria-label="Aksi"></th></tr></thead>
         <tbody>
           @for (rack of filteredRacks(); track rack.id) {
             <tr (click)="selectRack(rack)" [class.selected]="selectedRack()?.id === rack.id">
@@ -122,17 +122,25 @@
               <td class="number mono">{{ rack.submittedLineCount | number }}</td>
               <td class="number mono">{{ rack.finalQuantity | number }}</td>
               <td>
-                @if (rack.printed) {
-                  <button class="print-row-button" type="button" (click)="openPrintFromList(rack, $event)">
-                    <span class="material-symbols-outlined">print</span> Print ulang
-                  </button>
-                }
-                @else if (rack.submittedLineCount > 0) {
-                  <button class="print-row-button" type="button" (click)="openPrintFromList(rack, $event)">
-                    <span class="material-symbols-outlined">print</span> Print
-                  </button>
-                }
-                @else { <span class="muted">Belum scan</span> }
+                <div class="row-actions">
+                  @if (rack.printed) {
+                    <button class="print-row-button" type="button" (click)="openPrintFromList(rack, $event)">
+                      <span class="material-symbols-outlined">print</span> Print ulang
+                    </button>
+                  }
+                  @else if (rack.submittedLineCount > 0) {
+                    <button class="print-row-button" type="button" (click)="openPrintFromList(rack, $event)">
+                      <span class="material-symbols-outlined">print</span> Print
+                    </button>
+                  }
+                  @else { <span class="muted">Belum scan</span> }
+
+                  @if (canBulkConfirmRack(rack)) {
+                    <button class="confirm-row-button" type="button" (click)="openRowConfirm(rack, $event)" [disabled]="confirming()">
+                      <span class="material-symbols-outlined">task_alt</span> Confirm
+                    </button>
+                  }
+                </div>
               </td>
               <td class="action"><button type="button" aria-label="Lihat detail rack"><span class="material-symbols-outlined">chevron_right</span></button></td>
             </tr>
@@ -200,15 +208,6 @@
 
     @if (rack.printed && rack.rackStatus !== 'CONFIRMED') {
       <section class="recheck-summary-panel">
-        <label class="rechecker-select">
-          <span>Rechecker</span>
-          <select [ngModel]="selectedRecheckUser()" (ngModelChange)="selectedRecheckUser.set($event)">
-            <option value="">Pilih user scanner sebagai rechecker</option>
-            @for (user of recheckers(); track user.username) {
-              <option [value]="user.username">{{ user.fullName }} ({{ user.username }})</option>
-            }
-          </select>
-        </label>
         <div class="recheck-summary-grid">
           <div>
             <span>Before total qty / final total qty</span>
@@ -219,14 +218,25 @@
             <strong>{{ finalQtySummary().discrepancyItemCount | number }} / {{ finalQtySummary().discrepancyQty | number }}</strong>
           </div>
         </div>
-        @if (finalQtySummary().discrepancyItemCount > 0) {
+        <div class="recheck-input-row">
+          <label class="rechecker-select">
+            <span>Rechecker</span>
+            <select [ngModel]="selectedRecheckUser()" (ngModelChange)="selectedRecheckUser.set($event)">
+              <option value="">Pilih user scanner sebagai rechecker</option>
+              @for (user of recheckers(); track user.username) {
+                <option [value]="user.username">{{ user.fullName }} ({{ user.username }})</option>
+              }
+            </select>
+          </label>
           <div class="correction-save-action">
-            <button class="secondary-button" type="button" (click)="saveCorrections()" [disabled]="correctionSaving() || scansLoading()">
-              @if (correctionSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
-              @else { <span class="material-symbols-outlined">save</span> Simpan Koreksi }
-            </button>
+            @if (finalQtySummary().discrepancyItemCount > 0) {
+              <button class="secondary-button" type="button" (click)="saveCorrections()" [disabled]="correctionSaving() || scansLoading()">
+                @if (correctionSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+                @else { <span class="material-symbols-outlined">save</span> Simpan Koreksi }
+              </button>
+            }
           </div>
-        }
+        </div>
         <div class="rack-decision-actions">
           <button class="secondary-button danger" type="button" (click)="openActionConfirm('REJECT')" [disabled]="rejecting() || scansLoading()">
             @if (rejecting()) { <span class="spinner" aria-hidden="true"></span> Reject... }
@@ -420,9 +430,49 @@
             }
             <label>
               <span>Kode Rack <b>*</b></span>
-              <input formControlName="rackCode" type="text" placeholder="Contoh: RCK-FR-001" (blur)="normalizeRackCreateCode()" />
+              <div class="inline-rack-code-builder">
+                <span class="inline-rack-code-builder__prefix">RCK</span>
+                <div class="inline-letter-combobox" [class.inline-letter-combobox--open]="rackCreateLetterDropdownOpen()">
+                  <button class="inline-letter-combobox__field" type="button" (click)="onRackCreateLetterFocus()">
+                    <input
+                      type="text"
+                      autocomplete="off"
+                      placeholder="AA-ZZ"
+                      [value]="rackCreateLetterSearch()"
+                      (focus)="onRackCreateLetterFocus()"
+                      (input)="onRackCreateLetterInput($any($event.target).value)"
+                      (blur)="onRackCreateLetterBlur()"
+                    />
+                    <span class="material-symbols-outlined">expand_more</span>
+                  </button>
+                  @if (rackCreateLetterDropdownOpen()) {
+                    <div class="inline-letter-combobox__panel">
+                      @for (letterCode of filteredRackCreateLetterCodes(); track letterCode) {
+                        <button
+                          type="button"
+                          [class.active]="rackCreateLetterSearch() === letterCode"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="selectRackCreateLetterCode(letterCode)"
+                        >
+                          {{ letterCode }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+                <input
+                  class="inline-rack-code-builder__seq"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="3"
+                  aria-label="Sequence rack"
+                  [value]="rackCreateSequence()"
+                  (input)="onRackCreateSequenceInput($any($event.target).value)"
+                  (blur)="normalizeRackCreateCode()"
+                />
+              </div>
               @if (rackCreateForm.controls.rackCode.touched && rackCreateForm.controls.rackCode.invalid) {
-                <small>Format wajib RCK-XX-000, contoh RCK-FR-001.</small>
+                <small>Format wajib RCK-XX-000 dengan huruf sama, contoh RCK-AA-001.</small>
               }
             </label>
             <label>
@@ -464,6 +514,24 @@
       <button class="primary-button" type="button" (click)="confirmPrint()" [disabled]="printing()">
         @if (printing()) { <span class="spinner" aria-hidden="true"></span> Memproses... }
         @else { <span class="material-symbols-outlined">print</span> Ya, Print }
+      </button>
+    </div>
+  </section>
+}
+
+@if (rowConfirmRack(); as rack) {
+  <button class="confirm-backdrop" type="button" aria-label="Batal confirm rack" (click)="closeRowConfirm()"></button>
+  <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="row-confirm-title">
+    <div class="confirm-dialog__icon"><span class="material-symbols-outlined">task_alt</span></div>
+    <h2 id="row-confirm-title">Confirm rack {{ rack.rackCode }}?</h2>
+    <p>
+      Rack akan dikunci sebagai confirm memakai Final Qty terakhir. Jika ada koreksi manual, pastikan sudah disimpan dari detail rack.
+    </p>
+    <div class="confirm-dialog__actions">
+      <button class="secondary-button" type="button" (click)="closeRowConfirm()" [disabled]="confirming()">Batal</button>
+      <button class="primary-button" type="button" (click)="confirmRackFromList()" [disabled]="confirming()">
+        @if (confirming()) { <span class="spinner" aria-hidden="true"></span> Memproses... }
+        @else { <span class="material-symbols-outlined">task_alt</span> Ya, Confirm }
       </button>
     </div>
   </section>

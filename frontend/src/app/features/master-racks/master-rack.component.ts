@@ -29,19 +29,25 @@ export class MasterRackComponent {
   readonly formErrorMessage = signal('');
   readonly successMessage = signal('');
   readonly search = signal('');
+  readonly singleLetterSearch = signal('');
+  readonly singleLetterDropdownOpen = signal(false);
+  readonly singleRackSequence = signal('001');
+  readonly bulkLetterSearch = signal('');
+  readonly bulkLetterDropdownOpen = signal(false);
   readonly locationFilter = signal('');
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   readonly createMode = signal<'SINGLE' | 'BULK'>('SINGLE');
+  readonly rackLetterCodes = this.buildRackLetterCodes();
 
   readonly rackForm = this.fb.nonNullable.group({
     locCode: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{4}$/)]],
-    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
+    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-([A-Z])\1-\d{3}$/)]],
     rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
     status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
   });
   readonly bulkRackForm = this.fb.nonNullable.group({
     locCode: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{4}$/)]],
-    letterCode: ['', [Validators.required, Validators.pattern(/^[A-Z]{2}$/)]],
+    letterCode: ['', [Validators.required, Validators.pattern(/^([A-Z])\1$/)]],
     startSequence: [1, [Validators.required, Validators.min(1), Validators.max(999)]],
     count: [10, [Validators.required, Validators.min(1), Validators.max(200)]],
     rackNamePrefix: ['Rack', [Validators.required, Validators.minLength(2), Validators.maxLength(80)]],
@@ -65,6 +71,14 @@ export class MasterRackComponent {
 
   readonly activeCount = computed(() => this.racks().filter((rack) => rack.status === 'ACTIVE').length);
   readonly inactiveCount = computed(() => this.racks().filter((rack) => rack.status === 'INACTIVE').length);
+  readonly filteredBulkLetterCodes = computed(() => {
+    const keyword = this.bulkLetterSearch().trim().toUpperCase();
+    return this.rackLetterCodes.filter((letterCode) => !keyword || letterCode.includes(keyword));
+  });
+  readonly filteredSingleLetterCodes = computed(() => {
+    const keyword = this.singleLetterSearch().trim().toUpperCase();
+    return this.rackLetterCodes.filter((letterCode) => !keyword || letterCode.includes(keyword));
+  });
 
   constructor() {
     forkJoin({
@@ -113,6 +127,9 @@ export class MasterRackComponent {
       rackName: '',
       status: 'ACTIVE'
     });
+    this.singleLetterSearch.set('');
+    this.singleLetterDropdownOpen.set(false);
+    this.singleRackSequence.set('001');
     this.bulkRackForm.reset({
       locCode,
       letterCode: '',
@@ -121,6 +138,8 @@ export class MasterRackComponent {
       rackNamePrefix: 'Rack',
       status: 'ACTIVE'
     });
+    this.bulkLetterSearch.set('');
+    this.bulkLetterDropdownOpen.set(false);
     this.formOpen.set(true);
   }
 
@@ -208,7 +227,7 @@ export class MasterRackComponent {
     const letterCode = raw.letterCode.trim().toUpperCase();
     const startSequence = Number(raw.startSequence);
     const count = Number(raw.count);
-    if (!/^[A-Z]{2}$/.test(letterCode) || startSequence < 1 || count < 1) return [];
+    if (!/^([A-Z])\1$/.test(letterCode) || startSequence < 1 || count < 1) return [];
     return Array.from({ length: Math.min(count, 6) }, (_, index) => (
       `RCK-${letterCode}-${String(startSequence + index).padStart(3, '0')}`
     ));
@@ -220,13 +239,95 @@ export class MasterRackComponent {
   }
 
   normalizeSingleRackCode(): void {
-    const value = this.rackForm.controls.rackCode.value.trim().toUpperCase();
-    this.rackForm.controls.rackCode.setValue(value);
+    const letterCode = this.rackForm.controls.rackCode.value.match(/^RCK-(([A-Z])\2)-/)?.[1] ?? this.singleLetterSearch().trim().toUpperCase();
+    const sequence = this.normalizeSequence(this.singleRackSequence());
+    this.singleRackSequence.set(sequence);
+    this.rackForm.controls.rackCode.setValue(
+      this.rackLetterCodes.includes(letterCode) && sequence ? `RCK-${letterCode}-${sequence}` : ''
+    );
+  }
+
+  onSingleLetterFocus(): void {
+    this.singleLetterDropdownOpen.set(true);
+  }
+
+  onSingleLetterInput(value: string): void {
+    const normalized = value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    this.singleLetterSearch.set(normalized);
+    this.singleLetterDropdownOpen.set(true);
+    this.composeSingleRackCode();
+  }
+
+  onSingleLetterBlur(): void {
+    window.setTimeout(() => {
+      const value = this.singleLetterSearch().trim().toUpperCase();
+      if (this.rackLetterCodes.includes(value)) {
+        this.selectSingleLetterCode(value);
+      } else if (!value) {
+        this.rackForm.controls.rackCode.setValue('');
+      } else {
+        this.singleLetterSearch.set('');
+        this.rackForm.controls.rackCode.setValue('');
+        this.rackForm.controls.rackCode.markAsTouched();
+      }
+      this.singleLetterDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectSingleLetterCode(letterCode: string): void {
+    this.singleLetterSearch.set(letterCode);
+    this.singleLetterDropdownOpen.set(false);
+    this.composeSingleRackCode(true);
+  }
+
+  onSingleSequenceInput(value: string): void {
+    this.singleRackSequence.set(value.replace(/\D/g, '').slice(0, 3));
+    this.composeSingleRackCode();
   }
 
   normalizeBulkLetterCode(): void {
     const value = this.bulkRackForm.controls.letterCode.value.trim().toUpperCase();
     this.bulkRackForm.controls.letterCode.setValue(value);
+    this.bulkLetterSearch.set(value);
+  }
+
+  onBulkLetterFocus(): void {
+    this.bulkLetterDropdownOpen.set(true);
+  }
+
+  onBulkLetterInput(value: string): void {
+    const normalized = value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    this.bulkLetterSearch.set(normalized);
+    this.bulkLetterDropdownOpen.set(true);
+    this.bulkRackForm.controls.letterCode.setValue(
+      this.rackLetterCodes.includes(normalized) ? normalized : ''
+    );
+    if (normalized && !this.rackLetterCodes.includes(normalized)) {
+      this.bulkRackForm.controls.letterCode.markAsTouched();
+    }
+  }
+
+  onBulkLetterBlur(): void {
+    window.setTimeout(() => {
+      const value = this.bulkLetterSearch().trim().toUpperCase();
+      if (this.rackLetterCodes.includes(value)) {
+        this.selectBulkLetterCode(value);
+      } else if (!value) {
+        this.bulkRackForm.controls.letterCode.setValue('');
+      } else {
+        this.bulkRackForm.controls.letterCode.setValue('');
+        this.bulkRackForm.controls.letterCode.markAsTouched();
+      }
+      this.bulkLetterDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectBulkLetterCode(letterCode: string): void {
+    this.bulkLetterSearch.set(letterCode);
+    this.bulkRackForm.controls.letterCode.setValue(letterCode);
+    this.bulkRackForm.controls.letterCode.markAsTouched();
+    this.bulkRackForm.controls.letterCode.markAsDirty();
+    this.bulkLetterDropdownOpen.set(false);
   }
 
   locationName(locCode: string): string {
@@ -249,5 +350,26 @@ export class MasterRackComponent {
         return initial ? of([]) : EMPTY;
       })
     );
+  }
+
+  private buildRackLetterCodes(): string[] {
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => `${letter}${letter}`);
+  }
+
+  private composeSingleRackCode(markDirty = false): void {
+    const letterCode = this.singleLetterSearch().trim().toUpperCase();
+    const sequence = this.normalizeSequence(this.singleRackSequence());
+    const rackCode = this.rackLetterCodes.includes(letterCode) && sequence ? `RCK-${letterCode}-${sequence}` : '';
+    this.rackForm.controls.rackCode.setValue(rackCode);
+    if (markDirty) {
+      this.rackForm.controls.rackCode.markAsTouched();
+      this.rackForm.controls.rackCode.markAsDirty();
+    }
+  }
+
+  private normalizeSequence(value: string): string {
+    const numberValue = Number(value.replace(/\D/g, ''));
+    if (!Number.isFinite(numberValue) || numberValue < 1 || numberValue > 999) return '';
+    return String(numberValue).padStart(3, '0');
   }
 }

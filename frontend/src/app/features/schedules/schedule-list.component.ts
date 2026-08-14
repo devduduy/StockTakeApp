@@ -42,10 +42,18 @@ export class ScheduleListComponent {
   readonly errorMessage = signal('');
   readonly formErrorMessage = signal('');
   readonly rackFormErrorMessage = signal('');
+  readonly rackScopeErrorMessage = signal('');
   readonly successMessage = signal('');
   readonly search = signal('');
   readonly categorySearch = signal('');
-  readonly rackSearch = signal('');
+  readonly rackRangeLetterCode = signal('');
+  readonly rackRangeLetterSearch = signal('');
+  readonly rackRangeLetterDropdownOpen = signal(false);
+  readonly rackRangeFrom = signal('001');
+  readonly rackRangeTo = signal('010');
+  readonly rackCreateLetterSearch = signal('');
+  readonly rackCreateLetterDropdownOpen = signal(false);
+  readonly rackCreateSequence = signal('001');
   readonly locationSearch = signal('');
   readonly locationDropdownOpen = signal(false);
   readonly expandedDivisions = signal<Set<string>>(new Set());
@@ -67,7 +75,7 @@ export class ScheduleListComponent {
     rackIds: this.fb.nonNullable.control<string[]>([])
   });
   readonly rackForm = this.fb.nonNullable.group({
-    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-[A-Z]{2}-\d{3}$/)]],
+    rackCode: ['', [Validators.required, Validators.pattern(/^RCK-([A-Z])\1-\d{3}$/)]],
     rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
     status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
   });
@@ -118,14 +126,27 @@ export class ScheduleListComponent {
     return [...grouped.values()];
   });
   readonly filteredRackMasters = computed(() => {
-    const keyword = this.rackSearch().trim().toLowerCase();
+    const letterCode = this.rackRangeLetterCode();
     return this.rackMasters()
       .filter((rack) => rack.status === 'ACTIVE')
-      .filter((rack) => !keyword || [
-        rack.rackCode,
-        rack.rackName,
-        rack.locCode
-      ].some((value) => value.toLowerCase().includes(keyword)));
+      .filter((rack) => !letterCode || this.rackLetterCode(rack.rackCode) === letterCode);
+  });
+  readonly availableRackLetterCodes = computed(() => (
+    [...new Set(
+      this.rackMasters()
+        .filter((rack) => rack.status === 'ACTIVE')
+        .map((rack) => this.rackLetterCode(rack.rackCode))
+        .filter((value): value is string => typeof value === 'string' && /^([A-Z])\1$/.test(value))
+    )].sort()
+  ));
+  readonly filteredRackLetterCodes = computed(() => {
+    const keyword = this.rackRangeLetterSearch().trim().toUpperCase();
+    return this.availableRackLetterCodes().filter((letterCode) => !keyword || letterCode.includes(keyword));
+  });
+  readonly rackLetterCodes = this.buildRackLetterCodes();
+  readonly filteredRackCreateLetterCodes = computed(() => {
+    const keyword = this.rackCreateLetterSearch().trim().toUpperCase();
+    return this.rackLetterCodes.filter((letterCode) => !keyword || letterCode.includes(keyword));
   });
   readonly filteredLocations = computed(() => {
     const keyword = this.locationSearch().trim().toLowerCase();
@@ -162,7 +183,10 @@ export class ScheduleListComponent {
         distinctUntilChanged(),
         tap(() => {
           this.scheduleForm.controls.rackIds.setValue([]);
-          this.rackSearch.set('');
+          this.rackScopeErrorMessage.set('');
+          this.rackRangeLetterCode.set('');
+          this.rackRangeLetterSearch.set('');
+          this.rackRangeLetterDropdownOpen.set(false);
           this.loadRackMasters();
         }),
         takeUntilDestroyed(this.destroyRef)
@@ -183,7 +207,12 @@ export class ScheduleListComponent {
     const location = this.locations().length === 1 ? this.locations()[0] : null;
     this.editingSchedule.set(null);
     this.formErrorMessage.set('');
-    this.rackSearch.set('');
+    this.rackScopeErrorMessage.set('');
+    this.rackRangeLetterCode.set('');
+    this.rackRangeLetterSearch.set('');
+    this.rackRangeLetterDropdownOpen.set(false);
+    this.rackRangeFrom.set('001');
+    this.rackRangeTo.set('010');
     this.rackFormErrorMessage.set('');
     this.rackFormOpen.set(false);
     this.scheduleForm.reset({
@@ -208,7 +237,12 @@ export class ScheduleListComponent {
   openEditForm(schedule: ActiveSchedule): void {
     this.editingSchedule.set(schedule);
     this.formErrorMessage.set('');
-    this.rackSearch.set('');
+    this.rackScopeErrorMessage.set('');
+    this.rackRangeLetterCode.set('');
+    this.rackRangeLetterSearch.set('');
+    this.rackRangeLetterDropdownOpen.set(false);
+    this.rackRangeFrom.set('001');
+    this.rackRangeTo.set('010');
     this.rackFormErrorMessage.set('');
     this.rackFormOpen.set(false);
     this.scheduleForm.reset({
@@ -360,6 +394,7 @@ export class ScheduleListComponent {
     checked ? current.add(rackId) : current.delete(rackId);
     this.scheduleForm.controls.rackIds.setValue([...current]);
     this.scheduleForm.controls.rackIds.markAsDirty();
+    this.rackScopeErrorMessage.set('');
   }
 
   toggleAllFilteredRacks(checked: boolean): void {
@@ -369,10 +404,97 @@ export class ScheduleListComponent {
     }
     this.scheduleForm.controls.rackIds.setValue([...current]);
     this.scheduleForm.controls.rackIds.markAsDirty();
+    this.rackScopeErrorMessage.set('');
+  }
+
+  onRackLetterFocus(): void {
+    this.rackRangeLetterDropdownOpen.set(true);
+  }
+
+  onRackLetterInput(value: string): void {
+    const normalized = value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    this.rackRangeLetterSearch.set(normalized);
+    this.rackRangeLetterDropdownOpen.set(true);
+    this.rackRangeLetterCode.set(this.availableRackLetterCodes().includes(normalized) ? normalized : '');
+  }
+
+  onRackLetterBlur(): void {
+    window.setTimeout(() => {
+      const value = this.rackRangeLetterSearch().trim().toUpperCase();
+      if (this.availableRackLetterCodes().includes(value)) {
+        this.selectRackLetterCode(value);
+      } else if (!value) {
+        this.rackRangeLetterCode.set('');
+      } else {
+        this.rackRangeLetterCode.set('');
+        this.rackRangeLetterSearch.set('');
+      }
+      this.rackRangeLetterDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectRackLetterCode(letterCode: string): void {
+    this.rackRangeLetterCode.set(letterCode);
+    this.rackRangeLetterSearch.set(letterCode);
+    this.rackRangeLetterDropdownOpen.set(false);
+    this.rackScopeErrorMessage.set('');
+  }
+
+  onRackRangeFromInput(value: string): void {
+    this.rackRangeFrom.set(value.replace(/\D/g, '').slice(0, 3));
+    this.rackScopeErrorMessage.set('');
+  }
+
+  onRackRangeToInput(value: string): void {
+    this.rackRangeTo.set(value.replace(/\D/g, '').slice(0, 3));
+    this.rackScopeErrorMessage.set('');
+  }
+
+  normalizeRackRangeInputs(): void {
+    const from = this.normalizeRackRangeSequence(this.rackRangeFrom());
+    const to = this.normalizeRackRangeSequence(this.rackRangeTo());
+    this.rackRangeFrom.set(from);
+    this.rackRangeTo.set(to);
+  }
+
+  applyRackRange(): void {
+    const letterCode = this.rackRangeLetterCode();
+    const from = this.parseRackSequence(this.rackRangeFrom());
+    const to = this.parseRackSequence(this.rackRangeTo());
+    this.rackScopeErrorMessage.set('');
+    if (!letterCode) {
+      this.rackScopeErrorMessage.set('Pilih kode huruf rack terlebih dahulu.');
+      return;
+    }
+    if (from === null || to === null) {
+      this.rackScopeErrorMessage.set('Isi range sequence rack dengan angka 001 sampai 999.');
+      return;
+    }
+    this.rackRangeFrom.set(String(from).padStart(3, '0'));
+    this.rackRangeTo.set(String(to).padStart(3, '0'));
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    const current = new Set(this.selectedRackIds());
+    let selectedCount = 0;
+    for (const rack of this.rackMasters().filter((item) => item.status === 'ACTIVE')) {
+      const sequence = this.parseRackSequence(rack.rackCode);
+      if (this.rackLetterCode(rack.rackCode) === letterCode && sequence !== null && sequence >= min && sequence <= max) {
+        current.add(rack.id);
+        selectedCount += 1;
+      }
+    }
+    if (selectedCount === 0) {
+      this.rackScopeErrorMessage.set(`Tidak ada rack aktif ${letterCode} yang cocok dengan range tersebut.`);
+      return;
+    }
+    this.scheduleForm.controls.rackIds.setValue([...current]);
+    this.scheduleForm.controls.rackIds.markAsDirty();
   }
 
   clearRacks(): void {
     this.scheduleForm.controls.rackIds.setValue([]);
+    this.scheduleForm.controls.rackIds.markAsDirty();
+    this.rackScopeErrorMessage.set('');
   }
 
   removeRack(rackId: string): void {
@@ -390,6 +512,9 @@ export class ScheduleListComponent {
       rackName: '',
       status: 'ACTIVE'
     });
+    this.rackCreateLetterSearch.set('');
+    this.rackCreateLetterDropdownOpen.set(false);
+    this.rackCreateSequence.set('001');
     this.rackFormOpen.set(true);
   }
 
@@ -439,8 +564,46 @@ export class ScheduleListComponent {
   }
 
   normalizeRackCode(): void {
-    const value = this.rackForm.controls.rackCode.value.trim().toUpperCase();
-    this.rackForm.controls.rackCode.setValue(value);
+    this.rackCreateSequence.set(this.normalizeRackSequence(this.rackCreateSequence()));
+    this.composeRackCreateCode();
+  }
+
+  onRackCreateLetterFocus(): void {
+    this.rackCreateLetterDropdownOpen.set(true);
+  }
+
+  onRackCreateLetterInput(value: string): void {
+    const normalized = value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    this.rackCreateLetterSearch.set(normalized);
+    this.rackCreateLetterDropdownOpen.set(true);
+    this.composeRackCreateCode();
+  }
+
+  onRackCreateLetterBlur(): void {
+    window.setTimeout(() => {
+      const value = this.rackCreateLetterSearch().trim().toUpperCase();
+      if (this.rackLetterCodes.includes(value)) {
+        this.selectRackCreateLetterCode(value);
+      } else if (!value) {
+        this.rackForm.controls.rackCode.setValue('');
+      } else {
+        this.rackCreateLetterSearch.set('');
+        this.rackForm.controls.rackCode.setValue('');
+        this.rackForm.controls.rackCode.markAsTouched();
+      }
+      this.rackCreateLetterDropdownOpen.set(false);
+    }, 120);
+  }
+
+  selectRackCreateLetterCode(letterCode: string): void {
+    this.rackCreateLetterSearch.set(letterCode);
+    this.rackCreateLetterDropdownOpen.set(false);
+    this.composeRackCreateCode(true);
+  }
+
+  onRackCreateSequenceInput(value: string): void {
+    this.rackCreateSequence.set(value.replace(/\D/g, '').slice(0, 3));
+    this.composeRackCreateCode();
   }
 
   divisionCategories(group: CategoryGroup): Category[] {
@@ -615,5 +778,51 @@ export class ScheduleListComponent {
       location.code.toLowerCase() === normalized
       || this.locationDisplay(location).toLowerCase() === normalized
     );
+  }
+
+  private parseRackSequence(value: string): number | null {
+    const normalized = value.trim().toUpperCase();
+    if (!normalized) return null;
+    const numericOnly = normalized.match(/^\d{1,3}$/);
+    if (numericOnly) {
+      const sequence = Number(numericOnly[0]);
+      return sequence >= 1 && sequence <= 999 ? sequence : null;
+    }
+    const rackCode = normalized.match(/(\d{3})$/);
+    if (!rackCode) return null;
+    const sequence = Number(rackCode[1]);
+    return sequence >= 1 && sequence <= 999 ? sequence : null;
+  }
+
+  private normalizeRackRangeSequence(value: string): string {
+    const sequence = this.parseRackSequence(value);
+    if (sequence === null || sequence < 1 || sequence > 999) return '';
+    return String(sequence).padStart(3, '0');
+  }
+
+  private rackLetterCode(rackCode: string): string | null {
+    const match = rackCode.trim().toUpperCase().match(/^RCK-(([A-Z])\2)-\d{3}$/);
+    return match?.[1] ?? null;
+  }
+
+  private buildRackLetterCodes(): string[] {
+    return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((letter) => `${letter}${letter}`);
+  }
+
+  private composeRackCreateCode(markDirty = false): void {
+    const letterCode = this.rackCreateLetterSearch().trim().toUpperCase();
+    const sequence = this.normalizeRackSequence(this.rackCreateSequence());
+    const rackCode = this.rackLetterCodes.includes(letterCode) && sequence ? `RCK-${letterCode}-${sequence}` : '';
+    this.rackForm.controls.rackCode.setValue(rackCode);
+    if (markDirty) {
+      this.rackForm.controls.rackCode.markAsTouched();
+      this.rackForm.controls.rackCode.markAsDirty();
+    }
+  }
+
+  private normalizeRackSequence(value: string): string {
+    const numberValue = Number(value.replace(/\D/g, ''));
+    if (!Number.isFinite(numberValue) || numberValue < 1 || numberValue > 999) return '';
+    return String(numberValue).padStart(3, '0');
   }
 }

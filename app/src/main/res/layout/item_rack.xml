@@ -65,7 +65,7 @@
                     android:textColor="@color/hero_text_muted"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    tools:text="RCK-FF-A101" />
+                    tools:text="RCK-FF-101" />
             </LinearLayout>
 
             <TextView

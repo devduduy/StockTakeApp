@@ -24,14 +24,14 @@ const rackQuerySchema = z.object({
 });
 
 const createRackBodySchema = z.object({
-  rackCode: z.string().trim().regex(/^RCK-[A-Za-z]{2}-\d{3}$/, "Format kode rack harus RCK-{2 huruf}-{3 angka}."),
+  rackCode: z.string().trim().regex(/^RCK-([A-Za-z])\1-\d{3}$/, "Format kode rack harus RCK-{2 huruf sama}-{3 angka}, contoh RCK-AA-001."),
   rackName: z.string().trim().min(2).max(100),
   locCode: z.string().trim().regex(/^[A-Za-z0-9]{4}$/).optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
 const createRackBulkBodySchema = z.object({
-  letterCode: z.string().trim().regex(/^[A-Za-z]{2}$/, "Kode huruf wajib tepat 2 huruf."),
+  letterCode: z.string().trim().regex(/^([A-Za-z])\1$/, "Kode huruf wajib 2 huruf sama, contoh AA."),
   startSequence: z.coerce.number().int().min(1).max(999),
   count: z.coerce.number().int().min(1).max(200),
   rackNamePrefix: z.string().trim().min(2).max(80),

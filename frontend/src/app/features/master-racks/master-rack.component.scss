@@ -269,7 +269,7 @@
 }
 
 .rack-modal__body--bulk {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .rack-modal__mode {
@@ -354,6 +354,120 @@
   font-size: 14px;
   font-weight: 600;
   outline: 0;
+}
+
+.letter-combobox {
+  position: relative;
+}
+
+.rack-code-builder {
+  display: grid;
+  grid-template-columns: 58px minmax(96px, 1fr) 86px;
+  gap: 8px;
+  align-items: center;
+}
+
+.rack-code-builder__prefix {
+  display: grid;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-low);
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.rack-code-builder__seq {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-weight: 900;
+}
+
+.letter-combobox__field {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-lowest);
+  overflow: hidden;
+}
+
+.letter-combobox--open .letter-combobox__field {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(2, 21, 65, .07);
+}
+
+.letter-combobox__field input {
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0 11px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 800;
+  outline: 0;
+}
+
+.letter-combobox__field button {
+  display: grid;
+  width: 38px;
+  height: 100%;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.letter-combobox__field button .material-symbols-outlined {
+  font-size: 20px;
+  transition: transform 140ms ease;
+}
+
+.letter-combobox--open .letter-combobox__field button .material-symbols-outlined {
+  transform: rotate(180deg);
+}
+
+.letter-combobox__panel {
+  position: absolute;
+  z-index: 90;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 174px;
+  overflow-y: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 16px 42px rgba(2, 21, 65, .16);
+}
+
+.letter-combobox__panel button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.letter-combobox__panel button:hover,
+.letter-combobox__panel button.active {
+  background: var(--primary-soft);
 }
 
 .form-field input:focus,
