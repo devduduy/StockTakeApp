@@ -259,6 +259,146 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(createResponse.body.data.endDate).toBe("2026-08-06");
   });
 
+  it("lets store manager manage users only for their base location", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    const token = loginResponse.body.data.accessToken as string;
+
+    const createResponse = await request(app)
+      .post("/api/stock-take/users")
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        username: "scanner_store_6168",
+        fullName: "Scanner Store 6168",
+        password: "prototype",
+        roleId: 4,
+        locCode: "6168",
+        status: "ACTIVE",
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.data.locCode).toBe("6168");
+
+    const forbiddenResponse = await request(app)
+      .post("/api/stock-take/users")
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        username: "scanner_forbidden_1001",
+        fullName: "Scanner Forbidden 1001",
+        password: "prototype",
+        roleId: 4,
+        locCode: "1001",
+        status: "ACTIVE",
+      });
+    expect(forbiddenResponse.status).toBe(403);
+    expect(forbiddenResponse.body.error.code).toBe("LOCATION_FORBIDDEN");
+  });
+
+  it("does not expose other store schedules through user master location alone", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "inventory_control01",
+      password: "prototype",
+    });
+    const token = loginResponse.body.data.accessToken as string;
+
+    const createResponse = await request(app)
+      .post("/api/stock-take/users")
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        username: "scanner_helper_1001",
+        fullName: "Scanner Helper 1001",
+        password: "prototype",
+        roleId: 4,
+        locCode: "1001",
+        status: "ACTIVE",
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.data.locCode).toBe("1001");
+
+    const helperLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "scanner_helper_1001",
+      password: "prototype",
+    });
+    expect(helperLoginResponse.status).toBe(200);
+    expect(helperLoginResponse.body.data.user.locCode).toBe("1001");
+    expect(helperLoginResponse.body.data.user.accessibleLocCodes).toEqual(["1001"]);
+    const helperToken = helperLoginResponse.body.data.accessToken as string;
+
+    const scheduleResponse = await request(app)
+      .get("/api/stock-take/schedules/active")
+      .set("authorization", `Bearer ${helperToken}`);
+    expect(scheduleResponse.status).toBe(200);
+    expect(scheduleResponse.body.data.some((schedule: { locCode: string }) => schedule.locCode === "6168")).toBe(false);
+  });
+
+  it("allows schedule team assignment without changing helper base location", async () => {
+    const inventoryLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "inventory_control01",
+      password: "prototype",
+    });
+    const inventoryToken = inventoryLoginResponse.body.data.accessToken as string;
+
+    const helperResponse = await request(app)
+      .post("/api/stock-take/users")
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({
+        username: "scanner_schedule_team_1001",
+        fullName: "Scanner Schedule Team 1001",
+        password: "prototype",
+        roleId: 4,
+        locCode: "1001",
+        status: "ACTIVE",
+      });
+    expect(helperResponse.status).toBe(201);
+    expect(helperResponse.body.data.locCode).toBe("1001");
+
+    const managerLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    const managerToken = managerLoginResponse.body.data.accessToken as string;
+
+    const scheduleResponse = await request(app)
+      .get("/api/stock-take/schedules/active?locCode=6168")
+      .set("authorization", `Bearer ${managerToken}`);
+    expect(scheduleResponse.status).toBe(200);
+    const scheduleId = scheduleResponse.body.data[0].id as string;
+
+    const teamResponse = await request(app)
+      .put(`/api/stock-take/schedules/${scheduleId}/users`)
+      .set("authorization", `Bearer ${managerToken}`)
+      .send({ userIds: [helperResponse.body.data.id] });
+    expect(teamResponse.status).toBe(200);
+    expect(teamResponse.body.data.map((user: { username: string }) => user.username)).toContain("scanner_schedule_team_1001");
+    expect(teamResponse.body.data.some((user: { username: string; assignmentType: string; locked: boolean }) => (
+      user.username === "scanner01" && user.assignmentType === "LOCATION" && user.locked
+    ))).toBe(true);
+
+    const helperLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "scanner_schedule_team_1001",
+      password: "prototype",
+    });
+    expect(helperLoginResponse.status).toBe(200);
+    expect(helperLoginResponse.body.data.user.locCode).toBe("1001");
+    expect(helperLoginResponse.body.data.user.accessibleLocCodes).toEqual(["1001"]);
+    const helperToken = helperLoginResponse.body.data.accessToken as string;
+
+    const helperScheduleResponse = await request(app)
+      .get("/api/stock-take/schedules/active")
+      .set("authorization", `Bearer ${helperToken}`);
+    expect(helperScheduleResponse.status).toBe(200);
+    expect(helperScheduleResponse.body.data.some((schedule: { id: string; locCode: string }) => (
+      schedule.id === scheduleId && schedule.locCode === "6168"
+    ))).toBe(true);
+
+    const rackResponse = await request(app)
+      .get(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .set("authorization", `Bearer ${helperToken}`);
+    expect(rackResponse.status).toBe(200);
+    expect(rackResponse.body.data.racks.length).toBeGreaterThan(0);
+  });
+
   it("prints submitted rack scans and locks further mobile submissions", async () => {
     const loginResponse = await request(app).post("/api/auth/login").send({
       username: "store_manager01",

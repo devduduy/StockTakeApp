@@ -30,6 +30,7 @@ export async function login(
     username: user.username,
     roleCode: user.roleCode,
     locCode: user.locCode,
+    accessibleLocCodes: user.accessibleLocCodes,
   };
   const tokenOptions: SignOptions = {
     expiresIn: env.JWT_EXPIRES_IN as NonNullable<
@@ -60,6 +61,7 @@ export async function login(
         name: user.roleName,
       },
       locCode: user.locCode,
+      accessibleLocCodes: user.accessibleLocCodes,
       status: user.status,
     },
   };

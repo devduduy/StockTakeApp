@@ -13,6 +13,7 @@ export interface ResetTestDataResult {
 
 const RESET_TABLES = [
   "TR_STOCK_TAKE_SCAN",
+  "TR_STOCK_SCHEDULE_USER",
   "TR_STOCK_SCHEDULE_RACK",
   "MST_SOH",
   "TR_STOCK_SCHEDULE",
@@ -72,13 +73,14 @@ export async function resetTestData(): Promise<ResetTestDataResult> {
       INSERT INTO @target (table_name, delete_order)
       VALUES
         ('TR_STOCK_TAKE_SCAN', 10),
-        ('TR_STOCK_SCHEDULE_RACK', 20),
-        ('MST_SOH', 30),
-        ('TR_STOCK_SCHEDULE', 40),
-        ('MST_RACK', 50),
-        ('MST_USERS', 60),
-        ('MST_STOCK_TYPE', 70),
-        ('MST_ROLE', 80);
+        ('TR_STOCK_SCHEDULE_USER', 20),
+        ('TR_STOCK_SCHEDULE_RACK', 30),
+        ('MST_SOH', 40),
+        ('TR_STOCK_SCHEDULE', 50),
+        ('MST_RACK', 60),
+        ('MST_USERS', 70),
+        ('MST_STOCK_TYPE', 80),
+        ('MST_ROLE', 90);
 
       SELECT
         target.table_name,

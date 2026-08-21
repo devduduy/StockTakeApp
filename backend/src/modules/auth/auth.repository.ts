@@ -26,8 +26,13 @@ function mapSqlUser(row: SqlUserRow): UserRecord {
     roleCode: row.role_code,
     roleName: row.role_name,
     locCode: row.loc_code.trim(),
+    accessibleLocCodes: uniqueLocCodes([row.loc_code.trim()]),
     status: row.status,
   };
+}
+
+function uniqueLocCodes(locCodes: string[]): string[] {
+  return [...new Set(locCodes.map((locCode) => locCode.trim()).filter(Boolean))].sort();
 }
 
 export async function findActiveUserByUsername(
@@ -39,7 +44,12 @@ export async function findActiveUserByUsername(
         candidate.username.toLowerCase() === username.toLowerCase() &&
         candidate.status === "ACTIVE",
     );
-    return user ?? null;
+    return user
+      ? {
+          ...user,
+          accessibleLocCodes: uniqueLocCodes([user.locCode]),
+        }
+      : null;
   }
 
   const pool = await getSqlPool();
@@ -64,7 +74,8 @@ export async function findActiveUserByUsername(
         AND r.STATUS = 'ACTIVE';
     `);
   const row = result.recordset[0];
-  return row ? mapSqlUser(row) : null;
+  if (!row) return null;
+  return mapSqlUser(row);
 }
 
 export async function recordSuccessfulLogin(userId: string): Promise<void> {

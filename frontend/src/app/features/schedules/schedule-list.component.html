@@ -106,6 +106,10 @@
             <span class="material-symbols-outlined">edit</span>
             Edit
           </button>
+          <button class="schedule-card__team" type="button" (click)="openTeamModal(schedule)">
+            <span class="material-symbols-outlined">group</span>
+            Tim
+          </button>
           <a class="schedule-card__action" [routerLink]="['/schedules', schedule.id, 'racks']">
             Monitoring <span class="material-symbols-outlined">arrow_forward</span>
           </a>
@@ -586,5 +590,177 @@
         </button>
       </footer>
     </form>
+  </aside>
+}
+
+@if (teamSchedule()) {
+  <button class="drawer-backdrop" type="button" aria-label="Tutup tim schedule" (click)="closeTeamModal()"></button>
+  <aside class="team-drawer" aria-label="Tim schedule">
+    <header class="drawer-header">
+      <div>
+        <p class="eyebrow">TIM SCHEDULE</p>
+        <h2>{{ teamSchedule()?.scheduleNo }}</h2>
+        <span>{{ teamSchedule()?.location?.name }} ({{ teamSchedule()?.locCode }})</span>
+      </div>
+      <button type="button" aria-label="Tutup" (click)="closeTeamModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="team-drawer__body">
+
+
+      @if (teamErrorMessage()) {
+        <div class="form-alert" role="alert">
+          <span class="material-symbols-outlined">error</span>
+          {{ teamErrorMessage() }}
+        </div>
+      }
+
+      @if (teamSuccessMessage()) {
+        <div class="form-alert form-alert--success" role="status">
+          <span class="material-symbols-outlined">check_circle</span>
+          {{ teamSuccessMessage() }}
+        </div>
+      }
+
+      <div class="team-controls">
+        <div class="team-tab-control" role="tablist">
+          <button type="button" role="tab" [class.active]="teamTab() === 'selected'" [attr.aria-selected]="teamTab() === 'selected'" (click)="teamTab.set('selected')">
+            <span class="material-symbols-outlined">group</span>
+            Terpilih
+            <em>{{ teamTabCounts().selected }}</em>
+          </button>
+          <button type="button" role="tab" [class.active]="teamTab() === 'all'" [attr.aria-selected]="teamTab() === 'all'" (click)="teamTab.set('all')">
+            <span class="material-symbols-outlined">person_search</span>
+            Semua User
+            <em>{{ teamTabCounts().all }}</em>
+          </button>
+        </div>
+        <div class="team-filters">
+          <div class="form-field team-location-filter">
+            <select
+              [value]="teamLocationFilter()"
+              (change)="teamLocationFilter.set($any($event.target).value)"
+              aria-label="Filter lokasi"
+            >
+              <option value="ALL">Semua Lokasi</option>
+              @for (loc of teamLocations(); track loc.code) {
+                <option [value]="loc.code">{{ loc.label }}</option>
+              }
+            </select>
+          </div>
+          <label class="search-control team-search">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              type="search"
+              placeholder="Cari nama, username, role, lokasi..."
+              [value]="teamSearch()"
+              (input)="teamSearch.set($any($event.target).value)"
+            />
+            @if (teamSearch()) {
+              <button type="button" aria-label="Hapus pencarian tim" (click)="teamSearch.set('')">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            }
+          </label>
+        </div>
+      </div>
+
+      <div class="team-table-wrap">
+        @if (teamLoading()) {
+          @for (item of [1,2,3,4,5]; track item) { <div class="skeleton skeleton--scan"></div> }
+        } @else {
+          <table class="data-table team-table">
+            <thead>
+              <tr>
+                <th class="team-table__check">
+                  <input
+                    type="checkbox"
+                    [checked]="allFilteredChecked()"
+                    [indeterminate]="someFilteredChecked()"
+                    (change)="toggleAllFilteredTeamUsers($any($event.target).checked)"
+                    [disabled]="teamLoading()"
+                    aria-label="Pilih semua"
+                  />
+                </th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Lokasi</th>
+                <th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of filteredTeamCandidates(); track user.id) {
+                <tr [class.team-table__row--selected]="teamUserChecked(user.id)" (click)="!user.locked && toggleTeamUser(user.id, !teamUserChecked(user.id))">
+                  <td class="team-table__check">
+                    <input
+                      type="checkbox"
+                      [checked]="teamUserChecked(user.id)"
+                      [disabled]="user.locked"
+                      (change)="toggleTeamUser(user.id, $any($event.target).checked)"
+                      (click)="$event.stopPropagation()"
+                    />
+                  </td>
+                  <td>
+                    <div class="team-user-cell">
+                      <span>{{ user.fullName.slice(0, 1) }}</span>
+                      <div>
+                        <strong>{{ user.fullName }}</strong>
+                        <small>{{ user.username }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="role-pill">{{ user.role.name }}</span></td>
+                  <td><span class="mono">{{ locationDisplayByCode(user.locCode) }}</span></td>
+                  <td>
+                    @if (user.assignmentType === 'LOCATION') {
+                      <span class="team-source team-source--default">
+                        <span class="material-symbols-outlined">lock</span>
+                        Lokasi
+                      </span>
+                    } @else if (teamUserChecked(user.id)) {
+                      <span class="team-source team-source--manual">Tambahan</span>
+                    } @else {
+                      <span class="team-source team-source--none">&mdash;</span>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">
+                    <div class="empty-state compact">
+                      <span class="material-symbols-outlined">person_search</span>
+                      @if (teamTab() === 'selected') {
+                        <h3>Belum ada user terpilih</h3>
+                        <p>Buka tab "Semua User" untuk menambah anggota tim.</p>
+                      } @else {
+                        <h3>User tidak ditemukan</h3>
+                        <p>Ubah kata pencarian atau cek master user.</p>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+
+      @if (teamTab() === 'selected' && !teamLoading()) {
+        <div class="team-hint">
+          <span class="material-symbols-outlined">info</span>
+          User dengan lokasi yang sama otomatis terdaftar dan tidak bisa dilepas. Tambah anggota dari lokasi lain lewat tab <button type="button" (click)="teamTab.set('all')">Semua User</button>.
+        </div>
+      }
+    </div>
+
+    <footer class="drawer-footer">
+      <button class="secondary-button" type="button" (click)="closeTeamModal()" [disabled]="teamSaving()">Tutup</button>
+      <button class="primary-button" type="button" (click)="saveScheduleTeam()" [disabled]="teamSaving() || teamLoading()">
+        @if (teamSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+        @else { <span class="material-symbols-outlined">save</span> Simpan Tim }
+      </button>
+    </footer>
   </aside>
 }

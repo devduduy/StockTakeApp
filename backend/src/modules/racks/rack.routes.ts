@@ -4,9 +4,9 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
-import { isInventoryControl } from "../../shared/roles.js";
+import { assertCanAccessLocation, resolveReadableLocCodes, resolveWritableLocCode as resolveMappedWritableLocCode } from "../../shared/location-access.js";
+import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
 import { addRackToScheduleScope, createRackMaster, createRackMastersBulk, listActiveRacksByLocation, listRackMastersByLocation } from "./rack.repository.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
 
 const paramsSchema = z.object({
   scheduleId: z.coerce
@@ -53,42 +53,15 @@ function assertCanManageRack(roleCode: string | undefined): void {
   }
 }
 
-function resolveReadableLocCode(
-  auth: AuthenticatedUser | undefined,
-  requestedLocCode?: string,
-): string | undefined {
-  if (isInventoryControl(auth)) {
-    return requestedLocCode;
-  }
-  return auth?.locCode ?? requestedLocCode;
-}
-
-function resolveWritableLocCode(
-  auth: AuthenticatedUser | undefined,
-  requestedLocCode?: string,
-): string {
-  if (!auth?.locCode && !requestedLocCode) {
-    throw new AppError(400, "LOC_CODE belum tersedia.", "LOC_CODE_REQUIRED");
-  }
-  if (isInventoryControl(auth)) {
-    if (!requestedLocCode) {
-      throw new AppError(400, "Lokasi wajib dipilih.", "LOC_CODE_REQUIRED");
-    }
-    return requestedLocCode;
-  }
-  if (requestedLocCode && requestedLocCode !== auth?.locCode) {
-    throw new AppError(403, "Rack hanya boleh dikelola untuk lokasi user.", "LOCATION_FORBIDDEN");
-  }
-  return auth?.locCode ?? requestedLocCode!;
-}
-
 rackMasterRouter.get(
   "/",
   authenticate,
   asyncHandler(async (request, response) => {
     const query = rackQuerySchema.parse(request.query);
-    const locCode = resolveReadableLocCode(request.auth, query.locCode);
-    const racks = await listRackMastersByLocation(locCode);
+    const locCodes = resolveReadableLocCodes(request.auth, query.locCode);
+    const racks = locCodes
+      ? (await Promise.all(locCodes.map((locCode) => listRackMastersByLocation(locCode)))).flat()
+      : await listRackMastersByLocation(undefined);
     response.status(200).json({ data: racks });
   }),
 );
@@ -99,7 +72,7 @@ rackMasterRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageRack(request.auth?.roleCode);
     const body = createRackBodySchema.parse(request.body);
-    const locCode = resolveWritableLocCode(request.auth, body.locCode);
+    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi yang dimapping ke user.");
     const rack = await createRackMaster({
       ...body,
       locCode,
@@ -115,7 +88,7 @@ rackMasterRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageRack(request.auth?.roleCode);
     const body = createRackBulkBodySchema.parse(request.body);
-    const locCode = resolveWritableLocCode(request.auth, body.locCode);
+    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi yang dimapping ke user.");
     const racks = await createRackMastersBulk({
       ...body,
       locCode,
@@ -145,13 +118,7 @@ rackRouter.get(
         "SCHEDULE_CANCELLED",
       );
     }
-    if (!isInventoryControl(request.auth) && request.auth?.locCode && request.auth.locCode !== schedule.locCode) {
-      throw new AppError(
-        403,
-        "User tidak memiliki akses ke lokasi schedule ini.",
-        "SCHEDULE_LOCATION_FORBIDDEN",
-      );
-    }
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const racks = await listActiveRacksByLocation(schedule.locCode, scheduleId);
     response.status(200).json({
@@ -185,13 +152,7 @@ rackRouter.post(
         "SCHEDULE_CLOSED",
       );
     }
-    if (!isInventoryControl(request.auth) && request.auth?.locCode && request.auth.locCode !== schedule.locCode) {
-      throw new AppError(
-        403,
-        "User tidak memiliki akses ke lokasi schedule ini.",
-        "SCHEDULE_LOCATION_FORBIDDEN",
-      );
-    }
+    assertCanAccessLocation(request.auth, schedule.locCode, "User tidak memiliki akses ke lokasi schedule ini.");
 
     const result = await addRackToScheduleScope(
       scheduleId,

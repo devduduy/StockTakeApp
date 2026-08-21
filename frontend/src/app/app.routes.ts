@@ -38,6 +38,12 @@ export const routes: Routes = [
           import('./features/master-racks/master-rack.component').then((component) => component.MasterRackComponent)
       },
       {
+        path: 'users',
+        title: 'Manage User | Hero Stock Take',
+        loadComponent: () =>
+          import('./features/users/user-management.component').then((component) => component.UserManagementComponent)
+      },
+      {
         path: 'schedules/:scheduleId/racks',
         title: 'Monitoring Rack | Hero Stock Take',
         loadComponent: () =>

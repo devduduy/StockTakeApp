@@ -7,6 +7,8 @@ import {
   Category,
   DashboardSnapshot,
   Location,
+  ManagedUser,
+  ManagedUserPayload,
   PrintRackResponse,
   RackBulkCreatePayload,
   RackCreatePayload,
@@ -16,6 +18,10 @@ import {
   RackScanListResponse,
   ScheduleRackScopeResponse,
   SchedulePayload,
+  RoleOption,
+  ScheduleUser,
+  UserImportResult,
+  UserImportRow,
   UserOption
 } from '../models/api.models';
 
@@ -53,6 +59,24 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
+  getScheduleUsers(scheduleId: string): Observable<ScheduleUser[]> {
+    return this.http
+      .get<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/users`)
+      .pipe(map(({ data }) => data));
+  }
+
+  getScheduleUserCandidates(scheduleId: string): Observable<ScheduleUser[]> {
+    return this.http
+      .get<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/user-candidates`)
+      .pipe(map(({ data }) => data));
+  }
+
+  updateScheduleUsers(scheduleId: string, userIds: string[]): Observable<ScheduleUser[]> {
+    return this.http
+      .put<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/users`, { userIds })
+      .pipe(map(({ data }) => data));
+  }
+
   getCategories(): Observable<Category[]> {
     return this.http
       .get<ApiEnvelope<Category[]>>('/api/stock-take/categories')
@@ -62,6 +86,36 @@ export class StockTakeApiService {
   getLocations(): Observable<Location[]> {
     return this.http
       .get<ApiEnvelope<Location[]>>('/api/stock-take/locations')
+      .pipe(map(({ data }) => data));
+  }
+
+  getRoles(): Observable<RoleOption[]> {
+    return this.http
+      .get<ApiEnvelope<RoleOption[]>>('/api/stock-take/users/roles')
+      .pipe(map(({ data }) => data));
+  }
+
+  getUsers(): Observable<ManagedUser[]> {
+    return this.http
+      .get<ApiEnvelope<ManagedUser[]>>('/api/stock-take/users')
+      .pipe(map(({ data }) => data));
+  }
+
+  createUser(payload: ManagedUserPayload): Observable<ManagedUser> {
+    return this.http
+      .post<ApiEnvelope<ManagedUser>>('/api/stock-take/users', payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  updateUser(userId: string, payload: ManagedUserPayload): Observable<ManagedUser> {
+    return this.http
+      .put<ApiEnvelope<ManagedUser>>(`/api/stock-take/users/${userId}`, payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  importUsers(rows: UserImportRow[]): Observable<UserImportResult> {
+    return this.http
+      .post<ApiEnvelope<UserImportResult>>('/api/stock-take/users/import', { rows })
       .pipe(map(({ data }) => data));
   }
 

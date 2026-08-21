@@ -13,6 +13,7 @@ import { locationRouter } from "./modules/locations/location.routes.js";
 import { rackMasterRouter, rackRouter } from "./modules/racks/rack.routes.js";
 import { scheduleRouter } from "./modules/schedules/schedule.routes.js";
 import { scanRouter } from "./modules/scans/scan.routes.js";
+import { userRouter } from "./modules/users/user.routes.js";
 
 export function createApp(): express.Express {
   const app = express();
@@ -66,6 +67,7 @@ export function createApp(): express.Express {
   app.use(`${env.API_PREFIX}/stock-take/items`, itemRouter);
   app.use(`${env.API_PREFIX}/stock-take/categories`, categoryRouter);
   app.use(`${env.API_PREFIX}/stock-take/locations`, locationRouter);
+  app.use(`${env.API_PREFIX}/stock-take/users`, userRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

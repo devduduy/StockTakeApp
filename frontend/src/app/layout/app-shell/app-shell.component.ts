@@ -24,6 +24,7 @@ export class AppShellComponent {
     { label: 'Schedule', icon: 'event_note', route: '/schedules' },
     { label: 'Schedule Close', icon: 'event_available', route: '/closed-schedules' },
     { label: 'Master Rack', icon: 'inventory_2', route: '/master-racks' },
+    { label: 'Manage User', icon: 'manage_accounts', route: '/users' },
     { label: 'Monitoring Rack', icon: 'grid_view', route: '/schedules', hint: 'Pilih schedule' },
     { label: 'Data Scan', icon: 'barcode_scanner', hint: 'Tahap berikutnya' },
     { label: 'Rekonsiliasi', icon: 'difference', hint: 'Tahap berikutnya' },

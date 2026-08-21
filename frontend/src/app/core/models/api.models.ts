@@ -21,6 +21,7 @@ export interface AuthUser {
     name: string;
   };
   locCode: string;
+  accessibleLocCodes: string[];
   status: string;
 }
 
@@ -49,6 +50,70 @@ export interface Category {
 export interface Location {
   code: string;
   name: string;
+}
+
+export interface RoleOption {
+  id: number;
+  code: string;
+  name: string;
+  status: string;
+}
+
+export interface ManagedUser {
+  id: string;
+  username: string;
+  fullName: string;
+  role: {
+    id: number;
+    code: string;
+    name: string;
+  };
+  locCode: string;
+  status: string;
+  lastLoginAt: string | null;
+}
+
+export interface ManagedUserPayload {
+  username: string;
+  fullName: string;
+  password?: string;
+  roleId: number;
+  locCode: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface ScheduleUser {
+  id: string;
+  username: string;
+  fullName: string;
+  role: {
+    id: number;
+    code: string;
+    name: string;
+  };
+  locCode: string;
+  assigned: boolean;
+  assignmentType: 'LOCATION' | 'MANUAL' | 'NONE';
+  locked: boolean;
+}
+
+export interface UserImportRow {
+  username: string;
+  fullName: string;
+  password?: string;
+  roleCode: string;
+  locCode: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface UserImportResult {
+  created: number;
+  updated: number;
+  failed: Array<{
+    row: number;
+    username: string;
+    message: string;
+  }>;
 }
 
 export interface SchedulePayload {

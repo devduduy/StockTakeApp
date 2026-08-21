@@ -3,12 +3,11 @@ import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
-import { isInventoryControl } from "../../shared/roles.js";
+import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
 import { findRackById, isRackInScheduleScope } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
 import { confirmRackScans, isRackPrinted, listRackScans, printRackScans, rejectRackScans, submitRackScans, updateRackFinalQuantities } from "./scan.repository.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { CanonicalScanLine } from "./scan.types.js";
 
 const paramsSchema = z.object({
@@ -41,19 +40,6 @@ const finalQtyBodySchema = z.object({
 });
 
 export const scanRouter = Router({ mergeParams: true });
-
-function assertCanAccessScheduleLocation(
-  auth: AuthenticatedUser | undefined,
-  scheduleLocCode: string,
-): void {
-  if (!isInventoryControl(auth) && auth?.locCode && auth.locCode !== scheduleLocCode) {
-    throw new AppError(
-      403,
-      "User tidak memiliki akses ke lokasi schedule ini.",
-      "SCHEDULE_LOCATION_FORBIDDEN",
-    );
-  }
-}
 
 function assertCanPrint(roleCode: string | undefined): void {
   if (roleCode === "SCANNER") {
@@ -101,7 +87,7 @@ scanRouter.get(
         "SCHEDULE_NOT_FOUND",
       );
     }
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -136,7 +122,7 @@ scanRouter.post(
       );
     }
     assertScheduleAllowsRackAction(schedule.status);
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -214,7 +200,7 @@ scanRouter.post(
       );
     }
     assertScheduleAllowsRackAction(schedule.status);
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -254,7 +240,7 @@ scanRouter.patch(
       );
     }
     assertScheduleAllowsRackAction(schedule.status);
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -303,7 +289,7 @@ scanRouter.post(
       );
     }
     assertScheduleAllowsRackAction(schedule.status);
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {
@@ -344,7 +330,7 @@ scanRouter.post(
       );
     }
     assertScheduleAllowsRackAction(schedule.status);
-    assertCanAccessScheduleLocation(request.auth, schedule.locCode);
+    await assertCanAccessSchedule(request.auth, scheduleId, schedule.locCode, "User tidak memiliki akses ke schedule ini.");
 
     const rack = await findRackById(rackId);
     if (!rack) {

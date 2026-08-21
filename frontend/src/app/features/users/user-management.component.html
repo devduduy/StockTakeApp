@@ -1,0 +1,199 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">MASTER DATA</p>
+    <h1>Manage User</h1>
+    <p>Kelola akun login karyawan. Bantuan lintas toko ditentukan dari Tim Schedule saat opname berjalan.</p>
+  </div>
+  <div class="page-heading__actions">
+    <button class="secondary-button" type="button" (click)="downloadTemplate()">
+      <span class="material-symbols-outlined">download</span> Template Excel
+    </button>
+    <button class="secondary-button" type="button" (click)="openImport()">
+      <span class="material-symbols-outlined">upload_file</span> Import
+    </button>
+    <button class="primary-button" type="button" (click)="openCreateForm()">
+      <span class="material-symbols-outlined">person_add</span> Tambah User
+    </button>
+  </div>
+</section>
+
+@if (successMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Berhasil</strong><span>{{ successMessage() }}</span></div>
+    <button type="button" (click)="successMessage.set('')">Tutup</button>
+  </div>
+}
+
+@if (importMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Import user</strong><span>{{ importMessage() }}</span></div>
+    <button type="button" (click)="importMessage.set('')">Tutup</button>
+  </div>
+}
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">error</span>
+    <div><strong>Data gagal dimuat</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="loadPage()">Coba lagi</button>
+  </div>
+}
+
+<div class="user-summary">
+  <article><span class="material-symbols-outlined">group</span><div><strong>{{ users().length | number }}</strong><small>Total user</small></div></article>
+  <article><span class="material-symbols-outlined">verified_user</span><div><strong>{{ activeCount() | number }}</strong><small>Aktif</small></div></article>
+  <article><span class="material-symbols-outlined">person_off</span><div><strong>{{ inactiveCount() | number }}</strong><small>Inactive</small></div></article>
+</div>
+
+<section class="content-card user-panel">
+  <div class="user-toolbar">
+    <label class="search-control">
+      <span class="material-symbols-outlined">search</span>
+      <input type="search" placeholder="Cari nama, username, role, lokasi..." [value]="search()" (input)="search.set($any($event.target).value)" />
+      @if (search()) {
+        <button type="button" aria-label="Hapus pencarian" (click)="search.set('')"><span class="material-symbols-outlined">close</span></button>
+      }
+    </label>
+    <div class="user-filters">
+      <div class="form-field user-location-filter">
+        <select
+          [value]="locationFilter()"
+          (change)="locationFilter.set($any($event.target).value)"
+          aria-label="Filter lokasi"
+        >
+          <option value="ALL">Semua Lokasi</option>
+          @for (loc of locations(); track loc.code) {
+            <option [value]="loc.code">{{ loc.name }} ({{ loc.code }})</option>
+          }
+        </select>
+      </div>
+      <div class="segmented-control">
+        <button type="button" [class.active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">Semua</button>
+        <button type="button" [class.active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE')">Aktif</button>
+        <button type="button" [class.active]="statusFilter() === 'INACTIVE'" (click)="statusFilter.set('INACTIVE')">Inactive</button>
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+    @for (item of [1,2,3,4]; track item) { <div class="skeleton skeleton--scan"></div> }
+  } @else {
+    <div class="user-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>User</th><th>Role</th><th>Lokasi asli</th><th>Status</th><th aria-label="Aksi"></th></tr>
+        </thead>
+        <tbody>
+          @for (user of filteredUsers(); track user.id) {
+            <tr>
+              <td><div class="user-identity"><strong>{{ user.fullName }}</strong><span>{{ user.username }}</span></div></td>
+              <td><span class="role-pill">{{ user.role.name }}</span></td>
+              <td><span class="mono">{{ locationName(user.locCode) }}</span></td>
+              <td><span class="status-pill" [class.status-pill--inactive]="user.status !== 'ACTIVE'">{{ user.status }}</span></td>
+              <td class="action"><button type="button" (click)="openEditForm(user)"><span class="material-symbols-outlined">edit</span></button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5"><div class="empty-state compact"><span class="material-symbols-outlined">manage_accounts</span><h3>User tidak ditemukan</h3><p>Coba ubah filter atau tambah user baru.</p></div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+@if (formOpen()) {
+  <button class="modal-backdrop" type="button" aria-label="Tutup form user" (click)="closeForm()"></button>
+  <section class="user-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
+    <header>
+      <div>
+        <p class="eyebrow">USER</p>
+        <h2 id="user-modal-title">{{ selectedUser() ? 'Edit User' : 'Tambah User' }}</h2>
+      </div>
+      <button type="button" aria-label="Tutup" (click)="closeForm()"><span class="material-symbols-outlined">close</span></button>
+    </header>
+
+    @if (formErrorMessage()) {
+      <div class="form-alert" role="alert"><span class="material-symbols-outlined">error</span>{{ formErrorMessage() }}</div>
+    }
+
+    <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+      <div class="form-grid">
+        <label class="form-field">
+          <span>Lokasi asli <b>*</b></span>
+          <select formControlName="locCode" (change)="onPrimaryLocChange($any($event.target).value)">
+            @for (location of locations(); track location.code) {
+              <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+            }
+          </select>
+        </label>
+        <label class="form-field"><span>Nama lengkap <b>*</b></span><input formControlName="fullName" type="text" autocomplete="off" /></label>
+        <label class="form-field"><span>Username <b>*</b></span><input formControlName="username" type="text" readonly tabindex="-1" style="background-color: var(--surface-low); color: var(--text-muted);" /></label>
+        @if (selectedUser()) {
+          <label class="form-field form-field--checkbox">
+            <input type="checkbox" [checked]="resetPasswordMode()" (change)="resetPasswordMode.set($any($event.target).checked)" />
+            <span>Reset PIN / Password</span>
+          </label>
+        }
+        @if (!selectedUser() || resetPasswordMode()) {
+          <label class="form-field">
+            <span>PIN / Password <b>*</b></span>
+            <input formControlName="password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password" />
+          </label>
+        }
+        <label class="form-field">
+          <span>Role <b>*</b></span>
+          <select formControlName="roleId">
+            @for (role of roles(); track role.id) {
+              <option [value]="role.id">{{ role.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="form-field">
+          <span>Status <b>*</b></span>
+          <select formControlName="status">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+          </select>
+        </label>
+      </div>
+
+      <footer>
+        <button class="secondary-button" type="button" (click)="closeForm()" [disabled]="saving()">Batal</button>
+        <button class="primary-button" type="submit" [disabled]="saving()">
+          @if (saving()) { <span class="spinner"></span> Menyimpan... }
+          @else { <span class="material-symbols-outlined">save</span> Simpan User }
+        </button>
+      </footer>
+    </form>
+  </section>
+}
+
+@if (importOpen()) {
+  <button class="modal-backdrop" type="button" aria-label="Tutup import" (click)="closeImport()"></button>
+  <section class="user-modal user-modal--import" role="dialog" aria-modal="true" aria-labelledby="import-user-title">
+    <header>
+      <div><p class="eyebrow">IMPORT</p><h2 id="import-user-title">Import User</h2></div>
+      <button type="button" aria-label="Tutup" (click)="closeImport()"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div class="import-box">
+      <p>Gunakan template CSV yang bisa dibuka di Excel. Kolom lokasi adalah lokasi asli karyawan; peserta bantuan lintas toko dipilih dari Tim Schedule.</p>
+      <input type="file" accept=".csv,text/csv" (change)="onImportFile($event)" />
+      @if (importErrorMessage()) { <div class="form-alert" role="alert"><span class="material-symbols-outlined">error</span>{{ importErrorMessage() }}</div> }
+      @if (importPreview().length > 0) {
+        <div class="import-preview">
+          <strong>{{ importPreview().length }} row siap diimport</strong>
+          <span>{{ importPreviewNames() }}</span>
+        </div>
+      }
+    </div>
+    <footer>
+      <button class="secondary-button" type="button" (click)="closeImport()" [disabled]="importing()">Batal</button>
+      <button class="primary-button" type="button" (click)="importUsers()" [disabled]="importing() || importPreview().length === 0">
+        @if (importing()) { <span class="spinner"></span> Import... }
+        @else { <span class="material-symbols-outlined">upload_file</span> Import User }
+      </button>
+    </footer>
+  </section>
+}

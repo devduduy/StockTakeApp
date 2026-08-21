@@ -7,6 +7,7 @@ export interface UserRecord {
   roleCode: string;
   roleName: string;
   locCode: string;
+  accessibleLocCodes: string[];
   status: string;
 }
 
@@ -15,6 +16,7 @@ export interface AuthenticatedUser {
   username: string;
   roleCode: string;
   locCode: string;
+  accessibleLocCodes?: string[];
 }
 
 export interface LoginResponse {
@@ -31,6 +33,7 @@ export interface LoginResponse {
       name: string;
     };
     locCode: string;
+    accessibleLocCodes: string[];
     status: string;
   };
 }

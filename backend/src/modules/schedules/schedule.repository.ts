@@ -511,6 +511,106 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
   return Promise.all(result.recordset.map(mapSchedule));
 }
 
+export async function listSchedulesByIds(
+  scheduleIds: number[],
+  activeOnly = false,
+): Promise<ActiveSchedule[]> {
+  const uniqueIds = [...new Set(scheduleIds.filter(Number.isSafeInteger))];
+  if (uniqueIds.length === 0) return [];
+
+  if (env.SQL_MODE === "mock") {
+    const idSet = new Set(uniqueIds.map(String));
+    const schedules = mockSchedules
+      .filter((schedule) => idSet.has(schedule.id))
+      .filter((schedule) => !activeOnly || ["OPEN", "IN_PROGRESS"].includes(schedule.status))
+      .map(async (schedule) =>
+        mapSchedule({
+          id: schedule.id,
+          schedule_no: schedule.scheduleNo,
+          schedule_desc: schedule.scheduleDesc,
+          loc_code: schedule.locCode,
+          loc_name: schedule.locationName ?? schedule.locCode,
+          schedule_date: schedule.scheduleDate,
+          end_date: schedule.endDate,
+          cut_off_date: schedule.cutOffDate ?? schedule.scheduleDate,
+          start_time: schedule.startTime,
+          end_time: schedule.endTime,
+          stock_type_id: schedule.stockTypeId,
+          stock_type_code: schedule.stockTypeCode,
+          stock_type_name: schedule.stockTypeName,
+          stock_type_value: schedule.stockTypeValue,
+          category_id: schedule.categoryId,
+          status: schedule.status,
+          total_rack: mockScheduleRacks.filter(
+            (scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE",
+          ).length,
+          submitted_rack_count: new Set(
+            mockScanSubmissions
+              .filter((scan) => scan.scheduleId === schedule.id)
+              .map((scan) => scan.rackId),
+          ).size,
+          rack_ids: mockScheduleRacks
+            .filter((scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE")
+            .map((scope) => scope.rackId)
+            .join(","),
+        }),
+      );
+    return Promise.all(schedules);
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool
+    .request()
+    .input("scheduleIds", sql.VarChar(sql.MAX), uniqueIds.join(","))
+    .input("activeOnly", sql.Bit, activeOnly ? 1 : 0)
+    .query<ScheduleRow>(`
+      SELECT TOP (200)
+        CAST(s.ID AS varchar(30)) AS id,
+        s.SCHEDULE_NO AS schedule_no,
+        s.SCHEDULE_DESC AS schedule_desc,
+        s.LOC_CODE AS loc_code,
+        loc.flocname AS loc_name,
+        s.SCHEDULE_DATE AS schedule_date,
+        ISNULL(s.END_DATE, s.SCHEDULE_DATE) AS end_date,
+        ISNULL(s.CUT_OFF_SOH_DATE, s.SCHEDULE_DATE) AS cut_off_date,
+        s.START_TIME AS start_time,
+        s.END_TIME AS end_time,
+        s.STOCK_TYPE_ID AS stock_type_id,
+        st.STOCK_TYPE_CODE AS stock_type_code,
+        st.STOCK_TYPE_NAME AS stock_type_name,
+        s.STOCK_TYPE_VALUE AS stock_type_value,
+        s.CATEGORY_ID AS category_id,
+        s.STATUS AS status,
+        (
+          SELECT COUNT(*)
+          FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+          WHERE scope.SCHEDULE_ID = s.ID
+            AND scope.STATUS = 'ACTIVE'
+        ) AS total_rack,
+        (
+          SELECT COUNT(DISTINCT scan.RACK_ID)
+          FROM dbo.TR_STOCK_TAKE_SCAN scan
+          WHERE scan.SCHEDULE_ID = s.ID
+            AND scan.SCAN_STATUS = 'SYNCED'
+        ) AS submitted_rack_count,
+        (
+          SELECT STRING_AGG(CONVERT(varchar(30), scope.RACK_ID), ',')
+          FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+          WHERE scope.SCHEDULE_ID = s.ID
+            AND scope.STATUS = 'ACTIVE'
+        ) AS rack_ids
+      FROM dbo.TR_STOCK_SCHEDULE s
+      INNER JOIN dbo.MST_STOCK_TYPE st ON st.ID = s.STOCK_TYPE_ID
+      LEFT JOIN MasterData.dbo.MFLOCATION loc
+        ON loc.floccode COLLATE DATABASE_DEFAULT = s.LOC_CODE COLLATE DATABASE_DEFAULT
+      INNER JOIN STRING_SPLIT(@scheduleIds, ',') selected
+        ON TRY_CONVERT(bigint, selected.value) = s.ID
+      WHERE (@activeOnly = 0 OR s.STATUS IN ('OPEN', 'IN_PROGRESS'))
+      ORDER BY s.SCHEDULE_DATE DESC, s.ID DESC;
+    `);
+  return Promise.all(result.recordset.map(mapSchedule));
+}
+
 export async function createSchedule(
   payload: ScheduleMutatePayload,
 ): Promise<ActiveSchedule> {

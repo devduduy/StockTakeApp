@@ -8,6 +8,8 @@ Backend Express.js + TypeScript untuk mobile HHT dan web Hero Stock Take. Backen
 - Role dan lokasi:
   - `SCANNER` hanya untuk scan mobile.
   - Store role mengikuti `MST_USERS.LOC_CODE`.
+  - Tim user per schedule aktif disimpan di `dbo.TR_STOCK_SCHEDULE_USER`.
+  - User dengan `LOC_CODE` sama seperti lokasi schedule otomatis menjadi peserta schedule; user bantuan dari lokasi lain ditambahkan dari Tim Schedule.
   - `INVENTORY_CONTROL` dapat akses semua lokasi.
 - Schedule:
   - Nomor unik format `ST/yyyy/MM/0001`.
@@ -15,6 +17,7 @@ Backend Express.js + TypeScript untuk mobile HHT dan web Hero Stock Take. Backen
   - `END_DATE` wajib tersedia lewat migration.
   - Stock type hanya `ALL` dan `PARTIAL`.
   - `CATEGORY_ID` menyimpan multi category untuk schedule PARTIAL.
+  - User bantuan dari toko lain bisa ditugaskan langsung di schedule tanpa mengubah lokasi asli user.
 - Rack:
   - Master rack di `dbo.MST_RACK`.
   - Format kode rack wajib `RCK-{2 huruf}-{3 angka}`, contoh `RCK-FR-001`.
@@ -157,6 +160,7 @@ npm.cmd --prefix backend run db:reset:test
 Tabel aplikasi yang dihapus oleh reset:
 
 - `dbo.TR_STOCK_TAKE_SCAN`
+- `dbo.TR_STOCK_SCHEDULE_USER`
 - `dbo.TR_STOCK_SCHEDULE_RACK`
 - `dbo.TR_STOCK_SCHEDULE`
 - `dbo.MST_SOH`

@@ -15,26 +15,30 @@ function mapLocation(row: LocationRow): LocationResponse {
   };
 }
 
-export async function listLocations(locCode?: string): Promise<LocationResponse[]> {
+export async function listLocations(locCode?: string | string[]): Promise<LocationResponse[]> {
   if (env.SQL_MODE === "mock") {
     const locations = [
       { code: "6168", name: "HERO SUPERMARKET 6168" },
       { code: "1001", name: "HERO SUPERMARKET 1001" },
     ];
-    return locCode ? locations.filter((location) => location.code === locCode) : locations;
+    const locCodes = Array.isArray(locCode) ? locCode : locCode ? [locCode] : [];
+    return locCodes.length > 0 ? locations.filter((location) => locCodes.includes(location.code)) : locations;
   }
 
   const pool = await getSqlPool();
+  const locCodes = Array.isArray(locCode) ? locCode : locCode ? [locCode] : [];
   const result = await pool
     .request()
-    .input("locCode", sql.Char(4), locCode ?? null)
+    .input("locCodes", sql.VarChar(sql.MAX), locCodes.join(",") || null)
     .query<LocationRow>(`
       SELECT TOP (500)
         RTRIM(floccode) AS loc_code,
         RTRIM(flocname) AS loc_name
       FROM MasterData.dbo.MFLOCATION
-      WHERE (@locCode IS NULL
-         OR floccode COLLATE DATABASE_DEFAULT = @locCode COLLATE DATABASE_DEFAULT)
+      WHERE (@locCodes IS NULL
+         OR floccode COLLATE DATABASE_DEFAULT IN (
+          SELECT value COLLATE DATABASE_DEFAULT FROM STRING_SPLIT(@locCodes, ',')
+         ))
          AND fstatus = 'Y' 
          AND floctype NOT IN ('H', 'W')
       ORDER BY flocname;

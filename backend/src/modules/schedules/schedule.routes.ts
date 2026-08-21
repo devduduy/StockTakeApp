@@ -3,13 +3,15 @@ import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
-import { isInventoryControl } from "../../shared/roles.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { assertCanAccessLocation, resolveReadableLocCodes, resolveWritableLocCode as resolveMappedWritableLocCode } from "../../shared/location-access.js";
+import { listAssignedScheduleIdsForUser, listScheduleUserCandidates, listScheduleUsers, replaceScheduleUsers } from "../schedule-users/schedule-user.repository.js";
 import {
   closeSchedule,
   createSchedule,
+  findScheduleLocation,
   listActiveSchedules,
   listSchedules,
+  listSchedulesByIds,
   updateSchedule,
 } from "./schedule.repository.js";
 
@@ -67,6 +69,14 @@ const schedulePayloadSchema = z
     }
   });
 
+const scheduleUserParamsSchema = z.object({
+  scheduleId: z.coerce.number().int().positive().safe(),
+});
+
+const scheduleUsersPayloadSchema = z.object({
+  userIds: z.array(z.union([z.string().trim().regex(/^\d+$/), z.number().int().positive().safe()])).default([]),
+});
+
 export const scheduleRouter = Router();
 
 function assertCanManageSchedule(roleCode: string | undefined): void {
@@ -79,33 +89,40 @@ function assertCanManageSchedule(roleCode: string | undefined): void {
   }
 }
 
-function resolveReadableLocCode(
-  auth: AuthenticatedUser | undefined,
-  requestedLocCode?: string,
-): string | undefined {
-  if (isInventoryControl(auth)) {
-    return requestedLocCode;
-  }
-  return auth?.locCode ?? requestedLocCode;
-}
-
 function resolveWritableLocCode(
-  auth: AuthenticatedUser | undefined,
+  auth: Parameters<typeof resolveMappedWritableLocCode>[0],
   requestedLocCode?: string,
 ): string {
-  if (!auth?.locCode && !requestedLocCode) {
-    throw new AppError(400, "LOC_CODE belum tersedia.", "LOC_CODE_REQUIRED");
+  return resolveMappedWritableLocCode(
+    auth,
+    requestedLocCode,
+    "Schedule hanya boleh dikelola untuk lokasi yang dimapping ke user.",
+  );
+}
+
+function mergeSchedules<T extends { id: string }>(...scheduleGroups: T[][]): T[] {
+  const merged = new Map<string, T>();
+  for (const schedule of scheduleGroups.flat()) {
+    merged.set(schedule.id, schedule);
   }
-  if (isInventoryControl(auth)) {
-    if (!requestedLocCode) {
-      throw new AppError(400, "Lokasi wajib dipilih.", "LOC_CODE_REQUIRED");
-    }
-    return requestedLocCode;
+  return [...merged.values()];
+}
+
+async function assertCanManageScheduleTeam(
+  scheduleId: number,
+  roleCode: string | undefined,
+  auth: Parameters<typeof assertCanAccessLocation>[0],
+): Promise<void> {
+  assertCanManageSchedule(roleCode);
+  const schedule = await findScheduleLocation(scheduleId);
+  if (!schedule) {
+    throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
   }
-  if (requestedLocCode && requestedLocCode !== auth?.locCode) {
-    throw new AppError(403, "Schedule hanya boleh dikelola untuk lokasi user.", "LOCATION_FORBIDDEN");
-  }
-  return auth?.locCode ?? requestedLocCode!;
+  assertCanAccessLocation(
+    auth,
+    schedule.locCode,
+    "Tim schedule hanya boleh dikelola untuk lokasi yang dimapping ke user.",
+  );
 }
 
 scheduleRouter.get(
@@ -113,8 +130,13 @@ scheduleRouter.get(
   authenticate,
   asyncHandler(async (request, response) => {
     const query = querySchema.parse(request.query);
-    const locCode = resolveReadableLocCode(request.auth, query.locCode);
-    const schedules = await listSchedules(locCode);
+    const locCodes = resolveReadableLocCodes(request.auth, query.locCode);
+    const locationSchedules = locCodes
+      ? (await Promise.all(locCodes.map((locCode) => listSchedules(locCode)))).flat()
+      : await listSchedules(undefined);
+    const assignedScheduleIds = await listAssignedScheduleIdsForUser(request.auth?.userId, request.auth?.username);
+    const assignedSchedules = await listSchedulesByIds(assignedScheduleIds);
+    const schedules = mergeSchedules(locationSchedules, assignedSchedules);
     response.status(200).json({ data: schedules });
   }),
 );
@@ -125,6 +147,11 @@ scheduleRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageSchedule(request.auth?.roleCode);
     const params = z.object({ scheduleId: z.coerce.number().int().positive() }).parse(request.params);
+    const scheduleLocation = await findScheduleLocation(params.scheduleId);
+    if (!scheduleLocation) {
+      throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
+    }
+    assertCanAccessLocation(request.auth, scheduleLocation.locCode, "Schedule hanya boleh di-close untuk lokasi yang dimapping ke user.");
     const schedule = await closeSchedule(params.scheduleId, request.auth?.username ?? "SYSTEM");
     response.status(200).json({ data: schedule });
   }),
@@ -135,9 +162,52 @@ scheduleRouter.get(
   authenticate,
   asyncHandler(async (request, response) => {
     const query = querySchema.parse(request.query);
-    const locCode = resolveReadableLocCode(request.auth, query.locCode);
-    const schedules = await listActiveSchedules(locCode);
+    const locCodes = resolveReadableLocCodes(request.auth, query.locCode);
+    const locationSchedules = locCodes
+      ? (await Promise.all(locCodes.map((locCode) => listActiveSchedules(locCode)))).flat()
+      : await listActiveSchedules(undefined);
+    const assignedScheduleIds = await listAssignedScheduleIdsForUser(request.auth?.userId, request.auth?.username);
+    const assignedSchedules = await listSchedulesByIds(assignedScheduleIds, true);
+    const schedules = mergeSchedules(locationSchedules, assignedSchedules);
     response.status(200).json({ data: schedules });
+  }),
+);
+
+scheduleRouter.get(
+  "/:scheduleId/users",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const params = scheduleUserParamsSchema.parse(request.params);
+    await assertCanManageScheduleTeam(params.scheduleId, request.auth?.roleCode, request.auth);
+    const users = await listScheduleUsers(params.scheduleId);
+    response.status(200).json({ data: users });
+  }),
+);
+
+scheduleRouter.get(
+  "/:scheduleId/user-candidates",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const params = scheduleUserParamsSchema.parse(request.params);
+    await assertCanManageScheduleTeam(params.scheduleId, request.auth?.roleCode, request.auth);
+    const users = await listScheduleUserCandidates(params.scheduleId);
+    response.status(200).json({ data: users });
+  }),
+);
+
+scheduleRouter.put(
+  "/:scheduleId/users",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const params = scheduleUserParamsSchema.parse(request.params);
+    const body = scheduleUsersPayloadSchema.parse(request.body);
+    await assertCanManageScheduleTeam(params.scheduleId, request.auth?.roleCode, request.auth);
+    const users = await replaceScheduleUsers(
+      params.scheduleId,
+      body.userIds,
+      request.auth?.username ?? "SYSTEM",
+    );
+    response.status(200).json({ data: users });
   }),
 );
 

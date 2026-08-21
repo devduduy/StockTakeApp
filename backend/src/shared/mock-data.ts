@@ -118,6 +118,18 @@ export const mockScheduleRacks: MockScheduleRack[] = mockRacks.map((rack) => ({
   status: "ACTIVE",
 }));
 
+export interface MockScheduleUser {
+  scheduleId: string;
+  userId: string;
+  status: string;
+  userCreated?: string;
+  dateCreated?: string;
+  userModified?: string;
+  dateModified?: string;
+}
+
+export const mockScheduleUsers: MockScheduleUser[] = [];
+
 export const mockItems = [
   {
     barcode: "383800000013",

@@ -6,7 +6,7 @@ import { catchError, distinctUntilChanged, EMPTY, forkJoin, interval, of, switch
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
-import { ActiveSchedule, Category, Location, RackMaster, SchedulePayload } from '../../core/models/api.models';
+import { ActiveSchedule, Category, Location, RackMaster, SchedulePayload, ScheduleUser } from '../../core/models/api.models';
 
 interface CategoryGroup {
   divisionId: string;
@@ -61,6 +61,16 @@ export class ScheduleListComponent {
   readonly formOpen = signal(false);
   readonly editingSchedule = signal<ActiveSchedule | null>(null);
   readonly rackFormOpen = signal(false);
+  readonly teamSchedule = signal<ActiveSchedule | null>(null);
+  readonly teamCandidates = signal<ScheduleUser[]>([]);
+  readonly teamSelectedUserIds = signal<Set<string>>(new Set());
+  readonly teamSearch = signal('');
+  readonly teamLocationFilter = signal('ALL');
+  readonly teamTab = signal<'selected' | 'all'>('selected');
+  readonly teamLoading = signal(false);
+  readonly teamSaving = signal(false);
+  readonly teamErrorMessage = signal('');
+  readonly teamSuccessMessage = signal('');
   readonly scheduleForm = this.fb.nonNullable.group({
     scheduleDesc: [''],
     locCode: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{4}$/)]],
@@ -156,6 +166,55 @@ export class ScheduleListComponent {
       || location.code.toLowerCase().includes(keyword)
       || location.name.toLowerCase().includes(keyword)
     );
+  });
+  readonly teamLocations = computed(() => {
+    return Array.from(new Set(this.teamCandidates().map(u => u.locCode)))
+      .sort()
+      .map(code => {
+        const loc = this.locations().find(l => l.code === code);
+        return { code, label: loc ? `${loc.name} (${code})` : code };
+      });
+  });
+  readonly filteredTeamCandidates = computed(() => {
+    const keyword = this.teamSearch().trim().toLowerCase();
+    const tab = this.teamTab();
+    const selected = this.teamSelectedUserIds();
+    const locFilter = this.teamLocationFilter();
+    return this.teamCandidates().filter((user) => {
+      if (tab === 'selected' && !selected.has(user.id)) return false;
+      if (locFilter !== 'ALL' && user.locCode !== locFilter) return false;
+      if (!keyword) return true;
+      return [
+        user.fullName,
+        user.username,
+        user.role.name,
+        user.locCode
+      ].some((value) => value.toLowerCase().includes(keyword));
+    });
+  });
+  readonly selectedTeamUsers = computed(() => {
+    const selected = this.teamSelectedUserIds();
+    return this.teamCandidates()
+      .filter((user) => selected.has(user.id))
+      .sort((left, right) => left.fullName.localeCompare(right.fullName));
+  });
+  readonly defaultTeamCount = computed(() => this.teamCandidates().filter((user) => user.assignmentType === 'LOCATION').length);
+  readonly extraTeamCount = computed(() => this.selectedTeamUsers().filter((user) => user.assignmentType !== 'LOCATION').length);
+  readonly teamTabCounts = computed(() => ({
+    selected: this.selectedTeamUsers().length,
+    all: this.teamCandidates().length
+  }));
+  readonly allFilteredChecked = computed(() => {
+    const filtered = this.filteredTeamCandidates().filter((user) => !user.locked);
+    if (filtered.length === 0) return false;
+    const selected = this.teamSelectedUserIds();
+    return filtered.every((user) => selected.has(user.id));
+  });
+  readonly someFilteredChecked = computed(() => {
+    const filtered = this.filteredTeamCandidates().filter((user) => !user.locked);
+    if (filtered.length === 0) return false;
+    const selected = this.teamSelectedUserIds();
+    return filtered.some((user) => selected.has(user.id)) && !this.allFilteredChecked();
   });
 
   constructor() {
@@ -266,6 +325,108 @@ export class ScheduleListComponent {
 
   closeForm(): void {
     if (!this.saving()) this.formOpen.set(false);
+  }
+
+  openTeamModal(schedule: ActiveSchedule): void {
+    this.teamSchedule.set(schedule);
+    this.teamCandidates.set([]);
+    this.teamSelectedUserIds.set(new Set());
+    this.teamSearch.set('');
+    this.teamLocationFilter.set('ALL');
+    this.teamTab.set('selected');
+    this.teamErrorMessage.set('');
+    this.teamSuccessMessage.set('');
+    this.teamLoading.set(true);
+    this.api.getScheduleUserCandidates(schedule.id)
+      .pipe(
+        tap((candidates) => {
+          const assignedIds = new Set(candidates.filter((user) => user.assigned).map((user) => user.id));
+          this.teamCandidates.set(candidates);
+          this.teamSelectedUserIds.set(assignedIds);
+          this.teamLoading.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.teamErrorMessage.set(apiErrorMessage(error, 'Tim schedule gagal dimuat.'));
+          this.teamLoading.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  closeTeamModal(): void {
+    if (!this.teamSaving()) {
+      this.teamSchedule.set(null);
+      this.teamErrorMessage.set('');
+      this.teamSuccessMessage.set('');
+    }
+  }
+
+  teamUserChecked(userId: string): boolean {
+    return this.teamSelectedUserIds().has(userId);
+  }
+
+  toggleTeamUser(userId: string, checked: boolean): void {
+    const user = this.teamCandidates().find((candidate) => candidate.id === userId);
+    if (user?.locked) return;
+    const selected = new Set(this.teamSelectedUserIds());
+    checked ? selected.add(userId) : selected.delete(userId);
+    this.teamSelectedUserIds.set(selected);
+    this.teamErrorMessage.set('');
+  }
+
+  toggleAllFilteredTeamUsers(checked: boolean): void {
+    const selected = new Set(this.teamSelectedUserIds());
+    for (const user of this.filteredTeamCandidates()) {
+      if (user.locked) {
+        selected.add(user.id);
+        continue;
+      }
+      checked ? selected.add(user.id) : selected.delete(user.id);
+    }
+    this.teamSelectedUserIds.set(selected);
+    this.teamErrorMessage.set('');
+  }
+
+  removeTeamUser(userId: string): void {
+    const user = this.teamCandidates().find((candidate) => candidate.id === userId);
+    if (user?.locked) return;
+    this.toggleTeamUser(userId, false);
+  }
+
+  saveScheduleTeam(): void {
+    const schedule = this.teamSchedule();
+    if (!schedule || this.teamSaving()) return;
+    this.teamSaving.set(true);
+    this.teamErrorMessage.set('');
+    this.teamSuccessMessage.set('');
+    this.api.updateScheduleUsers(schedule.id, [...this.teamSelectedUserIds()])
+      .pipe(
+        tap((users) => {
+          const assignedIds = new Set(users.map((user) => user.id));
+          this.teamCandidates.set(this.teamCandidates().map((user) => {
+            const isAssigned = user.locked || assignedIds.has(user.id);
+            return {
+              ...user,
+              assigned: isAssigned,
+              assignmentType: user.locked ? 'LOCATION' : assignedIds.has(user.id) ? 'MANUAL' : 'NONE'
+            };
+          }));
+          this.teamSelectedUserIds.set(new Set(
+            this.teamCandidates().filter((user) => user.assigned).map((user) => user.id)
+          ));
+          this.teamSuccessMessage.set('Tim schedule berhasil disimpan.');
+          this.teamSaving.set(false);
+        }),
+        catchError((error: unknown) => {
+          this.teamErrorMessage.set(apiErrorMessage(error, 'Tim schedule gagal disimpan.'));
+          this.teamSaving.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   selectedCategoryIds(): string[] {

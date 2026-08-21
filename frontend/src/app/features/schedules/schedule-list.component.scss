@@ -35,14 +35,18 @@
 .schedule-card__progress small { color: var(--text-subtle); font-size: 11px; }
 .progress-track { height: 7px; margin: 9px 0 7px; overflow: hidden; border-radius: 100px; background: var(--surface-high); }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
-.schedule-card__actions { display: grid; grid-template-columns: 108px minmax(0, 1fr); border-top: 1px solid var(--outline-variant); }
+.schedule-card__actions { display: grid; grid-template-columns: 96px 88px minmax(0, 1fr); border-top: 1px solid var(--outline-variant); }
 .schedule-card__edit,
+.schedule-card__team,
 .schedule-card__action { display: flex; min-height: 47px; align-items: center; justify-content: center; gap: 8px; border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 13px; font-weight: 700; text-decoration: none; }
-.schedule-card__edit { border-right: 1px solid var(--outline-variant); }
+.schedule-card__edit,
+.schedule-card__team { border-right: 1px solid var(--outline-variant); }
 .schedule-card__edit:disabled { cursor: not-allowed; opacity: .45; }
-.schedule-card__action:hover { background: var(--primary); color: #fff; }
+.schedule-card__action:hover,
+.schedule-card__team:hover { background: var(--primary); color: #fff; }
 .schedule-card__edit:not(:disabled):hover { background: var(--primary-soft); }
 .schedule-card__action .material-symbols-outlined,
+.schedule-card__team .material-symbols-outlined,
 .schedule-card__edit .material-symbols-outlined { font-size: 17px; }
 .schedule-empty { grid-column: 1 / -1; min-height: 320px; }
 
@@ -122,6 +126,7 @@
   overflow-y: auto;
   padding: 20px 22px 36px;
 }
+
 
 .drawer-alert {
   flex: 0 0 auto;
@@ -1052,8 +1057,9 @@
 @media (max-width: 1250px) { .schedule-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) {
   .schedule-grid { grid-template-columns: 1fr; }
-  .schedule-card__actions { grid-template-columns: 96px minmax(0, 1fr); }
-  .schedule-drawer { inset: 14px; width: calc(100vw - 28px); height: calc(100vh - 28px); max-height: calc(100vh - 28px); }
+  .schedule-card__actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .schedule-drawer,
+  .team-drawer { inset: 14px; width: calc(100vw - 28px); height: calc(100vh - 28px); max-height: calc(100vh - 28px); }
   .schedule-drawer form { height: 100%; max-height: none; }
   .form-grid,
   .form-grid--date,

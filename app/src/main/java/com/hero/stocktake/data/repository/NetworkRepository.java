@@ -94,7 +94,7 @@ public class NetworkRepository {
             callback.onError("Sesi login tidak ditemukan. Silakan login ulang.");
             return;
         }
-        api.activeSchedules(authorization, sessionManager.getLocCode()).enqueue(new Callback<>() {
+        api.activeSchedules(authorization, null).enqueue(new Callback<>() {
             @Override
             public void onResponse(@NonNull Call<ApiEnvelope<List<ScheduleDto>>> call, @NonNull Response<ApiEnvelope<List<ScheduleDto>>> response) {
                 ApiEnvelope<List<ScheduleDto>> envelope = response.body();
