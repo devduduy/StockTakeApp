@@ -11,3 +11,4 @@ captures/
 .cxx/
 app/build/
 .codex_tmp/
+*documentation/

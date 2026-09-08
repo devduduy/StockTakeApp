@@ -112,12 +112,7 @@ public class DraftRepository {
         });
     }
 
-    public void hasDuplicate(String scheduleId, String rackId, String barcode, ResultCallback<Boolean> callback) {
-        executor.execute(() -> {
-            boolean exists = dao.getByKey(scheduleId, rackId, barcode) != null;
-            mainHandler.post(() -> callback.onResult(exists));
-        });
-    }
+
 
     public void isRackSubmitted(String scheduleId, String rackId, ResultCallback<Boolean> callback) {
         executor.execute(() -> {
@@ -135,41 +130,26 @@ public class DraftRepository {
             String description,
             int quantity,
             String inputType,
-            DraftRules.DuplicateMode mode,
             ResultCallback<LocalScanDraft> callback
     ) {
         executor.execute(() -> {
             DraftRules.validate(barcode, quantity);
-            LocalScanDraft existing = dao.getByKey(scheduleId, rackId, barcode);
             long now = System.currentTimeMillis();
-            LocalScanDraft saved;
-            if (existing == null) {
-                saved = new LocalScanDraft(
-                        UUID.randomUUID().toString(),
-                        scheduleId,
-                        rackId,
-                        rackCode,
-                        barcode,
-                        plu,
-                        description,
-                        quantity,
-                        inputType,
-                        "DRAFT",
-                        now,
-                        now
-                );
-                saved.id = dao.insert(saved);
-            } else {
-                existing.scanQty = DraftRules.resolveQuantity(existing.scanQty, quantity, mode);
-                existing.plu = plu;
-                existing.pluDescription = description;
-                existing.inputType = inputType;
-                existing.syncStatus = "DRAFT";
-                existing.scannedAt = now;
-                existing.updatedAt = now;
-                dao.update(existing);
-                saved = existing;
-            }
+            LocalScanDraft saved = new LocalScanDraft(
+                    UUID.randomUUID().toString(),
+                    scheduleId,
+                    rackId,
+                    rackCode,
+                    barcode,
+                    plu,
+                    description,
+                    quantity,
+                    inputType,
+                    "DRAFT",
+                    now,
+                    now
+            );
+            saved.id = dao.insert(saved);
             LocalScanDraft result = saved;
             mainHandler.post(() -> callback.onResult(result));
         });
@@ -249,9 +229,6 @@ public class DraftRepository {
                 ? "server-" + scan.id
                 : scan.clientScanId;
         LocalScanDraft existing = dao.getByClientScanId(clientScanId);
-        if (existing == null) {
-            existing = dao.getByKey(scheduleId, rackId, scan.barcode);
-        }
         long scannedAt = parseServerTime(scan.dateCreated);
         long updatedAt = parseServerTime(scan.dateModified == null ? scan.dateCreated : scan.dateModified);
         if (existing == null) {

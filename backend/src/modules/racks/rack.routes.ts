@@ -6,10 +6,18 @@ import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { assertCanAccessLocation, resolveReadableLocCodes, resolveWritableLocCode as resolveMappedWritableLocCode } from "../../shared/location-access.js";
 import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
-import { addRackToScheduleScope, createRackMaster, createRackMastersBulk, listActiveRacksByLocation, listRackMastersByLocation } from "./rack.repository.js";
+import { addRackToScheduleScope, createRackMaster, createRackMastersBulk, deleteRackMaster, findRackById, listActiveRacksByLocation, listRackMastersByLocation, updateRackMaster } from "./rack.repository.js";
 
 const paramsSchema = z.object({
   scheduleId: z.coerce
+    .number()
+    .int()
+    .positive()
+    .safe(),
+});
+
+const rackParamsSchema = z.object({
+  rackId: z.coerce
     .number()
     .int()
     .positive()
@@ -27,6 +35,12 @@ const createRackBodySchema = z.object({
   rackCode: z.string().trim().regex(/^RCK-([A-Za-z])\1-\d{3}$/, "Format kode rack harus RCK-{2 huruf sama}-{3 angka}, contoh RCK-AA-001."),
   rackName: z.string().trim().min(2).max(100),
   locCode: z.string().trim().regex(/^[A-Za-z0-9]{4}$/).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+});
+
+const updateRackBodySchema = z.object({
+  rackCode: z.string().trim().regex(/^RCK-([A-Za-z])\1-\d{3}$/, "Format kode rack harus RCK-{2 huruf sama}-{3 angka}, contoh RCK-AA-001."),
+  rackName: z.string().trim().min(2).max(100),
   status: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
 });
 
@@ -72,7 +86,7 @@ rackMasterRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageRack(request.auth?.roleCode);
     const body = createRackBodySchema.parse(request.body);
-    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi yang dimapping ke user.");
+    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi user.");
     const rack = await createRackMaster({
       ...body,
       locCode,
@@ -88,13 +102,51 @@ rackMasterRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageRack(request.auth?.roleCode);
     const body = createRackBulkBodySchema.parse(request.body);
-    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi yang dimapping ke user.");
+    const locCode = resolveMappedWritableLocCode(request.auth, body.locCode, "Rack hanya boleh dikelola untuk lokasi user.");
     const racks = await createRackMastersBulk({
       ...body,
       locCode,
       username: request.auth?.username ?? "SYSTEM",
     });
     response.status(201).json({ data: racks });
+  }),
+);
+
+rackMasterRouter.put(
+  "/:rackId",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanManageRack(request.auth?.roleCode);
+    const { rackId } = rackParamsSchema.parse(request.params);
+    const body = updateRackBodySchema.parse(request.body);
+    const currentRack = await findRackById(rackId);
+    if (!currentRack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    assertCanAccessLocation(request.auth, currentRack.locCode, "Rack hanya boleh dikelola untuk lokasi user.");
+
+    const rack = await updateRackMaster(rackId, {
+      ...body,
+      username: request.auth?.username ?? "SYSTEM",
+    });
+    response.status(200).json({ data: rack });
+  }),
+);
+
+rackMasterRouter.delete(
+  "/:rackId",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    assertCanManageRack(request.auth?.roleCode);
+    const { rackId } = rackParamsSchema.parse(request.params);
+    const currentRack = await findRackById(rackId);
+    if (!currentRack) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    assertCanAccessLocation(request.auth, currentRack.locCode, "Rack hanya boleh dikelola untuk lokasi user.");
+
+    await deleteRackMaster(rackId);
+    response.status(204).end();
   }),
 );
 

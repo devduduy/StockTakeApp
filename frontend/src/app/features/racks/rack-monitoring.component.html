@@ -285,6 +285,12 @@
           </button>
         }
       </label>
+      @if (canEditManualItems()) {
+        <button class="secondary-button" type="button" (click)="openManualAdd()">
+          <span class="material-symbols-outlined">add</span>
+          Tambah Item
+        </button>
+      }
     </div>
 
     @if (scanErrorMessage()) { <div class="drawer-error">{{ scanErrorMessage() }}</div> }
@@ -301,6 +307,7 @@
             <span>Final Qty</span>
             <span>Selisih</span>
           }
+          <span></span>
         </div>
         @for (scan of filteredScans(); track scan.id) {
           <article class="scan-row" [class.scan-row--diff]="rack.printed && discrepancyPreview(scan) !== 0">
@@ -327,6 +334,13 @@
               <div class="scan-row__diff" [class.scan-row__diff--alert]="discrepancyPreview(scan) !== 0">
                 <strong>{{ discrepancyPreview(scan) | number }}</strong>
               </div>
+            }
+            @if (canEditManualItems()) {
+              <button class="icon-button delete-scan-button" type="button" (click)="deleteScan(scan)" [disabled]="deletingScanId() === scan.id" aria-label="Hapus scan">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            } @else {
+              <span></span>
             }
           </article>
         } @empty {
@@ -574,5 +588,75 @@
         @else { <span class="material-symbols-outlined">{{ action === 'REJECT' ? 'undo' : 'task_alt' }}</span> {{ action === 'REJECT' ? 'Ya, Reject' : 'Ya, Confirm' }} }
       </button>
     </div>
+  </section>
+}
+
+@if (manualAddOpen()) {
+  <button class="confirm-backdrop" type="button" aria-label="Batal tambah manual" (click)="closeManualAdd()"></button>
+  <section class="confirm-dialog manual-add-dialog" role="dialog" aria-modal="true" aria-labelledby="manual-add-title">
+    <div class="confirm-dialog__icon"><span class="material-symbols-outlined">add_circle</span></div>
+    <h2 id="manual-add-title">Tambah Item Manual</h2>
+    <form [formGroup]="manualAddForm" (ngSubmit)="submitManualAdd()">
+      <div class="manual-add-form">
+        <label class="manual-field manual-field--search">
+          <span>Produk <b>*</b></span>
+          <div class="manual-search-control">
+            <input
+              type="text"
+              formControlName="barcode"
+              placeholder="Ketik minimal 2 huruf nama item, PLU, atau barcode"
+              autocomplete="off"
+              (focus)="searchDropdownOpen.set(manualAddForm.controls.barcode.value.trim().length >= 2)"
+            />
+            @if (searchLoading()) {
+              <span class="manual-search-loader spinner" aria-hidden="true"></span>
+            } @else if (manualAddForm.controls.barcode.value) {
+              <button class="manual-search-clear" type="button" aria-label="Kosongkan produk" (click)="clearManualItemSearch()">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            }
+          </div>
+          <small class="manual-field__hint">Hasil pencarian tampil maksimal 25 item.</small>
+          @if (searchDropdownOpen()) {
+            <ul class="search-dropdown">
+              @if (searchLoading()) {
+                <li class="search-dropdown__state">Mencari item...</li>
+              } @else if (searchResults().length === 0) {
+                <li class="search-dropdown__state">Item tidak ditemukan. Coba kata kunci lain.</li>
+              } @else {
+                @for (item of searchResults(); track item.plu + '-' + item.barcode) {
+                <li>
+                  <button type="button" (click)="selectSearchResult(item)">
+                    <span class="search-dropdown__plu">{{ item.plu }}</span>
+                    <span class="search-dropdown__name">{{ item.pluDescription }}</span>
+                  </button>
+                </li>
+                }
+              }
+            </ul>
+          }
+        </label>
+        @if (selectedManualItem(); as item) {
+          <div class="manual-selected-item">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <div>
+              <strong>{{ item.plu }} - {{ item.pluDescription }}</strong>
+              <small>Barcode utama: {{ item.barcode }}</small>
+            </div>
+          </div>
+        }
+        <label class="manual-field">
+          <span>Final Qty <b>*</b></span>
+          <input type="number" formControlName="qty" placeholder="1" min="1" />
+        </label>
+      </div>
+      <div class="confirm-dialog__actions">
+        <button class="secondary-button" type="button" (click)="closeManualAdd()" [disabled]="manualAddSaving()">Batal</button>
+        <button class="primary-button" type="submit" [disabled]="manualAddSaving() || !manualAddForm.controls.barcode.value">
+          @if (manualAddSaving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
+          @else { <span class="material-symbols-outlined">save</span> Tambah Item }
+        </button>
+      </div>
+    </form>
   </section>
 }

@@ -71,6 +71,24 @@ export interface RejectRackInput {
   username: string;
 }
 
+export interface DeleteRackScanInput {
+  scheduleId: number;
+  rackId: number;
+  scanId: number;
+}
+
+export interface AddManualRackScanInput {
+  scheduleId: number;
+  scheduleNo: string;
+  rackId: number;
+  rackCode: string;
+  barcode: string;
+  plu: string;
+  pluDescription: string;
+  qty: number;
+  username: string;
+}
+
 export interface PrintRackScansInput {
   scheduleId: number;
   rackId: number;

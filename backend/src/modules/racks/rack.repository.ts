@@ -323,11 +323,152 @@ export async function createRackMaster(
     return mapRackMaster(row);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message.includes("RACK_CODE_EXISTS")) {
-      throw new AppError(409, "Kode rack sudah terdaftar di lokasi ini.", "RACK_CODE_EXISTS");
+    if (message.includes("RACK_CODE_EXISTS") || message.includes("UNIQUE KEY constraint") || message.includes("duplicate key")) {
+      throw new AppError(409, "Nama atau kode rack sudah terdaftar di lokasi ini.", "RACK_EXISTS");
     }
     throw error;
   }
+}
+
+export async function updateRackMaster(
+  rackId: number,
+  payload: Omit<CreateRackPayload, "locCode">,
+): Promise<RackMasterResponse> {
+  const normalizedRackCode = payload.rackCode.trim().toUpperCase();
+  const normalizedRackName = payload.rackName.trim();
+
+  if (env.SQL_MODE === "mock") {
+    const rack = mockRacks.find((r) => r.id === String(rackId));
+    if (!rack) throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+
+    const duplicate = mockRacks.some(
+      (r) => r.locCode === rack.locCode && r.rackCode === normalizedRackCode && r.id !== String(rackId),
+    );
+    if (duplicate) throw new AppError(409, "Kode rack sudah terdaftar di lokasi ini.", "RACK_CODE_EXISTS");
+
+    rack.rackCode = normalizedRackCode;
+    rack.rackName = normalizedRackName;
+    rack.status = payload.status;
+    return mapRackMaster({
+      id: rack.id,
+      rack_code: rack.rackCode,
+      rack_name: rack.rackName,
+      loc_code: rack.locCode,
+      status: rack.status,
+    });
+  }
+
+  const pool = await getSqlPool();
+
+  const currentRack = await pool
+    .request()
+    .input("id", sql.BigInt, rackId)
+    .query<{ LOC_CODE: string }>(`SELECT LOC_CODE FROM dbo.MST_RACK WHERE ID = @id`);
+
+  if (!currentRack.recordset[0]) {
+    throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+  }
+  const locCode = currentRack.recordset[0].LOC_CODE;
+
+  const duplicate = await pool
+    .request()
+    .input("locCode", sql.Char(4), locCode)
+    .input("rackCode", sql.VarChar(15), normalizedRackCode)
+    .input("excludeId", sql.BigInt, rackId)
+    .query<{ cnt: number }>(`
+      SELECT COUNT(*) AS cnt
+      FROM dbo.MST_RACK
+      WHERE LOC_CODE = @locCode
+        AND RACK_CODE = @rackCode
+        AND ID <> @excludeId
+    `);
+
+  if ((duplicate.recordset[0]?.cnt ?? 0) > 0) {
+    throw new AppError(409, "Kode rack sudah terdaftar di lokasi ini.", "RACK_CODE_EXISTS");
+  }
+
+  try {
+    const result = await pool
+      .request()
+      .input("id", sql.BigInt, rackId)
+      .input("rackCode", sql.VarChar(15), normalizedRackCode)
+      .input("rackName", sql.NVarChar(100), normalizedRackName)
+      .input("status", sql.VarChar(10), payload.status)
+      .input("username", sql.VarChar(100), payload.username)
+      .query<RackRow>(`
+        UPDATE dbo.MST_RACK
+        SET
+          RACK_CODE = @rackCode,
+          RACK_NAME = @rackName,
+          STATUS = @status,
+          USER_MODIFIED = @username,
+          DATE_MODIFIED = SYSUTCDATETIME()
+        OUTPUT
+          CAST(INSERTED.ID AS varchar(30)) AS id,
+          INSERTED.RACK_CODE AS rack_code,
+          INSERTED.RACK_NAME AS rack_name,
+          INSERTED.LOC_CODE AS loc_code,
+          INSERTED.STATUS AS status
+        WHERE ID = @id;
+      `);
+
+    const row = result.recordset[0];
+    if (!row) {
+      throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    }
+    return mapRackMaster(row);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("UNIQUE KEY constraint") || message.includes("duplicate key")) {
+      throw new AppError(409, "Nama atau kode rack sudah terdaftar di lokasi ini.", "RACK_EXISTS");
+    }
+    throw error;
+  }
+}
+
+export async function deleteRackMaster(
+  rackId: number,
+): Promise<void> {
+  if (env.SQL_MODE === "mock") {
+    const index = mockRacks.findIndex((r) => r.id === String(rackId));
+    if (index === -1) throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+    if (mockScheduleRacks.some((sr) => sr.rackId === String(rackId))) {
+      throw new AppError(409, "Rack tidak bisa dihapus karena sudah dipakai dalam schedule.", "RACK_IN_USE");
+    }
+    mockRacks.splice(index, 1);
+    return;
+  }
+
+  const pool = await getSqlPool();
+
+  const existing = await pool
+    .request()
+    .input("id", sql.BigInt, rackId)
+    .query<{ cnt: number }>(`SELECT COUNT(*) AS cnt FROM dbo.MST_RACK WHERE ID = @id`);
+
+  if (!existing.recordset[0]?.cnt) {
+    throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+  }
+
+  const inUse = await pool
+    .request()
+    .input("id", sql.BigInt, rackId)
+    .query<{ cnt: number }>(`
+      SELECT COUNT(*) AS cnt
+      FROM dbo.TR_STOCK_SCHEDULE_RACK WITH (NOLOCK)
+      WHERE RACK_ID = @id
+    `);
+
+  if ((inUse.recordset[0]?.cnt ?? 0) > 0) {
+    throw new AppError(409, "Rack tidak bisa dihapus karena sudah dipakai dalam schedule.", "RACK_IN_USE");
+  }
+
+  await pool
+    .request()
+    .input("id", sql.BigInt, rackId)
+    .query(`DELETE FROM dbo.MST_RACK WHERE ID = @id`);
 }
 
 export async function createRackMastersBulk(
@@ -459,15 +600,15 @@ export async function createRackMastersBulk(
     return result.recordset.map(mapRackMaster);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message.includes("51001") || message.includes("RCK-")) {
+    if (message.includes("51001") || message.includes("RCK-") || message.includes("UNIQUE KEY constraint") || message.includes("duplicate key")) {
       const duplicateText = message
         .split("\n")
         .find((line) => line.includes("RCK-"))
         ?.trim();
       throw new AppError(
         409,
-        duplicateText ? `Kode rack sudah terdaftar: ${duplicateText}.` : "Kode rack sudah terdaftar.",
-        "RACK_CODE_EXISTS",
+        duplicateText ? `Kode/Nama rack sudah terdaftar: ${duplicateText}.` : "Kode/Nama rack sudah terdaftar di lokasi ini.",
+        "RACK_EXISTS",
       );
     }
     throw error;

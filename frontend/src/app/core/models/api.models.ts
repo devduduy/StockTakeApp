@@ -52,6 +52,12 @@ export interface Location {
   name: string;
 }
 
+export interface ItemSearchResult {
+  barcode: string;
+  plu: string;
+  pluDescription: string;
+}
+
 export interface RoleOption {
   id: number;
   code: string;

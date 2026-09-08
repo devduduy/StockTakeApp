@@ -414,28 +414,10 @@ public class ScannerFragment extends Fragment {
 
         String scheduleId = requireArguments().getString(ARG_SCHEDULE_ID);
         String rackId = requireArguments().getString(ARG_RACK_ID);
-        DraftRepository repository = DraftRepository.getInstance(requireContext());
-        repository.hasDuplicate(scheduleId, rackId, barcode, duplicate -> {
-            if (!duplicate) {
-                save(DraftRules.DuplicateMode.REPLACE);
-                return;
-            }
-            if (!canEditDraftItems()) {
-                Toast.makeText(requireContext(), "Barcode sudah ada di rack. Item submitted tidak bisa diubah.", Toast.LENGTH_LONG).show();
-                resetForNextScan();
-                return;
-            }
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("Barcode sudah ada di rak")
-                    .setMessage("Tambahkan quantity ke jumlah sekarang, atau ganti dengan quantity baru?")
-                    .setPositiveButton("ADD", (dialog, which) -> save(DraftRules.DuplicateMode.ADD))
-                    .setNegativeButton("REPLACE", (dialog, which) -> save(DraftRules.DuplicateMode.REPLACE))
-                    .setNeutralButton("BATAL", null)
-                    .show();
-        });
+        save();
     }
 
-    private void save(DraftRules.DuplicateMode mode) {
+    private void save() {
         String barcode = barcodeInput.getText() == null ? "" : barcodeInput.getText().toString().trim();
         String scheduleId = requireArguments().getString(ARG_SCHEDULE_ID);
         String rackId = requireArguments().getString(ARG_RACK_ID);
@@ -448,7 +430,6 @@ public class ScannerFragment extends Fragment {
                 currentItem.pluDescription,
                 quantity,
                 "SCAN",
-                mode,
                 saved -> {
                     Toast.makeText(requireContext(), "Draft tersimpan lokal.", Toast.LENGTH_SHORT).show();
                     resetForNextScan();

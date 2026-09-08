@@ -1,14 +1,18 @@
+import { randomUUID } from "node:crypto";
 import sql from "mssql";
 import { env } from "../../config/env.js";
 import { getSqlPool } from "../../db/sql.js";
 import { mockScanSubmissions } from "../../shared/mock-data.js";
 import { AppError } from "../../shared/app-error.js";
+import type { MockScanSubmission } from "../../shared/mock-data.js";
 import type {
   PrintRackScansInput,
   PrintRackScansResponse,
   RackScanLineResponse,
   ConfirmRackInput,
   RejectRackInput,
+  DeleteRackScanInput,
+  AddManualRackScanInput,
   SubmitRackScansInput,
   SubmitRackScansResponse,
   UpdateRackFinalQuantitiesInput,
@@ -616,5 +620,132 @@ export async function rejectRackScans(
     `);
   if (Number(result.recordset[0]?.affected_count ?? 0) === 0) {
     throw new AppError(409, "Rack tidak memiliki data aktif untuk direject.", "RACK_NOT_REJECTABLE");
+  }
+}
+
+export async function deleteRackScan(input: DeleteRackScanInput): Promise<RackScanLineResponse[]> {
+  if (env.SQL_MODE === "mock") {
+    const index = mockScanSubmissions.findIndex(
+      (scan, idx) =>
+        Number(scan.scheduleId) === input.scheduleId &&
+        Number(scan.rackId) === input.rackId &&
+        idx + 1 === input.scanId
+    );
+    if (index >= 0) {
+      const mockScan = mockScanSubmissions[index];
+      if (mockScan && mockScan.confirmTime) {
+        throw new AppError(409, "Tidak bisa menghapus item yang sudah confirm.", "SCAN_ALREADY_CONFIRMED");
+      }
+      mockScanSubmissions.splice(index, 1);
+    }
+    return listRackScans(input.scheduleId, input.rackId);
+  }
+
+  const pool = await getSqlPool();
+  const result = await pool.request()
+    .input("scheduleId", sql.BigInt, input.scheduleId)
+    .input("rackId", sql.BigInt, input.rackId)
+    .input("scanId", sql.BigInt, input.scanId)
+    .query<{ affected_count: number }>(`
+      DELETE FROM dbo.TR_STOCK_TAKE_SCAN
+      WHERE ID = @scanId
+        AND SCHEDULE_ID = @scheduleId
+        AND RACK_ID = @rackId
+        AND CONFIRM_TIME IS NULL;
+
+      SELECT @@ROWCOUNT AS affected_count;
+    `);
+
+  if (Number(result.recordset[0]?.affected_count ?? 0) === 0) {
+    throw new AppError(409, "Item tidak dapat dihapus. Mungkin sudah confirm atau tidak ditemukan.", "SCAN_NOT_DELETABLE");
+  }
+
+  return listRackScans(input.scheduleId, input.rackId);
+}
+
+export async function addManualRackScan(input: AddManualRackScanInput): Promise<RackScanLineResponse[]> {
+  const clientScanId = "manual-" + randomUUID();
+  const serverTime = new Date().toISOString();
+
+    if (env.SQL_MODE === "mock") {
+      const existing = mockScanSubmissions.find(
+        (scan) =>
+          Number(scan.scheduleId) === input.scheduleId &&
+          Number(scan.rackId) === input.rackId,
+      );
+      const mockSubmission: MockScanSubmission = {
+        clientScanId,
+        scheduleId: String(input.scheduleId),
+        scheduleNo: input.scheduleNo,
+        rackId: String(input.rackId),
+        rackCode: input.rackCode,
+        barcode: input.barcode,
+        plu: input.plu,
+        pluDescription: input.pluDescription,
+        scanQty: input.qty,
+        finalQty: input.qty,
+        inputType: "MANUAL",
+        scanStatus: "SYNCED",
+        userCreated: input.username,
+        dateCreated: serverTime,
+      };
+      if (existing?.printNo) {
+        mockSubmission.printNo = existing.printNo;
+      }
+      mockScanSubmissions.push(mockSubmission);
+      return listRackScans(input.scheduleId, input.rackId);
+    }
+
+  const pool = await getSqlPool();
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+
+  try {
+    const printInfo = await new sql.Request(transaction)
+      .input("scheduleId", sql.BigInt, input.scheduleId)
+      .input("rackId", sql.BigInt, input.rackId)
+      .query<{ print_no: string | null; print_time: Date | null }>(`
+        SELECT TOP 1 PRINT_NO AS print_no, PRINT_TIME AS print_time
+        FROM dbo.TR_STOCK_TAKE_SCAN WITH (HOLDLOCK)
+        WHERE SCHEDULE_ID = @scheduleId AND RACK_ID = @rackId AND SCAN_STATUS = 'SYNCED'
+      `);
+
+    const printNo = printInfo.recordset[0]?.print_no || null;
+    const printTime = printInfo.recordset[0]?.print_time || null;
+
+    await new sql.Request(transaction)
+      .input("scheduleId", sql.BigInt, input.scheduleId)
+      .input("scheduleNo", sql.VarChar(50), input.scheduleNo)
+      .input("rackId", sql.BigInt, input.rackId)
+      .input("rackCode", sql.VarChar(50), input.rackCode)
+      .input("barcode", sql.VarChar(50), input.barcode)
+      .input("plu", sql.VarChar(30), input.plu)
+      .input("pluDescription", sql.NVarChar(255), input.pluDescription)
+      .input("qty", sql.Int, input.qty)
+      .input("clientScanId", sql.VarChar(64), clientScanId)
+      .input("username", sql.VarChar(100), input.username)
+      .input("printNo", sql.VarChar(50), printNo)
+      .input("printTime", sql.DateTime2, printTime)
+      .query(`
+        INSERT INTO dbo.TR_STOCK_TAKE_SCAN (
+          SCHEDULE_ID, SCHEDULE_NO, RACK_ID, RACK_CODE, RACK_SEQ,
+          BARCODE, PLU, PLU_DESCRIPTION, SCAN_QTY, FINAL_QTY,
+          INPUT_TYPE, SCAN_STATUS, CLIENT_SCAN_ID, USER_CREATED, DATE_CREATED,
+          PRINT_NO, PRINT_TIME
+        )
+        VALUES (
+          @scheduleId, @scheduleNo, @rackId, @rackCode,
+          COALESCE((SELECT MAX(RACK_SEQ) + 1 FROM dbo.TR_STOCK_TAKE_SCAN WHERE SCHEDULE_ID = @scheduleId AND RACK_ID = @rackId), 1),
+          @barcode, @plu, @pluDescription, @qty, @qty,
+          'MANUAL', 'SYNCED', @clientScanId, @username, SYSUTCDATETIME(),
+          @printNo, @printTime
+        )
+      `);
+
+    await transaction.commit();
+    return listRackScans(input.scheduleId, input.rackId);
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
   }
 }

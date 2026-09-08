@@ -51,16 +51,16 @@
   <div class="user-toolbar">
     <label class="search-control">
       <span class="material-symbols-outlined">search</span>
-      <input type="search" placeholder="Cari nama, username, role, lokasi..." [value]="search()" (input)="search.set($any($event.target).value)" />
+      <input type="search" placeholder="Cari nama, username, role, lokasi..." [value]="search()" (input)="search.set($any($event.target).value); page.set(1)" />
       @if (search()) {
-        <button type="button" aria-label="Hapus pencarian" (click)="search.set('')"><span class="material-symbols-outlined">close</span></button>
+        <button type="button" aria-label="Hapus pencarian" (click)="search.set(''); page.set(1)"><span class="material-symbols-outlined">close</span></button>
       }
     </label>
     <div class="user-filters">
       <div class="form-field user-location-filter">
         <select
           [value]="locationFilter()"
-          (change)="locationFilter.set($any($event.target).value)"
+          (change)="locationFilter.set($any($event.target).value); page.set(1)"
           aria-label="Filter lokasi"
         >
           <option value="ALL">Semua Lokasi</option>
@@ -70,9 +70,9 @@
         </select>
       </div>
       <div class="segmented-control">
-        <button type="button" [class.active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL')">Semua</button>
-        <button type="button" [class.active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE')">Aktif</button>
-        <button type="button" [class.active]="statusFilter() === 'INACTIVE'" (click)="statusFilter.set('INACTIVE')">Inactive</button>
+        <button type="button" [class.active]="statusFilter() === 'ALL'" (click)="statusFilter.set('ALL'); page.set(1)">Semua</button>
+        <button type="button" [class.active]="statusFilter() === 'ACTIVE'" (click)="statusFilter.set('ACTIVE'); page.set(1)">Aktif</button>
+        <button type="button" [class.active]="statusFilter() === 'INACTIVE'" (click)="statusFilter.set('INACTIVE'); page.set(1)">Inactive</button>
       </div>
     </div>
   </div>
@@ -86,7 +86,7 @@
           <tr><th>User</th><th>Role</th><th>Lokasi asli</th><th>Status</th><th aria-label="Aksi"></th></tr>
         </thead>
         <tbody>
-          @for (user of filteredUsers(); track user.id) {
+          @for (user of paginatedUsers(); track user.id) {
             <tr>
               <td><div class="user-identity"><strong>{{ user.fullName }}</strong><span>{{ user.username }}</span></div></td>
               <td><span class="role-pill">{{ user.role.name }}</span></td>
@@ -100,6 +100,21 @@
         </tbody>
       </table>
     </div>
+
+    @if (filteredUsers().length > 0) {
+      <div class="pagination-footer">
+        <span class="pagination-info">Menampilkan {{ paginatedUsers().length }} dari {{ filteredUsers().length }} data</span>
+        <div class="pagination-controls">
+          <button type="button" (click)="prevPage()" [disabled]="page() === 1">
+            <span class="material-symbols-outlined">chevron_left</span> Prev
+          </button>
+          <span>Halaman {{ page() }} dari {{ totalPages() }}</span>
+          <button type="button" (click)="nextPage()" [disabled]="page() === totalPages()">
+            Next <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    }
   }
 </section>
 
@@ -178,22 +193,50 @@
       <button type="button" aria-label="Tutup" (click)="closeImport()"><span class="material-symbols-outlined">close</span></button>
     </header>
     <div class="import-box">
-      <p>Gunakan template CSV yang bisa dibuka di Excel. Kolom lokasi adalah lokasi asli karyawan; peserta bantuan lintas toko dipilih dari Tim Schedule.</p>
-      <input type="file" accept=".csv,text/csv" (change)="onImportFile($event)" />
-      @if (importErrorMessage()) { <div class="form-alert" role="alert"><span class="material-symbols-outlined">error</span>{{ importErrorMessage() }}</div> }
-      @if (importPreview().length > 0) {
-        <div class="import-preview">
-          <strong>{{ importPreview().length }} row siap diimport</strong>
-          <span>{{ importPreviewNames() }}</span>
+      @if (importSuccess()) {
+        <div class="empty-state compact" style="margin-bottom: 12px; border-color: #16803c; background: #eaf7ef;">
+          <span class="material-symbols-outlined" style="color: #16803c;">check_circle</span>
+          <h3 style="color: #16803c;">Import Berhasil</h3>
+          <p>{{ importMessage() }}</p>
         </div>
+        <p style="font-weight: 800; color: var(--text);">Daftar Username (Otomatis):</p>
+        <div class="import-preview" style="max-height: 250px; overflow-y: auto;">
+          <table class="data-table" style="font-size: 12px; margin-top: 8px;">
+            <thead>
+              <tr><th>Nama Lengkap</th><th>Username</th></tr>
+            </thead>
+            <tbody>
+              @for (row of importPreview(); track row.username) {
+                <tr>
+                  <td>{{ row.fullName }}</td>
+                  <td><strong>{{ row.username }}</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p>Gunakan template Excel untuk mengisi data massal. Username akan di-generate otomatis berdasarkan nama dan lokasi.</p>
+        <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onImportFile($event)" />
+        @if (importErrorMessage()) { <div class="form-alert" role="alert"><span class="material-symbols-outlined">error</span>{{ importErrorMessage() }}</div> }
+        @if (importPreview().length > 0) {
+          <div class="import-preview">
+            <strong>{{ importPreview().length }} row siap diimport</strong>
+            <span>{{ importPreviewNames() }}</span>
+          </div>
+        }
       }
     </div>
     <footer>
-      <button class="secondary-button" type="button" (click)="closeImport()" [disabled]="importing()">Batal</button>
-      <button class="primary-button" type="button" (click)="importUsers()" [disabled]="importing() || importPreview().length === 0">
-        @if (importing()) { <span class="spinner"></span> Import... }
-        @else { <span class="material-symbols-outlined">upload_file</span> Import User }
-      </button>
+      @if (importSuccess()) {
+        <button class="primary-button" type="button" (click)="closeImport()">Tutup</button>
+      } @else {
+        <button class="secondary-button" type="button" (click)="closeImport()" [disabled]="importing()">Batal</button>
+        <button class="primary-button" type="button" (click)="importUsers()" [disabled]="importing() || importPreview().length === 0">
+          @if (importing()) { <span class="spinner"></span> Import... }
+          @else { <span class="material-symbols-outlined">upload_file</span> Import User }
+        </button>
+      }
     </footer>
   </section>
 }

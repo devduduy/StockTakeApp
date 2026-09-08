@@ -85,47 +85,81 @@
   </div>
 
   @if (loading()) {
-    <div class="rack-list">
-      @for (item of [1,2,3,4,5]; track item) { <div class="skeleton skeleton--scan"></div> }
+    <div class="user-table-wrap">
+      <table class="data-table">
+        <tbody>
+          @for (item of [1,2,3,4,5]; track item) { <tr><td><div class="skeleton skeleton--scan"></div></td></tr> }
+        </tbody>
+      </table>
     </div>
   } @else {
-    <div class="rack-list" role="list">
-      @for (rack of filteredRacks(); track rack.id) {
-        <article class="rack-card" role="listitem">
-          <div class="rack-card__icon">
-            <span class="material-symbols-outlined">shelves</span>
-          </div>
-          <div class="rack-card__main">
-            <div>
-              <strong>{{ rack.rackCode }}</strong>
-              <span class="rack-status" [class.rack-status--inactive]="rack.status !== 'ACTIVE'">{{ rack.status }}</span>
-            </div>
-            <p>{{ rack.rackName }}</p>
-          </div>
-          <div class="rack-card__location">
-            <small>Lokasi</small>
-            <span>{{ locationName(rack.locCode) }} ({{ rack.locCode }})</span>
-          </div>
-        </article>
-      } @empty {
-        <div class="empty-state compact">
-          <span class="material-symbols-outlined">inventory_2</span>
-          <h3>Rack tidak ditemukan</h3>
-          <p>Ubah filter pencarian atau tambahkan rack baru untuk lokasi ini.</p>
-        </div>
-      }
+    <div class="user-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Kode Rack</th>
+            <th>Nama Rack</th>
+            <th>Lokasi</th>
+            <th>Status</th>
+            <th aria-label="Aksi"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (rack of paginatedRacks(); track rack.id) {
+            <tr>
+              <td><strong>{{ rack.rackCode }}</strong></td>
+              <td>{{ rack.rackName }}</td>
+              <td><span class="mono">{{ locationName(rack.locCode) }}</span></td>
+              <td><span class="status-pill" [class.status-pill--inactive]="rack.status !== 'ACTIVE'">{{ rack.status }}</span></td>
+              <td class="action">
+                <div class="action-group">
+                  <button type="button" aria-label="Edit" (click)="openEditForm(rack)"><span class="material-symbols-outlined">edit</span></button>
+                  <button type="button" aria-label="Delete" (click)="deleteRack(rack)"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">
+                <div class="empty-state compact">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                  <h3>Rack tidak ditemukan</h3>
+                  <p>Ubah filter pencarian atau tambahkan rack baru untuk lokasi ini.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
+
+    @if (filteredRacks().length > 0) {
+      <div class="pagination-footer">
+        <span class="pagination-info">Menampilkan {{ paginatedRacks().length }} dari {{ filteredRacks().length }} data</span>
+        <div class="pagination-controls">
+          <button type="button" (click)="prevPage()" [disabled]="page() === 1">
+            <span class="material-symbols-outlined">chevron_left</span> Prev
+          </button>
+          <span>Halaman {{ page() }} dari {{ totalPages() }}</span>
+          <button type="button" (click)="nextPage()" [disabled]="page() === totalPages()">
+            Next <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    }
   }
 </section>
 
 @if (formOpen()) {
   <button class="modal-backdrop" type="button" aria-label="Tutup form rack" (click)="closeForm()"></button>
   <section class="rack-modal" role="dialog" aria-modal="true" aria-labelledby="rack-modal-title">
-    <form [formGroup]="rackForm" (ngSubmit)="createMode() === 'SINGLE' ? createRack() : createBulkRacks()" novalidate>
+    <form [formGroup]="rackForm" (ngSubmit)="createMode() === 'SINGLE' ? saveRack() : createBulkRacks()" novalidate>
       <header>
         <div>
           <p class="eyebrow">MASTER RACK</p>
-          <h2 id="rack-modal-title">Tambah Rack</h2>
+          <h2 id="rack-modal-title">
+            @if (selectedRack()) { Edit Rack } @else { Tambah Rack }
+          </h2>
           <span>Rack akan tersimpan di master dan bisa dipakai oleh schedule yang belum close.</span>
         </div>
         <button type="button" aria-label="Tutup" (click)="closeForm()">
@@ -133,10 +167,13 @@
         </button>
       </header>
 
-      <div class="rack-modal__mode segmented-control" aria-label="Mode tambah rack">
-        <button type="button" [class.active]="createMode() === 'SINGLE'" (click)="setCreateMode('SINGLE')">Manual</button>
-        <button type="button" [class.active]="createMode() === 'BULK'" (click)="setCreateMode('BULK')">Generate</button>
-      </div>
+      <div class="modal-body">
+        @if (!selectedRack()) {
+          <div class="rack-modal__mode segmented-control">
+            <button type="button" [class.active]="createMode() === 'SINGLE'" (click)="setCreateMode('SINGLE')">Satu Rack</button>
+            <button type="button" [class.active]="createMode() === 'BULK'" (click)="setCreateMode('BULK')">Bulk (Massal)</button>
+          </div>
+        }
 
       @if (formErrorMessage()) {
         <div class="form-alert" role="alert">
@@ -306,15 +343,17 @@
         </div>
       </div>
       }
-
-      <footer>
+      </div>
+      <div class="form-action">
         <button class="secondary-button" type="button" (click)="closeForm()" [disabled]="saving()">Batal</button>
         <button class="primary-button" type="submit" [disabled]="saving()">
-          @if (saving()) { <span class="spinner" aria-hidden="true"></span> Menyimpan... }
-          @else if (createMode() === 'BULK') { <span class="material-symbols-outlined">auto_awesome</span> Generate Rack }
-          @else { <span class="material-symbols-outlined">save</span> Simpan Rack }
-        </button>
-      </footer>
+                @if (saving()) {
+                  <div class="spinner"></div> Menyimpan...
+                } @else {
+                  Simpan Rack
+                }
+              </button>
+            </div>
     </form>
   </section>
 }

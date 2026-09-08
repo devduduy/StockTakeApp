@@ -1,13 +1,13 @@
 HASIL DEMO STOCK TAKE
 NOTES:
--(DONE) jika schedule Partial urutan UI adalah section category dulu - setelah itu section rack 
--(DONE) lokasi di create schedule bisa pencarian di ui kayak searchable dropdown 
--(DONE) di mobile tambah rules validasi boleh mulai stock take selama rentang berdasarkan tgl periode stock take nya 
--(DONE) list item di web di order by sequence secara ascending (sama dengan hasil print nya) 
--(DONE) pewarnaan ui status rack disesuaikan, belum scan merah - sudah submit biru - sudah print kuning - confim hijau 
--(DONE) tambah field tanggal cut off SOH di create schedule setelah input tanggal selesai (create kolom di table berarti) 
--(DONE) penamaan deskripsi bukan input manual melainkan hasil format generate {STOCK TAKE {kode lokasi} {tipe} {YYYY-MM-DD (tgl cutoff)} 
--(DONE) di kertas print, waktu scan tidak perlu, tambah 1 kolom notes untuk catatan, kolom qty kasih pilihan visible invisible, no rack bold dan besar 
+-(DONE) jika schedule Partial urutan UI adalah section category dulu - setelah itu section rack
+-(DONE) lokasi di create schedule bisa pencarian di ui kayak searchable dropdown
+-(DONE) di mobile tambah rules validasi boleh mulai stock take selama rentang berdasarkan tgl periode stock take nya
+-(DONE) list item di web di order by sequence secara ascending (sama dengan hasil print nya)
+-(DONE) pewarnaan ui status rack disesuaikan, belum scan merah - sudah submit biru - sudah print kuning - confim hijau
+-(DONE) tambah field tanggal cut off SOH di create schedule setelah input tanggal selesai (create kolom di table berarti)
+-(DONE) penamaan deskripsi bukan input manual melainkan hasil format generate {STOCK TAKE {kode lokasi} {tipe} {YYYY-MM-DD (tgl cutoff)}
+-(DONE) di kertas print, waktu scan tidak perlu, tambah 1 kolom notes untuk catatan, kolom qty kasih pilihan visible invisible, no rack bold dan besar
 -(DONE) tambah button print di list rack yang siap print (fungsi sama dengan yang di dalam)
 -UI button simpan koreksi berdiri sendiri, mepetin ke kiri, button reject & confirm justify center agak kecil
 -(DONE) tambah checkbox di list rack for easy selected bulk to confirm, button confirm diluar (confirm bulk dan confirm per rack), label sudah di koreksi untuk rack yang sudah dikoreksi
@@ -17,6 +17,13 @@ NOTES:
 -buat menu baru yang isinya adalah list schedule yang udah selesai/close tujuannya dipisah karena schedule sekarang dalam bentuk card cocok untuk schedule yang aktif saja, dalam bentuk data table berikut filter dan pencariannya
 
 --new requirement
--create master template category : 
+-create master template category :
 	fresh monthly => fresh exclude dairy & frozen, food service all, non trade all
 	custom => all category show
+
+------------------------------------------------------------------------------------
+notes Pak hafiz:
+1. jam mulai & selesai prefer not display
+2. fixing hht ketika scan produk jangan akumulasi jumlah qty
+3. add button tambah plu dan button delete di edit rack per sku (role inventory control)
+4. tambah label nama rechecker di kertas print rack, untuk rechecker nulis manual namanya siapa

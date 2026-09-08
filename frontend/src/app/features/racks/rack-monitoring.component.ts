@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, EMPTY, forkJoin, interval, of, switchMap, take, tap } from 'rxjs';
+import { catchError, EMPTY, forkJoin, interval, of, switchMap, take, tap, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
-import { ActiveSchedule, Rack, RackMaster, RackScan, ScheduleLocation, UserOption } from '../../core/models/api.models';
+import { ActiveSchedule, ItemSearchResult, Rack, RackMaster, RackScan, ScheduleLocation, UserOption } from '../../core/models/api.models';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
@@ -77,6 +77,18 @@ export class RackMonitoringComponent {
     rackName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
     status: ['ACTIVE' as 'ACTIVE' | 'INACTIVE', [Validators.required]]
   });
+
+  readonly manualAddOpen = signal(false);
+  readonly manualAddSaving = signal(false);
+  readonly deletingScanId = signal<string | null>(null);
+  readonly manualAddForm = this.fb.nonNullable.group({
+    barcode: ['', [Validators.required, Validators.minLength(2)]],
+    qty: [1, [Validators.required, Validators.min(1)]]
+  });
+  readonly searchResults = signal<ItemSearchResult[]>([]);
+  readonly searchLoading = signal(false);
+  readonly searchDropdownOpen = signal(false);
+  readonly selectedManualItem = signal<ItemSearchResult | null>(null);
 
   readonly filteredRacks = computed(() => {
     const keyword = this.search().trim().toLowerCase();
@@ -161,6 +173,37 @@ export class RackMonitoringComponent {
       next: (users) => this.recheckers.set(users),
       error: () => this.recheckers.set([])
     });
+
+    this.manualAddForm.controls.barcode.valueChanges
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        tap((value) => {
+          const term = value.trim();
+          this.selectedManualItem.set(null);
+          if (term.length < 2) {
+            this.searchResults.set([]);
+            this.searchDropdownOpen.set(false);
+            this.searchLoading.set(false);
+          } else {
+            this.searchLoading.set(true);
+            this.searchDropdownOpen.set(true);
+          }
+        }),
+        switchMap((value) => {
+          const term = value.trim();
+          if (term.length < 2) return of([]);
+          return this.api.searchItems(term, this.scheduleId).pipe(
+            catchError(() => of([]))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((results) => {
+        this.searchResults.set(results);
+        this.searchLoading.set(false);
+        this.searchDropdownOpen.set(this.manualAddForm.controls.barcode.value.trim().length >= 2);
+      });
   }
 
   refresh(): void {
@@ -582,6 +625,113 @@ export class RackMonitoringComponent {
     ));
   }
 
+  get isInventoryControl(): boolean {
+    return this.auth.user()?.role.code === 'INVENTORY_CONTROL';
+  }
+
+  canEditManualItems(): boolean {
+    const rack = this.selectedRack();
+    return this.isInventoryControl && !!rack && rack.rackStatus !== 'CONFIRMED';
+  }
+
+  openManualAdd(): void {
+    if (!this.canEditManualItems()) return;
+    this.manualAddForm.reset({ barcode: '', qty: 1 });
+    this.searchResults.set([]);
+    this.searchDropdownOpen.set(false);
+    this.selectedManualItem.set(null);
+    this.correctionErrorMessage.set('');
+    this.correctionMessage.set('');
+    this.manualAddOpen.set(true);
+  }
+
+  closeManualAdd(): void {
+    if (!this.manualAddSaving()) {
+      this.manualAddOpen.set(false);
+      this.searchResults.set([]);
+      this.searchDropdownOpen.set(false);
+      this.selectedManualItem.set(null);
+    }
+  }
+
+  selectSearchResult(item: ItemSearchResult): void {
+    this.selectedManualItem.set(item);
+    this.manualAddForm.controls.barcode.setValue(`${item.plu} - ${item.pluDescription}`, { emitEvent: false });
+    this.searchDropdownOpen.set(false);
+  }
+
+  clearManualItemSearch(): void {
+    this.selectedManualItem.set(null);
+    this.searchResults.set([]);
+    this.searchDropdownOpen.set(false);
+    this.manualAddForm.controls.barcode.setValue('');
+  }
+
+  submitManualAdd(): void {
+    const rack = this.selectedRack();
+    if (!rack || !this.canEditManualItems() || this.manualAddSaving()) return;
+    if (this.manualAddForm.invalid) {
+      this.manualAddForm.markAllAsTouched();
+      return;
+    }
+
+    const { barcode, qty } = this.manualAddForm.getRawValue();
+    const selectedItem = this.selectedManualItem();
+    const itemIdentifier = selectedItem?.barcode ?? barcode.trim();
+    this.manualAddSaving.set(true);
+    this.correctionErrorMessage.set('');
+    this.correctionMessage.set('');
+
+    this.api.addManualRackScan(this.scheduleId, rack.id, itemIdentifier, qty)
+      .pipe(
+        switchMap(({ scans }) => {
+          this.scans.set(scans);
+          this.syncFinalQtyDrafts(scans, true);
+          this.correctionMessage.set(`Item ${selectedItem?.plu ?? itemIdentifier} berhasil ditambahkan.`);
+          this.manualAddOpen.set(false);
+          this.selectedManualItem.set(null);
+          return this.fetchPage(false);
+        }),
+        tap(() => this.manualAddSaving.set(false)),
+        catchError((error: unknown) => {
+          this.correctionErrorMessage.set(apiErrorMessage(error, 'Item gagal ditambahkan.'));
+          this.manualAddSaving.set(false);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  deleteScan(scan: RackScan): void {
+    const rack = this.selectedRack();
+    if (!rack || !this.canEditManualItems() || this.deletingScanId()) return;
+
+    if (!confirm(`Hapus item ${scan.plu} - ${scan.pluDescription} dari rack ini?`)) return;
+
+    this.deletingScanId.set(scan.id);
+    this.correctionErrorMessage.set('');
+    this.correctionMessage.set('');
+
+    this.api.deleteRackScan(this.scheduleId, rack.id, scan.id)
+      .pipe(
+        switchMap(({ scans }) => {
+          this.scans.set(scans);
+          this.syncFinalQtyDrafts(scans, true);
+          this.correctionMessage.set(`Item ${scan.plu} - ${scan.pluDescription} berhasil dihapus.`);
+          return this.fetchPage(false);
+        }),
+        tap(() => this.deletingScanId.set(null)),
+        catchError((error: unknown) => {
+          this.correctionErrorMessage.set(apiErrorMessage(error, 'Item gagal dihapus.'));
+          this.deletingScanId.set(null);
+          return EMPTY;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   saveCorrections(): void {
     const rack = this.selectedRack();
     const recheckUser = this.selectedRecheckUser().trim();
@@ -912,6 +1062,7 @@ export class RackMonitoringComponent {
             .meta div { display: grid; grid-template-columns: 74px 1fr; gap: 6px; min-width: 0; }
             .meta span { color: #000; font-weight: 700; }
             .meta strong { overflow: hidden; color: #000; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+            .manual-write-line { min-height: 14px; border-bottom: 1px solid #000; }
             table { width: 100%; border-collapse: collapse; font-size: 10px; }
             th { background: #fff; color: #000; font-weight: 700; text-align: left; }
             th, td { border: 1px solid #000; padding: 4px 5px; vertical-align: top; }
@@ -940,7 +1091,7 @@ export class RackMonitoringComponent {
               <div><span>Lokasi</span><strong>${this.escapeHtml(location)}</strong></div>
               <div><span>Rack</span><strong>${this.escapeHtml(rack.rackCode)} - ${this.escapeHtml(rack.rackName)}</strong></div>
               <div><span>Total item</span><strong>${scans.length.toLocaleString('id-ID')}</strong></div>
-              <div><span>Total qty</span><strong>${totalQuantity.toLocaleString('id-ID')}</strong></div>
+              <div><span>Rechecker By</span><strong class="manual-write-line"></strong></div>
               <div><span>Printed By</span><strong>${this.escapeHtml(printedBy)}</strong></div>
             </section>
             <table>

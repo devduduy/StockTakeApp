@@ -28,6 +28,7 @@ export class UserManagementComponent {
   readonly selectedUser = signal<ManagedUser | null>(null);
   readonly formOpen = signal(false);
   readonly importOpen = signal(false);
+  readonly importSuccess = signal(false);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly importing = signal(false);
@@ -35,6 +36,8 @@ export class UserManagementComponent {
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   readonly locationFilter = signal('ALL');
   readonly resetPasswordMode = signal(false);
+  readonly page = signal(1);
+  readonly pageSize = signal(15);
   readonly errorMessage = signal('');
   readonly formErrorMessage = signal('');
   readonly successMessage = signal('');
@@ -66,7 +69,17 @@ export class UserManagementComponent {
         user.locCode
       ].some((value) => value.toLowerCase().includes(keyword));
       return matchesStatus && matchesLocation && matchesKeyword;
+    }).sort((a, b) => {
+      if (a.locCode !== b.locCode) return a.locCode.localeCompare(b.locCode);
+      if (a.role.id !== b.role.id) return a.role.id - b.role.id;
+      return a.fullName.localeCompare(b.fullName);
     });
+  });
+
+  readonly totalPages = computed(() => Math.ceil(this.filteredUsers().length / this.pageSize()) || 1);
+  readonly paginatedUsers = computed(() => {
+    const start = (this.page() - 1) * this.pageSize();
+    return this.filteredUsers().slice(start, start + this.pageSize());
   });
 
   readonly activeCount = computed(() => this.users().filter((user) => user.status === 'ACTIVE').length);
@@ -154,7 +167,15 @@ export class UserManagementComponent {
     if (!this.saving()) this.formOpen.set(false);
   }
 
-  generateUsername(locCode: string, fullName: string): string {
+  nextPage(): void {
+    if (this.page() < this.totalPages()) this.page.update(p => p + 1);
+  }
+
+  prevPage(): void {
+    if (this.page() > 1) this.page.update(p => p - 1);
+  }
+
+  generateUsername(locCode: string, fullName: string, currentBatch: UserImportRow[] = []): string {
     if (!locCode || !fullName.trim()) return '';
     const parts = fullName.trim().toLowerCase().split(/\s+/);
     let baseName = '';
@@ -167,11 +188,14 @@ export class UserManagementComponent {
     }
     const cleanBase = baseName.replace(/[^a-z0-9]/g, '');
     if (!cleanBase) return '';
-    
+
     const baseUsername = `${locCode.toLowerCase()}_${cleanBase}`;
     let finalUsername = baseUsername;
     let counter = 1;
-    while (this.users().some((u) => u.username.toLowerCase() === finalUsername)) {
+    while (
+      this.users().some((u) => u.username.toLowerCase() === finalUsername) ||
+      currentBatch.some((u) => u.username.toLowerCase() === finalUsername)
+    ) {
       finalUsername = `${baseUsername}${counter}`;
       counter++;
     }
@@ -242,17 +266,57 @@ export class UserManagementComponent {
       .subscribe();
   }
 
-  downloadTemplate(): void {
-    const rows = [
-      ['username', 'fullName', 'password', 'roleCode', 'locCode', 'status'],
-      ['scanner_bantuan01', 'Scanner Bantuan 01', 'prototype123', 'SCANNER', this.locations()[0]?.code ?? '6168', 'ACTIVE']
+  async downloadTemplate(): Promise<void> {
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+
+    const sheet = workbook.addWorksheet('Import Users');
+    sheet.columns = [
+      { header: 'Nama Lengkap', key: 'fullName', width: 30 },
+      { header: 'PIN / Password', key: 'password', width: 20 },
+      { header: 'Role', key: 'role', width: 25 },
+      { header: 'Lokasi Asli', key: 'location', width: 40 }
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+    const dataSheet = workbook.addWorksheet('MasterData', { state: 'hidden' });
+    this.roles().forEach((r, idx) => dataSheet.getCell(`A${idx + 1}`).value = r.code);
+    this.locations().forEach((l, idx) => dataSheet.getCell(`B${idx + 1}`).value = `${l.name} (${l.code})`);
+
+    const roleCount = this.roles().length;
+    const locCount = this.locations().length;
+
+    for (let i = 2; i <= 501; i++) {
+      if (roleCount > 0) {
+        sheet.getCell(`C${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`MasterData!$A$1:$A$${roleCount}`]
+        };
+      }
+      if (locCount > 0) {
+        sheet.getCell(`D${i}`).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`MasterData!$B$1:$B$${locCount}`]
+        };
+      }
+    }
+
+    const defaultLocation = this.locations()[0];
+    const defaultLocationString = defaultLocation ? `${defaultLocation.name} (${defaultLocation.code})` : '';
+    sheet.addRow({
+      fullName: 'Scanner Bantuan 01',
+      password: '1234',
+      role: 'SCANNER',
+      location: defaultLocationString
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'template-import-user-stock-take.csv';
+    link.download = 'template-import-user-stock-take.xlsx';
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -261,6 +325,7 @@ export class UserManagementComponent {
     this.importPreview.set([]);
     this.importMessage.set('');
     this.importErrorMessage.set('');
+    this.importSuccess.set(false);
     this.importOpen.set(true);
   }
 
@@ -268,21 +333,56 @@ export class UserManagementComponent {
     if (!this.importing()) this.importOpen.set(false);
   }
 
-  onImportFile(event: Event): void {
+  async onImportFile(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        this.importPreview.set(this.parseCsv(String(reader.result ?? '')));
-        this.importErrorMessage.set('');
-      } catch (error) {
-        this.importPreview.set([]);
-        this.importErrorMessage.set(error instanceof Error ? error.message : 'File gagal dibaca.');
-      }
-    };
-    reader.readAsText(file);
+
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const arrayBuffer = await file.arrayBuffer();
+      await workbook.xlsx.load(arrayBuffer);
+
+      const sheet = workbook.getWorksheet('Import Users');
+      if (!sheet) throw new Error('Format file tidak valid. Worksheet "Import Users" tidak ditemukan.');
+
+      const parsedRows: UserImportRow[] = [];
+
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const fullName = String(row.getCell(1).value ?? '').trim();
+        const password = String(row.getCell(2).value ?? '').trim() || undefined;
+        const role = String(row.getCell(3).value ?? '').trim().toUpperCase();
+        const locString = String(row.getCell(4).value ?? '').trim();
+
+        if (!fullName || !locString) return;
+
+        const locMatch = locString.match(/\(([^)]+)\)$/);
+        const locCode = locMatch ? locMatch[1] : locString;
+
+        const username = this.generateUsername(locCode, fullName, parsedRows);
+
+        parsedRows.push({
+          username,
+          fullName,
+          password,
+          roleCode: role || 'SCANNER',
+          locCode: locCode.toUpperCase(),
+          status: 'ACTIVE'
+        });
+      });
+
+      if (parsedRows.length === 0) throw new Error('File tidak memiliki baris data yang valid.');
+
+      this.importPreview.set(parsedRows);
+      this.importErrorMessage.set('');
+    } catch (error) {
+      this.importPreview.set([]);
+      this.importErrorMessage.set(error instanceof Error ? error.message : 'File excel gagal dibaca.');
+    }
+
     input.value = '';
   }
 
@@ -298,7 +398,9 @@ export class UserManagementComponent {
           this.importMessage.set(`Import selesai. Created ${result.created}, updated ${result.updated}, gagal ${result.failed.length}.`);
           this.importing.set(false);
           this.loadPage();
-          if (result.failed.length === 0) this.importOpen.set(false);
+          if (result.failed.length === 0) {
+            this.importSuccess.set(true);
+          }
         }),
         catchError((error: unknown) => {
           this.importErrorMessage.set(apiErrorMessage(error, 'Import user gagal.'));
@@ -310,47 +412,5 @@ export class UserManagementComponent {
       .subscribe();
   }
 
-  private parseCsv(content: string): UserImportRow[] {
-    const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    if (lines.length < 2) throw new Error('File import belum memiliki data.');
-    const headers = this.splitCsvLine(lines[0]).map((header) => header.trim());
-    const required = ['username', 'fullName', 'roleCode', 'locCode'];
-    if (required.some((header) => !headers.includes(header))) {
-      throw new Error('Header wajib: username, fullName, password, roleCode, locCode, status.');
-    }
-    return lines.slice(1).map((line) => {
-      const values = this.splitCsvLine(line);
-      const record = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
-      return {
-        username: record['username']?.trim() ?? '',
-        fullName: record['fullName']?.trim() ?? '',
-        password: record['password']?.trim() || undefined,
-        roleCode: (record['roleCode']?.trim() || 'SCANNER').toUpperCase(),
-        locCode: (record['locCode']?.trim() || '').toUpperCase(),
-        status: (record['status']?.trim().toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE') as 'ACTIVE' | 'INACTIVE'
-      };
-    });
-  }
 
-  private splitCsvLine(line: string): string[] {
-    const result: string[] = [];
-    let current = '';
-    let quoted = false;
-    for (let index = 0; index < line.length; index += 1) {
-      const char = line[index];
-      if (char === '"' && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else if (char === '"') {
-        quoted = !quoted;
-      } else if (char === ',' && !quoted) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current);
-    return result;
-  }
 }

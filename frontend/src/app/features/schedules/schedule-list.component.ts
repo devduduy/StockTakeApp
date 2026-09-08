@@ -840,7 +840,8 @@ export class ScheduleListComponent {
   }
 
   locationName(locCode: string): string {
-    return this.locations().find((location) => location.code === locCode)?.name ?? locCode;
+    const loc = this.locations().find((location) => location.code === locCode);
+    return loc ? `${loc.name} (${loc.code})` : locCode;
   }
 
   categorySummary(schedule: ActiveSchedule): string {

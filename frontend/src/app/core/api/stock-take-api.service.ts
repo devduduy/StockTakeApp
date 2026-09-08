@@ -19,10 +19,12 @@ import {
   ScheduleRackScopeResponse,
   SchedulePayload,
   RoleOption,
+  ItemSearchResult,
   ScheduleUser,
   UserImportResult,
   UserImportRow,
-  UserOption
+  UserOption,
+  RackScan
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -138,6 +140,16 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
+  updateRack(rackId: string, payload: Pick<RackCreatePayload, 'rackCode' | 'rackName' | 'status'>): Observable<RackMaster> {
+    return this.http
+      .put<ApiEnvelope<RackMaster>>(`/api/stock-take/racks/${rackId}`, payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  deleteRack(rackId: string): Observable<void> {
+    return this.http.delete<void>(`/api/stock-take/racks/${rackId}`);
+  }
+
   addRackToSchedule(scheduleId: string, rackId: string): Observable<ScheduleRackScopeResponse> {
     return this.http
       .post<ApiEnvelope<ScheduleRackScopeResponse>>(`/api/stock-take/schedules/${scheduleId}/racks/scope`, { rackId })
@@ -226,5 +238,30 @@ export class StockTakeApiService {
         );
       })
     );
+  }
+
+  addManualRackScan(scheduleId: string, rackId: string, barcode: string, qty: number): Observable<{ scans: RackScan[] }> {
+    return this.http
+      .post<ApiEnvelope<{ scans: RackScan[] }>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/manual`,
+        { barcode, qty }
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  deleteRackScan(scheduleId: string, rackId: string, scanId: string): Observable<{ scans: RackScan[] }> {
+    return this.http
+      .delete<ApiEnvelope<{ scans: RackScan[] }>>(
+        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/${scanId}`
+      )
+      .pipe(map(({ data }) => data));
+  }
+
+  searchItems(keyword: string, scheduleId?: string): Observable<ItemSearchResult[]> {
+    const params: Record<string, string> = { q: keyword };
+    if (scheduleId) params['scheduleId'] = scheduleId;
+    return this.http
+      .get<ApiEnvelope<ItemSearchResult[]>>('/api/stock-take/items/search', { params })
+      .pipe(map(({ data }) => data));
   }
 }

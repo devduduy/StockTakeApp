@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey;
 
 @Entity(
         tableName = "local_scan_draft",
-        indices = @Index(value = {"scheduleId", "rackId", "barcode"}, unique = true)
+        indices = @Index(value = {"clientScanId"}, unique = true)
 )
 public class LocalScanDraft {
     @PrimaryKey(autoGenerate = true)

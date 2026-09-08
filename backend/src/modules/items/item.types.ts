@@ -9,3 +9,8 @@ export interface ItemLookupResponse {
   erpQty: number;
   source: "MFBARCODE" | "MFPLU" | "MST_SOH" | "MOCK";
 }
+export interface ItemSearchResult {
+  barcode: string;
+  plu: string;
+  pluDescription: string;
+}

@@ -37,6 +37,9 @@ export class MasterRackComponent {
   readonly locationFilter = signal('');
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   readonly createMode = signal<'SINGLE' | 'BULK'>('SINGLE');
+  readonly selectedRack = signal<RackMaster | null>(null);
+  readonly page = signal(1);
+  readonly pageSize = signal(15);
   readonly rackLetterCodes = this.buildRackLetterCodes();
 
   readonly rackForm = this.fb.nonNullable.group({
@@ -67,6 +70,12 @@ export class MasterRackComponent {
       const matchesStatus = status === 'ALL' || rack.status === status;
       return matchesKeyword && matchesStatus;
     });
+  });
+
+  readonly totalPages = computed(() => Math.ceil(this.filteredRacks().length / this.pageSize()) || 1);
+  readonly paginatedRacks = computed(() => {
+    const start = (this.page() - 1) * this.pageSize();
+    return this.filteredRacks().slice(start, start + this.pageSize());
   });
 
   readonly activeCount = computed(() => this.racks().filter((rack) => rack.status === 'ACTIVE').length);
@@ -109,76 +118,130 @@ export class MasterRackComponent {
 
   setStatusFilter(status: 'ALL' | 'ACTIVE' | 'INACTIVE'): void {
     this.statusFilter.set(status);
+    this.page.set(1);
   }
 
   setLocationFilter(locCode: string): void {
     this.locationFilter.set(locCode);
+    this.page.set(1);
     this.fetchRacks(false).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
   }
 
   openCreateForm(): void {
+    const defaultLoc = this.locations()[0]?.code ?? '';
     this.formErrorMessage.set('');
-    this.successMessage.set('');
+    this.selectedRack.set(null);
+    this.rackForm.reset({ locCode: defaultLoc, rackCode: '', rackName: '', status: 'ACTIVE' });
+    this.bulkRackForm.reset({ locCode: defaultLoc, letterCode: '', startSequence: 1, count: 10, rackNamePrefix: 'Rack', status: 'ACTIVE' });
     this.createMode.set('SINGLE');
-    const locCode = this.locationFilter() || this.locations()[0]?.code || '';
-    this.rackForm.reset({
-      locCode,
-      rackCode: '',
-      rackName: '',
-      status: 'ACTIVE'
-    });
-    this.singleLetterSearch.set('');
-    this.singleLetterDropdownOpen.set(false);
+    this.rackForm.controls.locCode.enable();
+    this.rackForm.controls.rackCode.enable();
     this.singleRackSequence.set('001');
-    this.bulkRackForm.reset({
-      locCode,
-      letterCode: '',
-      startSequence: 1,
-      count: 10,
-      rackNamePrefix: 'Rack',
-      status: 'ACTIVE'
-    });
+    this.singleLetterSearch.set('');
     this.bulkLetterSearch.set('');
-    this.bulkLetterDropdownOpen.set(false);
     this.formOpen.set(true);
+  }
+
+  openEditForm(rack: RackMaster): void {
+    this.formErrorMessage.set('');
+    this.selectedRack.set(rack);
+    this.rackForm.reset({
+      locCode: rack.locCode,
+      rackCode: rack.rackCode,
+      rackName: rack.rackName,
+      status: rack.status as 'ACTIVE' | 'INACTIVE'
+    });
+
+    const codeMatch = rack.rackCode.match(/^RCK-([A-Z]+)-(\d+)$/i);
+    if (codeMatch) {
+      this.singleLetterSearch.set(codeMatch[1].toUpperCase());
+      this.singleRackSequence.set(codeMatch[2]);
+    } else {
+      this.singleLetterSearch.set('');
+      this.singleRackSequence.set('');
+    }
+
+    this.createMode.set('SINGLE');
+    this.rackForm.controls.locCode.disable();
+    this.rackForm.controls.rackCode.enable();
+    this.formOpen.set(true);
+  }
+
+  nextPage(): void {
+    if (this.page() < this.totalPages()) this.page.update(p => p + 1);
+  }
+
+  prevPage(): void {
+    if (this.page() > 1) this.page.update(p => p - 1);
   }
 
   closeForm(): void {
     if (!this.saving()) this.formOpen.set(false);
   }
 
-  createRack(): void {
+  saveRack(): void {
     this.formErrorMessage.set('');
     this.successMessage.set('');
-    this.normalizeSingleRackCode();
+    const isEdit = !!this.selectedRack();
+
+    if (!isEdit) {
+      this.normalizeSingleRackCode();
+    }
+
     if (this.rackForm.invalid || this.saving()) {
       this.rackForm.markAllAsTouched();
       return;
     }
     const raw = this.rackForm.getRawValue();
     this.saving.set(true);
-    this.api.createRack({
-      locCode: raw.locCode,
-      rackCode: raw.rackCode.trim(),
-      rackName: raw.rackName.trim(),
-      status: raw.status
-    })
-      .pipe(
-        switchMap((rack) => {
-          this.successMessage.set(`Rack ${rack.rackCode} berhasil dibuat.`);
-          this.formOpen.set(false);
-          if (!this.locationFilter()) this.locationFilter.set(rack.locCode);
-          return this.fetchRacks(false);
-        }),
-        tap(() => this.saving.set(false)),
-        catchError((error: unknown) => {
-          this.formErrorMessage.set(apiErrorMessage(error, 'Rack gagal dibuat.'));
-          this.saving.set(false);
-          return EMPTY;
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+
+    const request = isEdit
+      ? this.api.updateRack(this.selectedRack()!.id, {
+          rackCode: raw.rackCode.trim(),
+          rackName: raw.rackName.trim(),
+          status: raw.status as 'ACTIVE' | 'INACTIVE'
+        })
+      : this.api.createRack({
+          locCode: raw.locCode,
+          rackCode: raw.rackCode.trim(),
+          rackName: raw.rackName.trim(),
+          status: raw.status as 'ACTIVE' | 'INACTIVE'
+        });
+
+    request.pipe(
+      switchMap((rack) => {
+        this.successMessage.set(isEdit ? `Rack ${rack.rackCode} berhasil diupdate.` : `Rack ${rack.rackCode} berhasil dibuat.`);
+        this.formOpen.set(false);
+        if (!isEdit && !this.locationFilter()) this.locationFilter.set(rack.locCode);
+        return this.fetchRacks(false);
+      }),
+      tap(() => this.saving.set(false)),
+      catchError((error: unknown) => {
+        this.formErrorMessage.set(apiErrorMessage(error, isEdit ? 'Rack gagal diupdate.' : 'Rack gagal dibuat.'));
+        this.saving.set(false);
+        return EMPTY;
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
+  }
+
+  deleteRack(rack: RackMaster): void {
+    if (!confirm(`Hapus rack ${rack.rackCode}? Tindakan ini tidak bisa dibatalkan.`)) return;
+    this.loading.set(true);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    this.api.deleteRack(rack.id).pipe(
+      switchMap(() => {
+        this.successMessage.set(`Rack ${rack.rackCode} berhasil dihapus.`);
+        return this.fetchRacks(false);
+      }),
+      catchError((error: unknown) => {
+        this.errorMessage.set(apiErrorMessage(error, 'Rack gagal dihapus.'));
+        this.loading.set(false);
+        return EMPTY;
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe();
   }
 
   createBulkRacks(): void {
@@ -331,7 +394,8 @@ export class MasterRackComponent {
   }
 
   locationName(locCode: string): string {
-    return this.locations().find((location) => location.code === locCode)?.name ?? locCode;
+    const loc = this.locations().find((location) => location.code === locCode);
+    return loc ? `${loc.name} (${loc.code})` : locCode;
   }
 
   private fetchRacks(initial: boolean) {

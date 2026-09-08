@@ -7,7 +7,8 @@ import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
 import { findRackById, isRackInScheduleScope } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
-import { confirmRackScans, isRackPrinted, listRackScans, printRackScans, rejectRackScans, submitRackScans, updateRackFinalQuantities } from "./scan.repository.js";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { addManualRackScan, confirmRackScans, deleteRackScan, isRackPrinted, listRackScans, printRackScans, rejectRackScans, submitRackScans, updateRackFinalQuantities } from "./scan.repository.js";
 import type { CanonicalScanLine } from "./scan.types.js";
 
 const paramsSchema = z.object({
@@ -72,6 +73,43 @@ async function assertRackInScheduleScope(
       "RACK_NOT_IN_SCHEDULE_SCOPE",
     );
   }
+}
+
+async function resolveScheduleRackContext(
+  auth: AuthenticatedUser | undefined,
+  scheduleId: number,
+  rackId: number,
+) {
+  const schedule = await findScheduleLocation(scheduleId);
+  if (!schedule) {
+    throw new AppError(
+      404,
+      "Schedule tidak ditemukan.",
+      "SCHEDULE_NOT_FOUND",
+    );
+  }
+  assertScheduleAllowsRackAction(schedule.status);
+  await assertCanAccessSchedule(
+    auth,
+    scheduleId,
+    schedule.locCode,
+    "User tidak memiliki akses ke schedule ini.",
+  );
+
+  const rack = await findRackById(rackId);
+  if (!rack) {
+    throw new AppError(404, "Rack tidak ditemukan.", "RACK_NOT_FOUND");
+  }
+  if (rack.locCode !== schedule.locCode) {
+    throw new AppError(
+      422,
+      "Rack tidak sesuai dengan lokasi schedule.",
+      "RACK_LOCATION_MISMATCH",
+    );
+  }
+  await assertRackInScheduleScope(scheduleId, rackId);
+
+  return { schedule, rack };
 }
 
 scanRouter.get(
@@ -351,5 +389,71 @@ scanRouter.post(
       username: request.auth?.username ?? "web",
     });
     response.status(200).json({ data: { rejected: true } });
+  }),
+);
+
+scanRouter.delete(
+  "/:scheduleId/racks/:rackId/scans/:scanId",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    if (request.auth?.roleCode !== "INVENTORY_CONTROL") {
+      throw new AppError(403, "Hanya Inventory Control yang dapat menghapus data scan dari web.", "FORBIDDEN");
+    }
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const scanId = z.coerce.number().int().positive().parse(request.params.scanId);
+
+    await resolveScheduleRackContext(request.auth, scheduleId, rackId);
+
+    const scans = await deleteRackScan({ scheduleId, rackId, scanId });
+    response.status(200).json({ data: { scans } });
+  }),
+);
+
+const manualScanSchema = z.object({
+  barcode: z.string().trim().min(1).max(50),
+  qty: z.coerce.number().int().positive().max(999_999),
+});
+
+scanRouter.post(
+  "/:scheduleId/racks/:rackId/scans/manual",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    if (request.auth?.roleCode !== "INVENTORY_CONTROL") {
+      throw new AppError(403, "Hanya Inventory Control yang dapat menambah data scan dari web.", "FORBIDDEN");
+    }
+    const { scheduleId, rackId } = paramsSchema.parse(request.params);
+    const { barcode, qty } = manualScanSchema.parse(request.body);
+
+    const { schedule, rack } = await resolveScheduleRackContext(
+      request.auth,
+      scheduleId,
+      rackId,
+    );
+    const currentScans = await listRackScans(scheduleId, rackId);
+    if (currentScans.some((scan) => scan.confirmTime)) {
+      throw new AppError(
+        409,
+        "Rack sudah confirm. Item manual tidak bisa ditambahkan.",
+        "RACK_ALREADY_CONFIRMED",
+      );
+    }
+
+    const item = await lookupItemByBarcode(barcode, scheduleId);
+    if (!item) {
+      throw new AppError(404, `Barcode ${barcode} tidak ditemukan di master item.`, "ITEM_NOT_FOUND");
+    }
+
+    const scans = await addManualRackScan({
+      scheduleId,
+      rackId,
+      barcode,
+      qty,
+      plu: item.plu,
+      pluDescription: item.pluDescription,
+      username: request.auth?.username ?? "web",
+      scheduleNo: schedule.scheduleNo,
+      rackCode: rack.rackCode,
+    });
+    response.status(200).json({ data: { scans } });
   }),
 );
