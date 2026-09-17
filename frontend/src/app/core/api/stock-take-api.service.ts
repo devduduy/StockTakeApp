@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import {
@@ -9,6 +9,7 @@ import {
   Location,
   ManagedUser,
   ManagedUserPayload,
+  PageResponse,
   PrintRackResponse,
   RackBulkCreatePayload,
   RackCreatePayload,
@@ -56,6 +57,16 @@ export class StockTakeApiService {
     ) as Record<string, string>;
     return this.http
       .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules', { params })
+      .pipe(map(({ data }) => data));
+  }
+
+  getSchedulesPage(filters: ScheduleQueryFilters | undefined, page: number, pageSize: number): Observable<PageResponse<ActiveSchedule>> {
+    const params = Object.fromEntries(
+      Object.entries({ ...(filters ?? {}), page: String(page), pageSize: String(pageSize) })
+        .filter(([, value]) => Boolean(value))
+    ) as Record<string, string>;
+    return this.http
+      .get<ApiEnvelope<PageResponse<ActiveSchedule>>>('/api/stock-take/schedules/page', { params })
       .pipe(map(({ data }) => data));
   }
 
@@ -281,11 +292,32 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
-  getStockTakeReport(scheduleId: string, categoryId?: string): Observable<StockTakeReportBundle> {
-    const params = categoryId ? { categoryId } : undefined;
+  getStockTakeReport(scheduleId: string, categoryId?: string, section?: string): Observable<StockTakeReportBundle> {
+    const params: Record<string, string> = {};
+    if (categoryId) params['categoryId'] = categoryId;
+    if (section) params['section'] = section;
     return this.http
-      .get<ApiEnvelope<StockTakeReportBundle>>(`/api/stock-take/reports/${scheduleId}`, { params })
+      .get<ApiEnvelope<StockTakeReportBundle>>(`/api/stock-take/reports/${scheduleId}`, {
+        params: Object.keys(params).length ? params : undefined
+      })
       .pipe(map(({ data }) => data));
+  }
+
+  exportStockTakeReportCsv(
+    type: 'ADDRESS' | 'VARIANCE',
+    scheduleIds: string[],
+    categoryId?: string
+  ): Observable<HttpResponse<Blob>> {
+    const params: Record<string, string> = {
+      type,
+      scheduleIds: scheduleIds.join(',')
+    };
+    if (categoryId) params['categoryId'] = categoryId;
+    return this.http.get('/api/stock-take/reports/export/csv', {
+      params,
+      observe: 'response',
+      responseType: 'blob'
+    });
   }
 
   getSohSummary(scheduleId: string): Observable<SohScheduleSummary> {

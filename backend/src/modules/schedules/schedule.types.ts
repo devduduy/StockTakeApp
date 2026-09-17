@@ -41,6 +41,14 @@ export interface ActiveSchedule {
   };
 }
 
+export interface ActiveSchedulePage {
+  items: ActiveSchedule[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface ScheduleLocation {
   id: string;
   scheduleNo: string;
@@ -61,6 +69,14 @@ export interface ScheduleListFilters {
   status?: ScheduleListStatus;
   stockType?: ScheduleStockType;
   categoryId?: string;
+}
+
+export interface SchedulePageOptions {
+  locCodes?: string[];
+  assignedScheduleIds?: number[];
+  filters?: ScheduleListFilters;
+  page: number;
+  pageSize: number;
 }
 
 export interface ScheduleMutatePayload {

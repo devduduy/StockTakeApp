@@ -11,6 +11,14 @@ export interface ApiErrorEnvelope {
   };
 }
 
+export interface PageResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface AuthUser {
   id: string;
   username: string;

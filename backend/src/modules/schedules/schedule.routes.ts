@@ -12,6 +12,7 @@ import {
   listActiveSchedules,
   listSchedules,
   listSchedulesByIds,
+  listSchedulesPage,
   updateSchedule,
 } from "./schedule.repository.js";
 import type { ActiveSchedule, ScheduleListFilters } from "./schedule.types.js";
@@ -35,6 +36,11 @@ const querySchema = z
       });
     }
   });
+
+const pageQuerySchema = querySchema.extend({
+  page: z.coerce.number().int().positive().safe().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(25),
+});
 
 const schedulePayloadSchema = z
   .object({
@@ -180,6 +186,32 @@ scheduleRouter.get(
       matchesScheduleFilters(schedule, filters),
     );
     response.status(200).json({ data: schedules });
+  }),
+);
+
+scheduleRouter.get(
+  "/page",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const query = pageQuerySchema.parse(request.query);
+    const locCodes = resolveReadableLocCodes(request.auth, query.locCode);
+    const filters: ScheduleListFilters = {};
+    if (query.scheduleNo) filters.scheduleNo = query.scheduleNo;
+    if (query.startDate) filters.startDate = query.startDate;
+    if (query.endDate) filters.endDate = query.endDate;
+    if (query.status) filters.status = query.status;
+    if (query.stockType) filters.stockType = query.stockType;
+    if (query.categoryId) filters.categoryId = query.categoryId;
+    const assignedScheduleIds = await listAssignedScheduleIdsForUser(request.auth?.userId, request.auth?.username);
+    const pageOptions = {
+      assignedScheduleIds,
+      filters,
+      page: query.page,
+      pageSize: query.pageSize,
+      ...(locCodes ? { locCodes } : {}),
+    };
+    const page = await listSchedulesPage(pageOptions);
+    response.status(200).json({ data: page });
   }),
 );
 

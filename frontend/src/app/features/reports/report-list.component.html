@@ -94,7 +94,7 @@
     <div class="card-header inquiry-tabs">
       <div>
         <h2>{{ config().listTitle }}</h2>
-        <p>{{ schedules().length | number }} schedule ditemukan · {{ selectedCount() | number }} dipilih untuk export</p>
+        <p>{{ totalSchedules() | number }} schedule ditemukan · {{ selectedCount() | number }} dipilih untuk export</p>
       </div>
       @if (loading()) {
         <span class="live-indicator"><i></i> MEMUAT</span>
@@ -103,7 +103,7 @@
 
     @if (loading()) {
       <div class="skeleton skeleton--panel"></div>
-    } @else if (schedules().length === 0) {
+    } @else if (totalSchedules() === 0) {
       <section class="empty-state">
         <span class="material-symbols-outlined">description</span>
         <h3>Tidak ada data report</h3>
@@ -165,7 +165,7 @@
 
       <footer class="pagination-footer">
         <span class="pagination-info">
-          Showing {{ pageStart() | number }} - {{ pageEnd() | number }} of {{ schedules().length | number }} data
+          Showing {{ pageStart() | number }} - {{ pageEnd() | number }} of {{ totalSchedules() | number }} data
         </span>
         <div class="pagination-controls">
           <button type="button" (click)="firstPage()" [disabled]="page() === 1" aria-label="First page">

@@ -7,9 +7,11 @@ import { AppError } from "../../shared/app-error.js";
 import { parseCategoryIds } from "../../shared/category-filter.js";
 import type {
   ActiveSchedule,
+  ActiveSchedulePage,
   ScheduleListFilters,
   ScheduleMutatePayload,
   ScheduleLocation,
+  SchedulePageOptions,
 } from "./schedule.types.js";
 
 interface ScheduleRow {
@@ -578,6 +580,193 @@ export async function listSchedules(locCode?: string, filters: ScheduleListFilte
     ORDER BY s.SCHEDULE_DATE DESC, s.ID DESC;
   `);
   return Promise.all(result.recordset.map(mapSchedule));
+}
+
+export async function listSchedulesPage(options: SchedulePageOptions): Promise<ActiveSchedulePage> {
+  const page = Math.max(1, Math.floor(options.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(options.pageSize)));
+  const filters = options.filters ?? {};
+
+  if (env.SQL_MODE === "mock") {
+    const allowedLocCodes = options.locCodes && options.locCodes.length > 0
+      ? new Set(options.locCodes)
+      : null;
+    const assignedIds = new Set((options.assignedScheduleIds ?? []).map(String));
+    const matched = mockSchedules
+      .filter((schedule) =>
+        (!allowedLocCodes || allowedLocCodes.has(schedule.locCode) || assignedIds.has(schedule.id)) &&
+        matchesScheduleListFilters(schedule, filters),
+      )
+      .sort((left, right) =>
+        right.scheduleDate.localeCompare(left.scheduleDate) ||
+        Number(right.id) - Number(left.id),
+      );
+    const start = (page - 1) * pageSize;
+    const items = await Promise.all(matched.slice(start, start + pageSize).map((schedule) =>
+      mapSchedule({
+        id: schedule.id,
+        schedule_no: schedule.scheduleNo,
+        schedule_desc: schedule.scheduleDesc,
+        loc_code: schedule.locCode,
+        loc_name: schedule.locationName ?? schedule.locCode,
+        schedule_date: schedule.scheduleDate,
+        end_date: schedule.endDate,
+        cut_off_date: schedule.cutOffDate ?? schedule.scheduleDate,
+        start_time: schedule.startTime,
+        end_time: schedule.endTime,
+        stock_type_id: schedule.stockTypeId,
+        stock_type_code: schedule.stockTypeCode,
+        stock_type_name: schedule.stockTypeName,
+        stock_type_value: schedule.stockTypeValue,
+        category_id: schedule.categoryId,
+        status: schedule.status,
+        total_rack: mockScheduleRacks.filter(
+          (scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE",
+        ).length,
+        submitted_rack_count: new Set(
+          mockScanSubmissions
+            .filter((scan) => scan.scheduleId === schedule.id)
+            .map((scan) => scan.rackId),
+        ).size,
+        rack_ids: mockScheduleRacks
+          .filter((scope) => scope.scheduleId === schedule.id && scope.status === "ACTIVE")
+          .map((scope) => scope.rackId)
+          .join(","),
+      }),
+    ));
+    return {
+      items,
+      total: matched.length,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(matched.length / pageSize)),
+    };
+  }
+
+  const pool = await getSqlPool();
+  const request = pool.request();
+  request.input("locCodesCsv", sql.VarChar(sql.MAX), options.locCodes?.length ? options.locCodes.join(",") : null);
+  request.input(
+    "assignedIdsCsv",
+    sql.VarChar(sql.MAX),
+    options.assignedScheduleIds?.length ? [...new Set(options.assignedScheduleIds)].join(",") : null,
+  );
+  request.input("scheduleNo", sql.VarChar(80), filters.scheduleNo ?? null);
+  request.input("startDate", sql.Date, filters.startDate ?? null);
+  request.input("endDate", sql.Date, filters.endDate ?? null);
+  request.input("status", sql.VarChar(20), filters.status ?? null);
+  request.input("stockType", sql.VarChar(20), filters.stockType ?? null);
+  request.input("categoryId", sql.VarChar(30), filters.categoryId ?? null);
+  request.input("offset", sql.Int, (page - 1) * pageSize);
+  request.input("pageSize", sql.Int, pageSize);
+
+  const result = await request.query(`
+    SET NOCOUNT ON;
+
+    CREATE TABLE #filtered_schedule (
+      ID bigint NOT NULL PRIMARY KEY,
+      SCHEDULE_DATE date NOT NULL
+    );
+
+    INSERT INTO #filtered_schedule (ID, SCHEDULE_DATE)
+    SELECT s.ID, s.SCHEDULE_DATE
+    FROM dbo.TR_STOCK_SCHEDULE s
+    INNER JOIN dbo.MST_STOCK_TYPE st ON st.ID = s.STOCK_TYPE_ID
+    WHERE (
+        @locCodesCsv IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM STRING_SPLIT(@locCodesCsv, ',') loc
+          WHERE loc.value = s.LOC_CODE
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM STRING_SPLIT(ISNULL(@assignedIdsCsv, ''), ',') assigned
+          WHERE TRY_CONVERT(bigint, assigned.value) = s.ID
+        )
+      )
+      AND (
+        @scheduleNo IS NULL
+        OR s.SCHEDULE_NO LIKE '%' + @scheduleNo + '%'
+        OR s.SCHEDULE_DESC LIKE '%' + @scheduleNo + '%'
+      )
+      AND (@startDate IS NULL OR ISNULL(s.END_DATE, s.SCHEDULE_DATE) >= @startDate)
+      AND (@endDate IS NULL OR s.SCHEDULE_DATE <= @endDate)
+      AND (@status IS NULL OR s.STATUS = @status)
+      AND (@stockType IS NULL OR st.STOCK_TYPE_NAME = @stockType)
+      AND (
+        @categoryId IS NULL
+        OR s.CATEGORY_ID IS NULL
+        OR CHARINDEX(
+          ',' + @categoryId + ',',
+          ',' + REPLACE(REPLACE(REPLACE(REPLACE(s.CATEGORY_ID, ' ', ''), '"', ''), '[', ''), ']', '') + ','
+        ) > 0
+      );
+
+    SELECT COUNT_BIG(1) AS total_count
+    FROM #filtered_schedule;
+
+    SELECT
+      CAST(s.ID AS varchar(30)) AS id,
+      s.SCHEDULE_NO AS schedule_no,
+      s.SCHEDULE_DESC AS schedule_desc,
+      s.LOC_CODE AS loc_code,
+      loc.flocname AS loc_name,
+      s.SCHEDULE_DATE AS schedule_date,
+      ISNULL(s.END_DATE, s.SCHEDULE_DATE) AS end_date,
+      ISNULL(s.CUT_OFF_SOH_DATE, s.SCHEDULE_DATE) AS cut_off_date,
+      s.START_TIME AS start_time,
+      s.END_TIME AS end_time,
+      s.STOCK_TYPE_ID AS stock_type_id,
+      st.STOCK_TYPE_CODE AS stock_type_code,
+      st.STOCK_TYPE_NAME AS stock_type_name,
+      s.STOCK_TYPE_VALUE AS stock_type_value,
+      s.CATEGORY_ID AS category_id,
+      s.STATUS AS status,
+      (
+        SELECT COUNT(*)
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
+      ) AS total_rack,
+      (
+        SELECT COUNT(DISTINCT scan.RACK_ID)
+        FROM dbo.TR_STOCK_TAKE_SCAN scan
+        WHERE scan.SCHEDULE_ID = s.ID
+          AND scan.SCAN_STATUS = 'SYNCED'
+      ) AS submitted_rack_count,
+      (
+        SELECT STRING_AGG(CONVERT(varchar(30), scope.RACK_ID), ',')
+        FROM dbo.TR_STOCK_SCHEDULE_RACK scope
+        WHERE scope.SCHEDULE_ID = s.ID
+          AND scope.STATUS = 'ACTIVE'
+      ) AS rack_ids
+    FROM #filtered_schedule filtered
+    INNER JOIN dbo.TR_STOCK_SCHEDULE s
+      ON s.ID = filtered.ID
+    INNER JOIN dbo.MST_STOCK_TYPE st
+      ON st.ID = s.STOCK_TYPE_ID
+    LEFT JOIN MasterData.dbo.MFLOCATION loc
+      ON loc.floccode COLLATE DATABASE_DEFAULT = s.LOC_CODE COLLATE DATABASE_DEFAULT
+    ORDER BY filtered.SCHEDULE_DATE DESC, filtered.ID DESC
+    OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY;
+  `);
+
+  const recordsets = result.recordsets as unknown as [
+    Array<{ total_count: string | number }>,
+    ScheduleRow[],
+  ];
+  const countRows = recordsets[0];
+  const scheduleRows = recordsets[1];
+  const total = Number(countRows?.[0]?.total_count ?? 0);
+  const items = await Promise.all((scheduleRows ?? []).map(mapSchedule));
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function listSchedulesByIds(

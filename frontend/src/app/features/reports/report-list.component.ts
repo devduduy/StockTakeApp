@@ -3,7 +3,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, finalize, forkJoin } from 'rxjs';
+import { catchError, EMPTY, finalize, forkJoin, map } from 'rxjs';
 import { ScheduleQueryFilters, StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
 import { AuthService } from '../../core/auth/auth.service';
@@ -100,6 +100,7 @@ export class ReportListComponent {
   readonly categories = signal<Category[]>([]);
   readonly locations = signal<Location[]>([]);
   readonly selectedScheduleIds = signal<Set<string>>(new Set());
+  readonly totalSchedules = signal(0);
   readonly scheduleNo = signal('');
   readonly selectedCategoryId = signal('');
   readonly selectedLocCode = signal('');
@@ -114,13 +115,10 @@ export class ReportListComponent {
   readonly warningMessage = signal('');
 
   readonly config = computed(() => REPORT_CONFIGS[this.reportType()]);
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.schedules().length / this.pageSize)));
-  readonly pageStart = computed(() => this.schedules().length === 0 ? 0 : (this.page() - 1) * this.pageSize + 1);
-  readonly pageEnd = computed(() => Math.min(this.page() * this.pageSize, this.schedules().length));
-  readonly pagedSchedules = computed(() => {
-    const start = (this.page() - 1) * this.pageSize;
-    return this.schedules().slice(start, start + this.pageSize);
-  });
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalSchedules() / this.pageSize)));
+  readonly pageStart = computed(() => this.totalSchedules() === 0 ? 0 : (this.page() - 1) * this.pageSize + 1);
+  readonly pageEnd = computed(() => Math.min((this.page() - 1) * this.pageSize + this.schedules().length, this.totalSchedules()));
+  readonly pagedSchedules = computed(() => this.schedules());
   readonly selectedCount = computed(() => this.selectedScheduleIds().size);
   readonly allVisibleSelected = computed(() => {
     const rows = this.pagedSchedules();
@@ -167,16 +165,11 @@ export class ReportListComponent {
     this.warningMessage.set('');
     this.clearSelection();
     this.page.set(1);
-    this.api.getSchedules(this.buildFilters())
+    this.loadSchedulesPage()
       .pipe(
-        catchError((error: unknown) => {
-          this.schedules.set([]);
-          this.errorMessage.set(apiErrorMessage(error, 'Data report gagal dimuat.'));
-          return EMPTY;
-        }),
         finalize(() => this.loading.set(false))
       )
-      .subscribe((schedules) => this.schedules.set(schedules));
+      .subscribe();
   }
 
   resetFilters(): void {
@@ -199,7 +192,37 @@ export class ReportListComponent {
     this.errorMessage.set('');
     this.successMessage.set('');
     this.warningMessage.set('');
-    forkJoin(ids.map((scheduleId) => this.api.getStockTakeReport(scheduleId, this.selectedCategoryId() || undefined)))
+    const reportType = this.reportType();
+    if (reportType === 'ADDRESS' || reportType === 'VARIANCE') {
+      this.api.exportStockTakeReportCsv(reportType, ids, this.selectedCategoryId() || undefined)
+        .pipe(
+          catchError((error: unknown) => {
+            this.errorMessage.set(apiErrorMessage(error, 'Export report gagal diproses.'));
+            return EMPTY;
+          }),
+          finalize(() => this.exporting.set(false))
+        )
+        .subscribe((response) => {
+          const blob = response.body;
+          if (!blob) {
+            this.errorMessage.set('File export kosong dari server.');
+            return;
+          }
+          const fallbackName = this.fileName(
+            reportType === 'ADDRESS' ? 'stock_take_address_report' : 'stock_take_variance_report',
+            'csv'
+          );
+          this.downloadBlob(blob, this.responseFileName(response.headers.get('content-disposition'), fallbackName));
+          const warnings = this.responseWarnings(response.headers.get('x-report-warnings'));
+          this.successMessage.set(`${ids.length} schedule berhasil diproses untuk ${this.config().title}.`);
+          this.warningMessage.set(warnings);
+        });
+      return;
+    }
+
+    forkJoin(ids.map((scheduleId) =>
+      this.api.getStockTakeReport(scheduleId, this.selectedCategoryId() || undefined, reportType)
+    ))
       .pipe(
         catchError((error: unknown) => {
           this.errorMessage.set(apiErrorMessage(error, 'Export report gagal diproses.'));
@@ -249,19 +272,27 @@ export class ReportListComponent {
   }
 
   firstPage(): void {
+    if (this.page() === 1 || this.loading()) return;
     this.page.set(1);
+    this.refreshPage();
   }
 
   previousPage(): void {
+    if (this.page() === 1 || this.loading()) return;
     this.page.update((page) => Math.max(1, page - 1));
+    this.refreshPage();
   }
 
   nextPage(): void {
+    if (this.page() === this.totalPages() || this.loading()) return;
     this.page.update((page) => Math.min(this.totalPages(), page + 1));
+    this.refreshPage();
   }
 
   lastPage(): void {
+    if (this.page() === this.totalPages() || this.loading()) return;
     this.page.set(this.totalPages());
+    this.refreshPage();
   }
 
   statusLabel(status: string): string {
@@ -311,6 +342,34 @@ export class ReportListComponent {
 
   private clearSelection(): void {
     this.selectedScheduleIds.set(new Set());
+  }
+
+  private refreshPage(): void {
+    this.loading.set(true);
+    this.errorMessage.set('');
+    this.loadSchedulesPage()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe();
+  }
+
+  private loadSchedulesPage() {
+    return this.api.getSchedulesPage(this.buildFilters(), this.page(), this.pageSize)
+      .pipe(
+        catchError((error: unknown) => {
+          this.schedules.set([]);
+          this.totalSchedules.set(0);
+          this.errorMessage.set(apiErrorMessage(error, 'Data report gagal dimuat.'));
+          return EMPTY;
+        }),
+        map((result) => {
+          this.schedules.set(result.items);
+          this.totalSchedules.set(result.total);
+          if (result.page !== this.page()) {
+            this.page.set(result.page);
+          }
+          return result;
+        })
+      );
   }
 
   private isDateRangeValid(): boolean {
@@ -562,6 +621,35 @@ export class ReportListComponent {
     link.download = fileName;
     link.click();
     URL.revokeObjectURL(link.href);
+  }
+
+  private downloadBlob(blob: Blob, fileName: string): void {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  private responseFileName(disposition: string | null, fallback: string): string {
+    const encoded = disposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    if (encoded) {
+      try {
+        return decodeURIComponent(encoded);
+      } catch {
+        return encoded;
+      }
+    }
+    return disposition?.match(/filename="?([^";]+)"?/i)?.[1] || fallback;
+  }
+
+  private responseWarnings(value: string | null): string {
+    if (!value) return '';
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
   }
 
   private printHtml(html: string): boolean {

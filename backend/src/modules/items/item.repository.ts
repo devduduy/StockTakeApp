@@ -209,6 +209,79 @@ export async function searchItems(
   const pool = await getSqlPool();
   const searchParam = `%${normalizedKeyword.toUpperCase()}%`;
   const isBarcodeKeyword = /^\d+$/.test(normalizedKeyword);
+
+  if (scheduleId) {
+    const sohSearch = await pool
+      .request()
+      .input("keyword", sql.NVarChar(120), searchParam)
+      .input("scheduleId", sql.BigInt, scheduleId)
+      .input("isBarcodeKeyword", sql.Bit, isBarcodeKeyword)
+      .query<{
+        has_soh?: number;
+        barcode?: string;
+        plu?: string;
+        plu_description?: string;
+      }>(`
+        DECLARE @has_soh bit = CASE WHEN EXISTS (
+          SELECT 1
+          FROM dbo.MST_SOH soh WITH (NOLOCK)
+          WHERE soh.SCHEDULE_ID = @scheduleId
+        ) THEN 1 ELSE 0 END;
+
+        SELECT CAST(@has_soh AS int) AS has_soh;
+
+        SELECT TOP (25)
+          RTRIM(soh.PLU) AS barcode,
+          RTRIM(soh.PLU) AS plu,
+          RTRIM(
+            COALESCE(
+              NULLIF(soh.PLU_DESCRIPTION, N''),
+              CONVERT(nvarchar(250), product.fpludesc) COLLATE DATABASE_DEFAULT,
+              CONVERT(nvarchar(250), soh.PLU) COLLATE DATABASE_DEFAULT
+            )
+          ) AS plu_description
+        FROM dbo.MST_SOH soh WITH (NOLOCK)
+        LEFT JOIN MasterData.dbo.MFPLU product WITH (NOLOCK)
+          ON RTRIM(CONVERT(varchar(30), product.fplu)) COLLATE DATABASE_DEFAULT =
+            RTRIM(soh.PLU) COLLATE DATABASE_DEFAULT
+        WHERE @has_soh = 1
+          AND soh.SCHEDULE_ID = @scheduleId
+          AND (
+            RTRIM(soh.PLU) COLLATE DATABASE_DEFAULT LIKE @keyword COLLATE DATABASE_DEFAULT
+            OR soh.PLU_DESCRIPTION COLLATE DATABASE_DEFAULT LIKE @keyword COLLATE DATABASE_DEFAULT
+            OR CONVERT(nvarchar(250), product.fpludesc) COLLATE DATABASE_DEFAULT LIKE @keyword COLLATE DATABASE_DEFAULT
+            OR (
+              @isBarcodeKeyword = 1
+              AND EXISTS (
+                SELECT 1
+                FROM MasterData.dbo.MFBARCODE barcode WITH (NOLOCK)
+                WHERE RTRIM(CONVERT(varchar(30), barcode.FPLU)) COLLATE DATABASE_DEFAULT =
+                    RTRIM(soh.PLU) COLLATE DATABASE_DEFAULT
+                  AND RTRIM(CONVERT(varchar(50), barcode.FBARCODE)) COLLATE DATABASE_DEFAULT
+                    LIKE @keyword COLLATE DATABASE_DEFAULT
+              )
+            )
+          )
+        ORDER BY
+          COALESCE(
+            NULLIF(soh.PLU_DESCRIPTION, N''),
+            CONVERT(nvarchar(250), product.fpludesc) COLLATE DATABASE_DEFAULT,
+            CONVERT(nvarchar(250), soh.PLU) COLLATE DATABASE_DEFAULT
+          ),
+          soh.PLU
+        OPTION (RECOMPILE);
+      `);
+
+    const hasSoh = Number(sohSearch.recordsets[0]?.[0]?.has_soh ?? 0) === 1;
+    if (hasSoh) {
+      return (sohSearch.recordsets[1] ?? []).map((row) => ({
+        barcode: row.barcode || row.plu || "",
+        plu: row.plu || "",
+        pluDescription: row.plu_description || row.plu || "",
+      }));
+    }
+  }
+
   const result = await pool
     .request()
     .input("keyword", sql.NVarChar(120), searchParam)

@@ -45,7 +45,7 @@ export function createApp(): express.Express {
       },
       credentials: false,
       allowedHeaders: ["authorization", "content-type", "x-request-id"],
-      exposedHeaders: ["x-request-id"],
+      exposedHeaders: ["x-request-id", "content-disposition", "x-report-warnings"],
     }),
   );
   app.use(express.json({ limit: "1mb" }));

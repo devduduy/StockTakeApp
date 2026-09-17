@@ -233,6 +233,26 @@ function buildSummary(addressRows: AddressReportRow[], varianceRows: VarianceRep
   };
 }
 
+function buildTopBottomVarianceRows(rows: VarianceReportRow[]): VarianceReportRow[] {
+  const topPlusRows = rows
+    .filter((row) => row.stockTakeVarianceQty > 0)
+    .sort((left, right) =>
+      right.stockTakeVarianceQty - left.stockTakeVarianceQty ||
+      right.stockTakeVarianceValue - left.stockTakeVarianceValue ||
+      left.article.localeCompare(right.article)
+    )
+    .slice(0, 30);
+  const topMinusRows = rows
+    .filter((row) => row.stockTakeVarianceQty < 0)
+    .sort((left, right) =>
+      left.stockTakeVarianceQty - right.stockTakeVarianceQty ||
+      left.stockTakeVarianceValue - right.stockTakeVarianceValue ||
+      left.article.localeCompare(right.article)
+    )
+    .slice(0, 30);
+  return [...topPlusRows, ...topMinusRows];
+}
+
 function buildReadiness(
   schedule: Pick<ScheduleReportRow, "soh_row_count" | "scan_row_count">,
   filteredReportRowCount: number,
@@ -384,12 +404,18 @@ function buildMockBundle(scheduleId: number, categoryId?: string): StockTakeRepo
 export async function buildStockTakeReportBundle(
   scheduleId: number,
   categoryId?: string,
+  section: "ALL" | "ADDRESS" | "VARIANCE" | "CATEGORY" | "TOP_BOTTOM" = "ALL",
 ): Promise<StockTakeReportBundle> {
   if (env.SQL_MODE === "mock") {
     return buildMockBundle(scheduleId, categoryId);
   }
 
   const pool = await getSqlPool();
+  const includeAddress = section === "ALL" || section === "ADDRESS";
+  const includeReportRows = section === "ALL" || section === "VARIANCE" || section === "CATEGORY" || section === "TOP_BOTTOM";
+  const includeVarianceRows = section === "ALL" || section === "VARIANCE" || section === "TOP_BOTTOM";
+  const includeCategoryRows = section === "ALL" || section === "CATEGORY";
+  const includeTop30Rows = section === "ALL";
   const scheduleResult = await pool
     .request()
     .input("scheduleId", sql.BigInt, scheduleId)
@@ -430,49 +456,58 @@ export async function buildStockTakeReportBundle(
     throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
   }
 
-  const request = pool
-    .request()
-    .input("scheduleId", sql.BigInt, scheduleId)
-    .input("categoryId", sql.VarChar(30), categoryId ?? null);
+  const addressRows = includeAddress
+    ? (await pool
+        .request()
+        .input("scheduleId", sql.BigInt, scheduleId)
+        .input("categoryId", sql.VarChar(30), categoryId ?? null)
+        .query<AddressRow>(`
+          SELECT
+            scan.DATE_CREATED AS scan_date,
+            CONCAT(
+              RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT,
+              ' - ',
+              COALESCE(
+                RTRIM(CONVERT(varchar(255), location.flocname)) COLLATE DATABASE_DEFAULT,
+                RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT
+              )
+            ) AS branch,
+            RTRIM(scan.PLU) AS sku_code,
+            RTRIM(scan.PLU_DESCRIPTION) AS sku_name,
+            RTRIM(scan.RACK_CODE) AS address,
+            scan.FINAL_QTY AS scanned_qty
+          FROM dbo.TR_STOCK_TAKE_SCAN scan
+          INNER JOIN dbo.TR_STOCK_SCHEDULE schedule
+            ON schedule.ID = scan.SCHEDULE_ID
+          LEFT JOIN MasterData.dbo.MFLOCATION location
+            ON RTRIM(location.floccode) COLLATE DATABASE_DEFAULT =
+              RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT
+          LEFT JOIN MasterData.dbo.MFPLU product WITH (NOLOCK)
+            ON RTRIM(CONVERT(varchar(30), product.fplu)) COLLATE DATABASE_DEFAULT =
+              RTRIM(scan.PLU) COLLATE DATABASE_DEFAULT
+          LEFT JOIN MasterData.dbo.MFCATEGORY category WITH (NOLOCK)
+            ON RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT =
+              RTRIM(CONVERT(varchar(30), product.fcatcd)) COLLATE DATABASE_DEFAULT
+          WHERE scan.SCHEDULE_ID = @scheduleId
+            AND scan.SCAN_STATUS = 'SYNCED'
+            AND (@categoryId IS NULL OR RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT = @categoryId COLLATE DATABASE_DEFAULT)
+          ORDER BY scan.DATE_CREATED, scan.RACK_SEQ, scan.ID;
+        `)).recordset.map((row) => ({
+          date: isoDate(row.scan_date),
+          branch: row.branch?.trim() || "-",
+          skuCode: row.sku_code?.trim() || "-",
+          skuName: row.sku_name?.trim() || "-",
+          address: row.address?.trim() || "-",
+          scannedQty: numeric(row.scanned_qty),
+        }))
+    : [];
 
-  const addressResult = await request.query<AddressRow>(`
-    SELECT
-      scan.DATE_CREATED AS scan_date,
-      CONCAT(
-        RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT,
-        ' - ',
-        COALESCE(
-          RTRIM(CONVERT(varchar(255), location.flocname)) COLLATE DATABASE_DEFAULT,
-          RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT
-        )
-      ) AS branch,
-      RTRIM(scan.PLU) AS sku_code,
-      RTRIM(scan.PLU_DESCRIPTION) AS sku_name,
-      RTRIM(scan.RACK_CODE) AS address,
-      scan.FINAL_QTY AS scanned_qty
-    FROM dbo.TR_STOCK_TAKE_SCAN scan
-    INNER JOIN dbo.TR_STOCK_SCHEDULE schedule
-      ON schedule.ID = scan.SCHEDULE_ID
-    LEFT JOIN MasterData.dbo.MFLOCATION location
-      ON RTRIM(location.floccode) COLLATE DATABASE_DEFAULT =
-        RTRIM(schedule.LOC_CODE) COLLATE DATABASE_DEFAULT
-    LEFT JOIN MasterData.dbo.MFPLU product WITH (NOLOCK)
-      ON RTRIM(CONVERT(varchar(30), product.fplu)) COLLATE DATABASE_DEFAULT =
-        RTRIM(scan.PLU) COLLATE DATABASE_DEFAULT
-    LEFT JOIN MasterData.dbo.MFCATEGORY category WITH (NOLOCK)
-      ON RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT =
-        RTRIM(CONVERT(varchar(30), product.fcatcd)) COLLATE DATABASE_DEFAULT
-    WHERE scan.SCHEDULE_ID = @scheduleId
-      AND scan.SCAN_STATUS = 'SYNCED'
-      AND (@categoryId IS NULL OR RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT = @categoryId COLLATE DATABASE_DEFAULT)
-    ORDER BY scan.DATE_CREATED, scan.RACK_SEQ, scan.ID;
-  `);
-
-  const dataResult = await pool
-    .request()
-    .input("scheduleId", sql.BigInt, scheduleId)
-    .input("categoryId", sql.VarChar(30), categoryId ?? null)
-    .query<ReportRow>(`
+  const reportRows = includeReportRows
+    ? (await pool
+        .request()
+        .input("scheduleId", sql.BigInt, scheduleId)
+        .input("categoryId", sql.VarChar(30), categoryId ?? null)
+        .query<ReportRow>(`
       SET NOCOUNT ON;
 
       CREATE TABLE #scan_totals (
@@ -676,21 +711,14 @@ export async function buildStockTakeReportBundle(
       WHERE (@categoryId IS NULL OR RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT = @categoryId COLLATE DATABASE_DEFAULT)
       ORDER BY RTRIM(CONVERT(varchar(30), category.fcatcd)) COLLATE DATABASE_DEFAULT, keys.PLU
       OPTION (RECOMPILE);
-    `);
+    `)).recordset
+    : [];
 
-  const reportRows = dataResult.recordset;
   const schedule = reportRows[0] ? mapSchedule(reportRows[0] as ReportRow) : mapScheduleSnapshot(scheduleSnapshot);
-  const addressRows = addressResult.recordset.map((row) => ({
-    date: isoDate(row.scan_date),
-    branch: row.branch?.trim() || "-",
-    skuCode: row.sku_code?.trim() || "-",
-    skuName: row.sku_name?.trim() || "-",
-    address: row.address?.trim() || "-",
-    scannedQty: numeric(row.scanned_qty),
-  }));
-  const varianceRows = buildVarianceRows(reportRows);
-  const categorySummaryRows = buildCategorySummaryRows(reportRows, schedule.startDate);
-  const top30Rows: Top30ByCategoryReportRow[] = reportRows
+  const allVarianceRows = includeVarianceRows ? buildVarianceRows(reportRows) : [];
+  const varianceRows = section === "TOP_BOTTOM" ? buildTopBottomVarianceRows(allVarianceRows) : allVarianceRows;
+  const categorySummaryRows = includeCategoryRows ? buildCategorySummaryRows(reportRows, schedule.startDate) : [];
+  const top30Rows: Top30ByCategoryReportRow[] = includeTop30Rows ? reportRows
     .map((row) => {
       const sohQty = numeric(row.soh_qty);
       const countedQty = numeric(row.counted_qty);
@@ -712,11 +740,11 @@ export async function buildStockTakeReportBundle(
     })
     .sort((left, right) => Math.abs(right.diffQty) - Math.abs(left.diffQty) || left.productNo.localeCompare(right.productNo))
     .slice(0, 30)
-    .map((row, index) => ({ ...row, no: index + 1 }));
+    .map((row, index) => ({ ...row, no: index + 1 })) : [];
 
   return {
     schedule,
-    readiness: buildReadiness(scheduleSnapshot, reportRows.length, categoryId),
+    readiness: buildReadiness(scheduleSnapshot, includeReportRows ? reportRows.length : addressRows.length, categoryId),
     summary: buildSummary(addressRows, varianceRows),
     addressRows,
     varianceRows,
