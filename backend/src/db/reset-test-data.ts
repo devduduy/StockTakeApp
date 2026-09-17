@@ -15,6 +15,7 @@ const RESET_TABLES = [
   "TR_STOCK_TAKE_SCAN",
   "TR_STOCK_SCHEDULE_USER",
   "TR_STOCK_SCHEDULE_RACK",
+  "TR_SOH_GENERATE_LOG",
   "MST_SOH",
   "TR_STOCK_SCHEDULE",
   "MST_RACK",
@@ -75,12 +76,13 @@ export async function resetTestData(): Promise<ResetTestDataResult> {
         ('TR_STOCK_TAKE_SCAN', 10),
         ('TR_STOCK_SCHEDULE_USER', 20),
         ('TR_STOCK_SCHEDULE_RACK', 30),
-        ('MST_SOH', 40),
-        ('TR_STOCK_SCHEDULE', 50),
-        ('MST_RACK', 60),
-        ('MST_USERS', 70),
-        ('MST_STOCK_TYPE', 80),
-        ('MST_ROLE', 90);
+        ('TR_SOH_GENERATE_LOG', 40),
+        ('MST_SOH', 50),
+        ('TR_STOCK_SCHEDULE', 60),
+        ('MST_RACK', 70),
+        ('MST_USERS', 80),
+        ('MST_STOCK_TYPE', 90),
+        ('MST_ROLE', 100);
 
       SELECT
         target.table_name,

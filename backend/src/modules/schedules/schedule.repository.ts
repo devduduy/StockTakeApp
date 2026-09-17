@@ -7,6 +7,7 @@ import { AppError } from "../../shared/app-error.js";
 import { parseCategoryIds } from "../../shared/category-filter.js";
 import type {
   ActiveSchedule,
+  ScheduleListFilters,
   ScheduleMutatePayload,
   ScheduleLocation,
 } from "./schedule.types.js";
@@ -55,6 +56,50 @@ function stockTypeCode(stockType: "ALL" | "PARTIAL"): string {
 
 function stockTypeName(stockType: "ALL" | "PARTIAL"): string {
   return stockType;
+}
+
+function matchesScheduleListFilters(
+  schedule: {
+    scheduleNo: string;
+    scheduleDesc: string;
+    scheduleDate: string;
+    endDate?: string | null;
+    status: string;
+    stockTypeName: string;
+    categoryId?: string | null;
+  },
+  filters: ScheduleListFilters,
+): boolean {
+  if (filters.scheduleNo) {
+    const keyword = filters.scheduleNo.toLowerCase();
+    if (
+      !schedule.scheduleNo.toLowerCase().includes(keyword) &&
+      !schedule.scheduleDesc.toLowerCase().includes(keyword)
+    ) {
+      return false;
+    }
+  }
+  const scheduleStartDate = schedule.scheduleDate;
+  const scheduleEndDate = schedule.endDate || scheduleStartDate;
+  if (filters.startDate && scheduleEndDate < filters.startDate) {
+    return false;
+  }
+  if (filters.endDate && scheduleStartDate > filters.endDate) {
+    return false;
+  }
+  if (filters.status && schedule.status !== filters.status) {
+    return false;
+  }
+  if (filters.stockType && schedule.stockTypeName !== filters.stockType) {
+    return false;
+  }
+  if (filters.categoryId) {
+    const scopedCategoryIds = parseCategoryIds(schedule.categoryId ?? "");
+    if (scopedCategoryIds.length > 0 && !scopedCategoryIds.includes(filters.categoryId)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function categoryValue(payload: ScheduleMutatePayload): string | null {
@@ -423,10 +468,11 @@ export async function listActiveSchedules(
   return Promise.all(result.recordset.map(mapSchedule));
 }
 
-export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]> {
+export async function listSchedules(locCode?: string, filters: ScheduleListFilters = {}): Promise<ActiveSchedule[]> {
   if (env.SQL_MODE === "mock") {
     const schedules = mockSchedules
       .filter((schedule) => !locCode || schedule.locCode === locCode)
+      .filter((schedule) => matchesScheduleListFilters(schedule, filters))
       .map(async (schedule) =>
         mapSchedule({
           id: schedule.id,
@@ -465,6 +511,12 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
   const pool = await getSqlPool();
   const request = pool.request();
   request.input("locCode", sql.Char(4), locCode ?? null);
+  request.input("scheduleNo", sql.VarChar(80), filters.scheduleNo ?? null);
+  request.input("startDate", sql.Date, filters.startDate ?? null);
+  request.input("endDate", sql.Date, filters.endDate ?? null);
+  request.input("status", sql.VarChar(20), filters.status ?? null);
+  request.input("stockType", sql.VarChar(20), filters.stockType ?? null);
+  request.input("categoryId", sql.VarChar(30), filters.categoryId ?? null);
   const result = await request.query<ScheduleRow>(`
     SELECT TOP (200)
       CAST(s.ID AS varchar(30)) AS id,
@@ -506,6 +558,23 @@ export async function listSchedules(locCode?: string): Promise<ActiveSchedule[]>
     LEFT JOIN MasterData.dbo.MFLOCATION loc
       ON loc.floccode COLLATE DATABASE_DEFAULT = s.LOC_CODE COLLATE DATABASE_DEFAULT
     WHERE (@locCode IS NULL OR s.LOC_CODE = @locCode)
+      AND (
+        @scheduleNo IS NULL
+        OR s.SCHEDULE_NO LIKE '%' + @scheduleNo + '%'
+        OR s.SCHEDULE_DESC LIKE '%' + @scheduleNo + '%'
+      )
+      AND (@startDate IS NULL OR ISNULL(s.END_DATE, s.SCHEDULE_DATE) >= @startDate)
+      AND (@endDate IS NULL OR s.SCHEDULE_DATE <= @endDate)
+      AND (@status IS NULL OR s.STATUS = @status)
+      AND (@stockType IS NULL OR st.STOCK_TYPE_NAME = @stockType)
+      AND (
+        @categoryId IS NULL
+        OR s.CATEGORY_ID IS NULL
+        OR CHARINDEX(
+          ',' + @categoryId + ',',
+          ',' + REPLACE(REPLACE(REPLACE(REPLACE(s.CATEGORY_ID, ' ', ''), '"', ''), '[', ''), ']', '') + ','
+        ) > 0
+      )
     ORDER BY s.SCHEDULE_DATE DESC, s.ID DESC;
   `);
   return Promise.all(result.recordset.map(mapSchedule));

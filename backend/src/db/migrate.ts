@@ -10,6 +10,8 @@ export interface MigrationResult {
   normalizedScheduleNumbers: boolean;
   ensuredScheduleNoUniqueIndex: boolean;
   normalizedStockTypes: boolean;
+  ensuredSohTable: boolean;
+  ensuredSohGenerateLogTable: boolean;
   ensuredScanTable: boolean;
   removedLegacyRecheckColumns: boolean;
   ensuredScheduleRackTable: boolean;
@@ -27,6 +29,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       normalizedScheduleNumbers: false,
       ensuredScheduleNoUniqueIndex: false,
       normalizedStockTypes: false,
+      ensuredSohTable: false,
+      ensuredSohGenerateLogTable: false,
       ensuredScanTable: false,
       removedLegacyRecheckColumns: false,
       ensuredScheduleRackTable: false,
@@ -43,6 +47,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     normalized_schedule_numbers: number;
     ensured_schedule_no_unique_index: number;
     normalized_stock_types: number;
+    ensured_soh_table: number;
+    ensured_soh_generate_log_table: number;
     ensured_scan_table: number;
     removed_legacy_recheck_columns: number;
     ensured_schedule_rack_table: number;
@@ -57,6 +63,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     DECLARE @normalized_schedule_numbers bit = 0;
     DECLARE @ensured_schedule_no_unique_index bit = 0;
     DECLARE @normalized_stock_types bit = 0;
+    DECLARE @ensured_soh_table bit = 0;
+    DECLARE @ensured_soh_generate_log_table bit = 0;
     DECLARE @ensured_scan_table bit = 0;
     DECLARE @removed_legacy_recheck_columns bit = 0;
     DECLARE @ensured_schedule_rack_table bit = 0;
@@ -222,6 +230,102 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       SET @normalized_stock_types = 1;
     END;
 
+    IF OBJECT_ID('dbo.MST_SOH', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.MST_SOH (
+        ID bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_MST_SOH PRIMARY KEY,
+        SCHEDULE_ID bigint NOT NULL,
+        LOC_CODE char(4) NOT NULL,
+        SOH_DATE datetime2 NOT NULL,
+        PLU varchar(30) NOT NULL,
+        PLU_DESCRIPTION nvarchar(250) NULL,
+        ERP_QTY decimal(18,3) NULL,
+        MAV decimal(19,4) NULL,
+        RSP decimal(19,4) NULL,
+        DATE_CREATED datetime2 NOT NULL CONSTRAINT DF_MST_SOH_DATE_CREATED DEFAULT SYSUTCDATETIME(),
+        ROW_VERSION rowversion NOT NULL
+      );
+
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.CK_MST_SOH_ERP_QTY', 'C') IS NOT NULL
+    BEGIN
+      ALTER TABLE dbo.MST_SOH DROP CONSTRAINT CK_MST_SOH_ERP_QTY;
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_SOH', 'U') IS NOT NULL
+      AND COL_LENGTH('dbo.MST_SOH', 'PLU') IS NOT NULL
+      AND COL_LENGTH('dbo.MST_SOH', 'PLU') < 30
+    BEGIN
+      ALTER TABLE dbo.MST_SOH ALTER COLUMN PLU varchar(30) NOT NULL;
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_SOH', 'U') IS NOT NULL
+      AND COL_LENGTH('dbo.MST_SOH', 'PLU_DESCRIPTION') IS NOT NULL
+    BEGIN
+      ALTER TABLE dbo.MST_SOH ALTER COLUMN PLU_DESCRIPTION nvarchar(250) NULL;
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_SOH', 'U') IS NOT NULL
+      AND COL_LENGTH('dbo.MST_SOH', 'ERP_QTY') IS NOT NULL
+    BEGIN
+      ALTER TABLE dbo.MST_SOH ALTER COLUMN ERP_QTY decimal(18,3) NULL;
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_SOH', 'U') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.MST_SOH')
+          AND name = 'IX_MST_SOH_SCHEDULE_PLU'
+      )
+    BEGIN
+      CREATE INDEX IX_MST_SOH_SCHEDULE_PLU
+        ON dbo.MST_SOH (SCHEDULE_ID, PLU)
+        INCLUDE (ERP_QTY, MAV, PLU_DESCRIPTION);
+      SET @ensured_soh_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.TR_SOH_GENERATE_LOG', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.TR_SOH_GENERATE_LOG (
+        ID bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_TR_SOH_GENERATE_LOG PRIMARY KEY,
+        SCHEDULE_ID bigint NOT NULL,
+        SCHEDULE_NO varchar(50) NOT NULL,
+        LOC_CODE char(4) NOT NULL,
+        CUT_OFF_DATE date NOT NULL,
+        SOURCE_ROW_COUNT bigint NOT NULL,
+        VALID_SOURCE_ROW_COUNT bigint NOT NULL,
+        SKIPPED_SOURCE_ROW_COUNT bigint NOT NULL,
+        REPLACED_ROW_COUNT bigint NOT NULL,
+        INSERTED_ROW_COUNT bigint NOT NULL,
+        STATUS varchar(20) NOT NULL,
+        MESSAGE nvarchar(250) NULL,
+        USER_CREATED varchar(100) NOT NULL,
+        DATE_CREATED datetime2 NOT NULL CONSTRAINT DF_TR_SOH_GENERATE_LOG_DATE_CREATED DEFAULT SYSUTCDATETIME()
+      );
+
+      SET @ensured_soh_generate_log_table = 1;
+    END;
+
+    IF OBJECT_ID('dbo.TR_SOH_GENERATE_LOG', 'U') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.TR_SOH_GENERATE_LOG')
+          AND name = 'IX_TR_SOH_GENERATE_LOG_SCHEDULE_DATE'
+      )
+    BEGIN
+      CREATE INDEX IX_TR_SOH_GENERATE_LOG_SCHEDULE_DATE
+        ON dbo.TR_SOH_GENERATE_LOG (SCHEDULE_ID, DATE_CREATED DESC, ID DESC);
+      SET @ensured_soh_generate_log_table = 1;
+    END;
+
     IF OBJECT_ID('dbo.TR_STOCK_TAKE_SCAN', 'U') IS NULL
     BEGIN
       CREATE TABLE dbo.TR_STOCK_TAKE_SCAN (
@@ -281,6 +385,31 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
 
     IF OBJECT_ID('dbo.TR_STOCK_TAKE_SCAN', 'U') IS NOT NULL
     BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM sys.check_constraints
+        WHERE parent_object_id = OBJECT_ID('dbo.TR_STOCK_TAKE_SCAN')
+          AND name = 'CK_TR_STOCK_TAKE_SCAN_QTY'
+      )
+      BEGIN
+        ALTER TABLE dbo.TR_STOCK_TAKE_SCAN
+          DROP CONSTRAINT CK_TR_STOCK_TAKE_SCAN_QTY;
+        SET @ensured_scan_table = 1;
+      END;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.TR_STOCK_TAKE_SCAN')
+          AND name = 'IX_TR_STOCK_TAKE_SCAN_REPORT'
+      )
+      BEGIN
+        CREATE INDEX IX_TR_STOCK_TAKE_SCAN_REPORT
+          ON dbo.TR_STOCK_TAKE_SCAN (SCHEDULE_ID, SCAN_STATUS, PLU)
+          INCLUDE (BARCODE, PLU_DESCRIPTION, FINAL_QTY, RACK_CODE, RACK_SEQ, DATE_CREATED);
+        SET @ensured_scan_table = 1;
+      END;
+
       DECLARE @legacy_column_name sysname;
       DECLARE @legacy_default_constraint_name sysname;
       DECLARE @legacy_drop_sql nvarchar(max);
@@ -440,6 +569,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       CAST(@normalized_schedule_numbers AS int) AS normalized_schedule_numbers,
       CAST(@ensured_schedule_no_unique_index AS int) AS ensured_schedule_no_unique_index,
       CAST(@normalized_stock_types AS int) AS normalized_stock_types,
+      CAST(@ensured_soh_table AS int) AS ensured_soh_table,
+      CAST(@ensured_soh_generate_log_table AS int) AS ensured_soh_generate_log_table,
       CAST(@ensured_scan_table AS int) AS ensured_scan_table,
       CAST(@removed_legacy_recheck_columns AS int) AS removed_legacy_recheck_columns,
       CAST(@ensured_schedule_rack_table AS int) AS ensured_schedule_rack_table,
@@ -456,6 +587,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     normalizedScheduleNumbers: row?.normalized_schedule_numbers === 1,
     ensuredScheduleNoUniqueIndex: row?.ensured_schedule_no_unique_index === 1,
     normalizedStockTypes: row?.normalized_stock_types === 1,
+    ensuredSohTable: row?.ensured_soh_table === 1,
+    ensuredSohGenerateLogTable: row?.ensured_soh_generate_log_table === 1,
     ensuredScanTable: row?.ensured_scan_table === 1,
     removedLegacyRecheckColumns: row?.removed_legacy_recheck_columns === 1,
     ensuredScheduleRackTable: row?.ensured_schedule_rack_table === 1,

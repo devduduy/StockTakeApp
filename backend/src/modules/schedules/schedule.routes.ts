@@ -14,10 +14,27 @@ import {
   listSchedulesByIds,
   updateSchedule,
 } from "./schedule.repository.js";
+import type { ActiveSchedule, ScheduleListFilters } from "./schedule.types.js";
 
-const querySchema = z.object({
-  locCode: z.string().trim().regex(/^[A-Za-z0-9]{4}$/).optional(),
-});
+const querySchema = z
+  .object({
+    scheduleNo: z.string().trim().min(1).max(80).optional(),
+    locCode: z.string().trim().regex(/^[A-Za-z0-9]{4}$/).optional(),
+    categoryId: z.string().trim().min(1).max(30).optional(),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    status: z.enum(["DRAFT", "OPEN", "IN_PROGRESS", "CLOSED", "COMPLETED", "CANCELLED"]).optional(),
+    stockType: z.enum(["ALL", "PARTIAL"]).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.startDate && value.endDate && value.endDate < value.startDate) {
+      context.addIssue({
+        code: "custom",
+        path: ["endDate"],
+        message: "Tanggal sampai tidak boleh lebih kecil dari tanggal dari.",
+      });
+    }
+  });
 
 const schedulePayloadSchema = z
   .object({
@@ -108,6 +125,22 @@ function mergeSchedules<T extends { id: string }>(...scheduleGroups: T[][]): T[]
   return [...merged.values()];
 }
 
+function matchesScheduleFilters(schedule: ActiveSchedule, filters: ScheduleListFilters): boolean {
+  if (filters.startDate && schedule.endDate < filters.startDate) {
+    return false;
+  }
+  if (filters.endDate && schedule.startDate > filters.endDate) {
+    return false;
+  }
+  if (filters.status && schedule.status !== filters.status) {
+    return false;
+  }
+  if (filters.stockType && schedule.stockType.name !== filters.stockType) {
+    return false;
+  }
+  return true;
+}
+
 async function assertCanManageScheduleTeam(
   scheduleId: number,
   roleCode: string | undefined,
@@ -131,12 +164,21 @@ scheduleRouter.get(
   asyncHandler(async (request, response) => {
     const query = querySchema.parse(request.query);
     const locCodes = resolveReadableLocCodes(request.auth, query.locCode);
+    const filters: ScheduleListFilters = {};
+    if (query.scheduleNo) filters.scheduleNo = query.scheduleNo;
+    if (query.startDate) filters.startDate = query.startDate;
+    if (query.endDate) filters.endDate = query.endDate;
+    if (query.status) filters.status = query.status;
+    if (query.stockType) filters.stockType = query.stockType;
+    if (query.categoryId) filters.categoryId = query.categoryId;
     const locationSchedules = locCodes
-      ? (await Promise.all(locCodes.map((locCode) => listSchedules(locCode)))).flat()
-      : await listSchedules(undefined);
+      ? (await Promise.all(locCodes.map((locCode) => listSchedules(locCode, filters)))).flat()
+      : await listSchedules(undefined, filters);
     const assignedScheduleIds = await listAssignedScheduleIdsForUser(request.auth?.userId, request.auth?.username);
     const assignedSchedules = await listSchedulesByIds(assignedScheduleIds);
-    const schedules = mergeSchedules(locationSchedules, assignedSchedules);
+    const schedules = mergeSchedules(locationSchedules, assignedSchedules).filter((schedule) =>
+      matchesScheduleFilters(schedule, filters),
+    );
     response.status(200).json({ data: schedules });
   }),
 );

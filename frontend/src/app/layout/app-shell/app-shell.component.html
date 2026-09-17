@@ -26,7 +26,37 @@
     <nav class="main-nav" aria-label="Navigasi utama">
       <p class="main-nav__label">OPERASIONAL</p>
       @for (item of navigation; track item.label) {
-        @if (item.route) {
+        @if (item.children?.length) {
+          <div class="main-nav__group" [class.main-nav__group--active]="isNavigationGroupActive(item)">
+            <button
+              class="main-nav__item main-nav__item--button"
+              type="button"
+              (click)="toggleNavigationGroup(item)"
+              [attr.aria-expanded]="isNavigationGroupExpanded(item)"
+              [title]="desktopMenuCollapsed() ? item.label : null"
+            >
+              <span class="material-symbols-outlined">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+              <span class="material-symbols-outlined main-nav__chevron">
+                {{ isNavigationGroupExpanded(item) ? 'expand_less' : 'expand_more' }}
+              </span>
+            </button>
+            @if (isNavigationGroupExpanded(item)) {
+              <div class="main-nav__children">
+                @for (child of item.children; track child.route) {
+                  <a
+                    class="main-nav__child"
+                    [routerLink]="child.route"
+                    routerLinkActive="main-nav__child--active"
+                    (click)="closeMenu()"
+                  >
+                    {{ child.label }}
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        } @else if (item.route) {
           <a
             class="main-nav__item"
             [routerLink]="item.route"

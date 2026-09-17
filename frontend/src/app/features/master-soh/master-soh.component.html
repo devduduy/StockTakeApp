@@ -1,0 +1,160 @@
+<section class="master-soh-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">MASTER DATA</p>
+      <h1>Master SOH</h1>
+      <p>Generate snapshot SOH per schedule dari SalesTxn StockCard berdasarkan lokasi dan tanggal cut-off schedule.</p>
+    </div>
+    <div class="page-heading__actions">
+      <button class="secondary-button" type="button" (click)="loadSummary()" [disabled]="loadingSummary() || !selectedScheduleId()">
+        <span class="material-symbols-outlined" [class.spin]="loadingSummary()">refresh</span>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <section class="soh-filter-card">
+    <div class="filter-field filter-field--keyword">
+      <span>Schedule</span>
+      <input
+        type="text"
+        [ngModel]="scheduleKeyword()"
+        (ngModelChange)="scheduleKeyword.set($event)"
+        placeholder="Cari nomor atau nama schedule"
+      >
+    </div>
+    <label class="filter-field">
+      <span>Tanggal mulai</span>
+      <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)">
+    </label>
+    <label class="filter-field">
+      <span>Tanggal sampai</span>
+      <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)">
+    </label>
+    <div class="filter-actions">
+      <button class="primary-button" type="button" (click)="loadSchedules()" [disabled]="loadingSchedules() || generating()">
+        <span class="material-symbols-outlined" [class.spin]="loadingSchedules()">search</span>
+        Cari
+      </button>
+      <button class="secondary-button" type="button" (click)="resetFilters()" [disabled]="loadingSchedules() || generating()">
+        Reset
+      </button>
+    </div>
+    <label class="filter-field filter-field--select">
+      <span>Pilih schedule <b>*</b></span>
+      <select [ngModel]="selectedScheduleId()" (ngModelChange)="onScheduleChange($event)" [disabled]="loadingSchedules()">
+        <option value="" disabled>Pilih schedule dari hasil pencarian</option>
+        @for (schedule of schedules(); track schedule.id) {
+          <option [value]="schedule.id">
+            {{ schedule.scheduleNo }} — {{ schedule.location.name }} — {{ shortDate(schedule.cutOffDate) }}
+          </option>
+        }
+      </select>
+    </label>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="inline-alert">
+      <span class="material-symbols-outlined">error</span>
+      <div><strong>Master SOH belum bisa diproses</strong><span>{{ errorMessage() }}</span></div>
+      <button type="button" (click)="errorMessage.set('')">Tutup</button>
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div class="inline-alert inline-alert--success">
+      <span class="material-symbols-outlined">check_circle</span>
+      <div><strong>Generate berhasil</strong><span>{{ successMessage() }}</span></div>
+      <button type="button" (click)="successMessage.set('')">Tutup</button>
+    </div>
+  }
+
+  @if (loadingSchedules()) {
+    <div class="skeleton skeleton--panel"></div>
+  } @else if (!selectedSchedule()) {
+    <section class="empty-state">
+      <span class="material-symbols-outlined">inventory</span>
+      <h3>{{ hasSearched() ? 'Schedule tidak ditemukan' : 'Cari schedule dulu' }}</h3>
+      <p>{{ hasSearched() ? 'Ubah filter lalu tekan Cari lagi.' : 'Halaman ini tidak mengambil data otomatis. Tekan Cari untuk memilih schedule dan generate SOH.' }}</p>
+    </section>
+  } @else {
+    <section class="soh-layout">
+      <article class="content-card schedule-card">
+        <div class="card-header">
+          <div>
+            <h2>{{ selectedSchedule()?.scheduleNo }}</h2>
+            <p>{{ selectedSchedule()?.scheduleDesc }}</p>
+          </div>
+          <span class="status-chip" [class.status-chip--active]="selectedSchedule()?.status === 'OPEN' || selectedSchedule()?.status === 'IN_PROGRESS'">
+            {{ selectedSchedule()?.status }}
+          </span>
+        </div>
+        <div class="schedule-detail-grid">
+          <div>
+            <span>Lokasi</span>
+            <strong>{{ selectedSchedule()?.location?.name }} ({{ selectedSchedule()?.locCode }})</strong>
+          </div>
+          <div>
+            <span>Cut-off StockCard</span>
+            <strong>{{ shortDate(selectedSchedule()?.cutOffDate) }}</strong>
+          </div>
+          <div>
+            <span>Periode schedule</span>
+            <strong>{{ shortDate(selectedSchedule()?.startDate) }} - {{ shortDate(selectedSchedule()?.endDate) }}</strong>
+          </div>
+          <div>
+            <span>Tipe</span>
+            <strong>{{ selectedSchedule()?.stockType?.name }}</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="content-card soh-action-card">
+        <div class="soh-action-card__copy">
+          <span class="material-symbols-outlined">database</span>
+          <div>
+            <h2>Generate SOH dari StockCard</h2>
+            <p>
+              Data akan direplace hanya untuk schedule terpilih. Source menggunakan
+              <strong>SalesTxn.dbo.StockCard</strong> dengan lokasi schedule dan tanggal cut-off.
+            </p>
+          </div>
+        </div>
+        <button class="primary-button" type="button" (click)="generateSoh()" [disabled]="!canGenerate()">
+          @if (generating()) {
+            <span class="spinner"></span>
+            Generating...
+          } @else {
+            <span class="material-symbols-outlined">sync</span>
+            Generate SOH
+          }
+        </button>
+      </article>
+    </section>
+
+    @if (loadingSummary()) {
+      <div class="skeleton skeleton--summary"></div>
+    } @else {
+      @if (summary(); as data) {
+        <section class="content-card soh-status-card">
+          <div>
+            <span>Last generate</span>
+            <strong>{{ shortDateTime(data.generatedAt) }}</strong>
+          </div>
+          <div>
+            <span>Generated by</span>
+            <strong>{{ data.lastGeneratedBy || '-' }}</strong>
+          </div>
+          <div>
+            <span>Total item SOH</span>
+            <strong>{{ data.sohRowCount | number }} item</strong>
+          </div>
+          <div>
+            <span>Catatan mapping</span>
+            <strong>ERP_QTY = closing_stock apa adanya, MAV = current_mav, RSP kosong</strong>
+          </div>
+        </section>
+      }
+    }
+  }
+</section>

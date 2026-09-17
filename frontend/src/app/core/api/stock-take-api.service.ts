@@ -21,11 +21,24 @@ import {
   RoleOption,
   ItemSearchResult,
   ScheduleUser,
+  SohGenerateResponse,
+  SohScheduleSummary,
+  StockTakeReportBundle,
   UserImportResult,
   UserImportRow,
   UserOption,
   RackScan
 } from '../models/api.models';
+
+export interface ScheduleQueryFilters {
+  scheduleNo?: string;
+  locCode?: string;
+  categoryId?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  stockType?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class StockTakeApiService {
@@ -37,9 +50,12 @@ export class StockTakeApiService {
       .pipe(map(({ data }) => data));
   }
 
-  getSchedules(): Observable<ActiveSchedule[]> {
+  getSchedules(filters?: ScheduleQueryFilters): Observable<ActiveSchedule[]> {
+    const params = Object.fromEntries(
+      Object.entries(filters ?? {}).filter(([, value]) => Boolean(value))
+    ) as Record<string, string>;
     return this.http
-      .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules')
+      .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules', { params })
       .pipe(map(({ data }) => data));
   }
 
@@ -262,6 +278,25 @@ export class StockTakeApiService {
     if (scheduleId) params['scheduleId'] = scheduleId;
     return this.http
       .get<ApiEnvelope<ItemSearchResult[]>>('/api/stock-take/items/search', { params })
+      .pipe(map(({ data }) => data));
+  }
+
+  getStockTakeReport(scheduleId: string, categoryId?: string): Observable<StockTakeReportBundle> {
+    const params = categoryId ? { categoryId } : undefined;
+    return this.http
+      .get<ApiEnvelope<StockTakeReportBundle>>(`/api/stock-take/reports/${scheduleId}`, { params })
+      .pipe(map(({ data }) => data));
+  }
+
+  getSohSummary(scheduleId: string): Observable<SohScheduleSummary> {
+    return this.http
+      .get<ApiEnvelope<SohScheduleSummary>>(`/api/stock-take/soh/${scheduleId}`)
+      .pipe(map(({ data }) => data));
+  }
+
+  generateSoh(scheduleId: string): Observable<SohGenerateResponse> {
+    return this.http
+      .post<ApiEnvelope<SohGenerateResponse>>(`/api/stock-take/soh/${scheduleId}/generate`, {})
       .pipe(map(({ data }) => data));
   }
 }

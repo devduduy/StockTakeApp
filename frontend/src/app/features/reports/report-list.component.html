@@ -1,0 +1,188 @@
+<section class="report-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">{{ config().eyebrow }}</p>
+      <h1>{{ config().title }}</h1>
+      <p>{{ config().description }}</p>
+    </div>
+  </div>
+
+  <section class="report-filter-panel">
+    <div class="filter-title">
+      <h2>Filter</h2>
+      <span>Pilih periode dan kriteria inquiry sebelum export.</span>
+    </div>
+
+    <div class="filter-grid">
+      <label class="filter-field filter-field--wide">
+        <span>Stock Take Request Number</span>
+        <input
+          type="text"
+          [ngModel]="scheduleNo()"
+          (ngModelChange)="scheduleNo.set($event)"
+          placeholder="Enter Stock Take Request Number"
+          autocomplete="off"
+        >
+      </label>
+      <label class="filter-field">
+        <span>Date From <b>*</b></span>
+        <input type="date" [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)">
+      </label>
+      <label class="filter-field">
+        <span>Date To <b>*</b></span>
+        <input type="date" [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)">
+      </label>
+      <label class="filter-field">
+        <span>Select Category</span>
+        <select [ngModel]="selectedCategoryId()" (ngModelChange)="selectedCategoryId.set($event)">
+          <option value="">Select Category</option>
+          @for (category of categories(); track category.id) {
+            <option [value]="category.id">{{ category.id }} - {{ category.name }}</option>
+          }
+        </select>
+      </label>
+      <label class="filter-field">
+        <span>Select Location</span>
+        <select [ngModel]="selectedLocCode()" (ngModelChange)="selectedLocCode.set($event)">
+          <option value="">Select a Location</option>
+          @for (location of locations(); track location.code) {
+            <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+          }
+        </select>
+      </label>
+      <div class="filter-actions">
+        <button class="primary-button" type="button" (click)="search()" [disabled]="loading() || exporting()">
+          <span class="material-symbols-outlined" [class.spin]="loading()">search</span>
+          Search
+        </button>
+        <button class="primary-button primary-button--green" type="button" (click)="exportSelected()" [disabled]="exporting() || selectedCount() === 0">
+          <span class="material-symbols-outlined" [class.spin]="exporting()">{{ config().exportIcon }}</span>
+          {{ config().exportLabel }}
+        </button>
+        <button class="secondary-button" type="button" (click)="resetFilters()" [disabled]="loading() || exporting()">
+          Reset
+        </button>
+      </div>
+    </div>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="inline-alert">
+      <span class="material-symbols-outlined">error</span>
+      <div><strong>Report belum bisa diproses</strong><span>{{ errorMessage() }}</span></div>
+      <button type="button" (click)="errorMessage.set('')">Tutup</button>
+    </div>
+  }
+
+  @if (successMessage()) {
+    <div class="inline-alert inline-alert--success">
+      <span class="material-symbols-outlined">check_circle</span>
+      <div><strong>Export berhasil</strong><span>{{ successMessage() }}</span></div>
+      <button type="button" (click)="successMessage.set('')">Tutup</button>
+    </div>
+  }
+
+  @if (warningMessage()) {
+    <div class="inline-alert inline-alert--warning">
+      <span class="material-symbols-outlined">warning</span>
+      <div><strong>Perhatian data report</strong><span>{{ warningMessage() }}</span></div>
+      <button type="button" (click)="warningMessage.set('')">Tutup</button>
+    </div>
+  }
+
+  <section class="content-card inquiry-card">
+    <div class="card-header inquiry-tabs">
+      <div>
+        <h2>{{ config().listTitle }}</h2>
+        <p>{{ schedules().length | number }} schedule ditemukan · {{ selectedCount() | number }} dipilih untuk export</p>
+      </div>
+      @if (loading()) {
+        <span class="live-indicator"><i></i> MEMUAT</span>
+      }
+    </div>
+
+    @if (loading()) {
+      <div class="skeleton skeleton--panel"></div>
+    } @else if (schedules().length === 0) {
+      <section class="empty-state">
+        <span class="material-symbols-outlined">description</span>
+        <h3>Tidak ada data report</h3>
+        <p>Ubah nomor schedule, tanggal, lokasi, atau category lalu tekan Search.</p>
+      </section>
+    } @else {
+      <div class="report-table-wrap">
+        <table class="data-table report-inquiry-table">
+          <thead>
+            <tr>
+              <th class="check-cell">
+                <input
+                  type="checkbox"
+                  [checked]="allVisibleSelected()"
+                  [indeterminate]="someVisibleSelected()"
+                  (change)="toggleVisibleSchedules($any($event.target).checked)"
+                  aria-label="Pilih semua data di halaman ini"
+                >
+              </th>
+              <th>Stock Take Request Number</th>
+              <th>Stock Take Name</th>
+              <th>Location</th>
+              <th>Category</th>
+              <th>Type</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Status</th>
+              <th class="number">Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (schedule of pagedSchedules(); track schedule.id) {
+              <tr [class.is-selected]="selectedScheduleIds().has(schedule.id)">
+                <td class="check-cell">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedScheduleIds().has(schedule.id)"
+                    (change)="toggleSchedule(schedule.id, $any($event.target).checked)"
+                    [attr.aria-label]="'Pilih ' + schedule.scheduleNo"
+                  >
+                </td>
+                <td class="mono">{{ schedule.scheduleNo }}</td>
+                <td>
+                  <strong>{{ schedule.scheduleDesc }}</strong>
+                  <span>{{ schedule.rackIds.length | number }} rack scope</span>
+                </td>
+                <td>{{ locationLabel(schedule) }}</td>
+                <td>{{ categoryLabel(schedule) }}</td>
+                <td><span class="type-pill">{{ stockTypeLabel(schedule) }}</span></td>
+                <td>{{ shortDate(schedule.startDate) }}</td>
+                <td>{{ shortDate(schedule.endDate) }}</td>
+                <td><span class="status-chip" [class.status-chip--active]="schedule.status === 'OPEN' || schedule.status === 'IN_PROGRESS'">{{ statusLabel(schedule.status) }}</span></td>
+                <td class="number">{{ schedule.progress.percentage | number:'1.0-0' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="pagination-footer">
+        <span class="pagination-info">
+          Showing {{ pageStart() | number }} - {{ pageEnd() | number }} of {{ schedules().length | number }} data
+        </span>
+        <div class="pagination-controls">
+          <button type="button" (click)="firstPage()" [disabled]="page() === 1" aria-label="First page">
+            <span class="material-symbols-outlined">first_page</span>
+          </button>
+          <button type="button" (click)="previousPage()" [disabled]="page() === 1" aria-label="Previous page">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <strong>Page {{ page() | number }} / {{ totalPages() | number }}</strong>
+          <button type="button" (click)="nextPage()" [disabled]="page() === totalPages()" aria-label="Next page">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+          <button type="button" (click)="lastPage()" [disabled]="page() === totalPages()" aria-label="Last page">
+            <span class="material-symbols-outlined">last_page</span>
+          </button>
+        </div>
+      </footer>
+    }
+  </section>
+</section>

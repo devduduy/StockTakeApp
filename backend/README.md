@@ -162,6 +162,7 @@ Tabel aplikasi yang dihapus oleh reset:
 - `dbo.TR_STOCK_TAKE_SCAN`
 - `dbo.TR_STOCK_SCHEDULE_USER`
 - `dbo.TR_STOCK_SCHEDULE_RACK`
+- `dbo.TR_SOH_GENERATE_LOG`
 - `dbo.TR_STOCK_SCHEDULE`
 - `dbo.MST_SOH`
 - `dbo.MST_RACK`

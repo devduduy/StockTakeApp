@@ -52,6 +52,16 @@ export interface ScheduleLocation {
 
 export type ScheduleStockType = "ALL" | "PARTIAL";
 export type EditableScheduleStatus = "DRAFT" | "OPEN";
+export type ScheduleListStatus = "DRAFT" | "OPEN" | "IN_PROGRESS" | "CLOSED" | "COMPLETED" | "CANCELLED";
+
+export interface ScheduleListFilters {
+  scheduleNo?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: ScheduleListStatus;
+  stockType?: ScheduleStockType;
+  categoryId?: string;
+}
 
 export interface ScheduleMutatePayload {
   locCode: string;

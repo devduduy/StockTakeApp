@@ -11,8 +11,10 @@ import { categoryRouter } from "./modules/categories/category.routes.js";
 import { itemRouter } from "./modules/items/item.routes.js";
 import { locationRouter } from "./modules/locations/location.routes.js";
 import { rackMasterRouter, rackRouter } from "./modules/racks/rack.routes.js";
+import { reportRouter } from "./modules/reports/report.routes.js";
 import { scheduleRouter } from "./modules/schedules/schedule.routes.js";
 import { scanRouter } from "./modules/scans/scan.routes.js";
+import { sohRouter } from "./modules/soh/soh.routes.js";
 import { userRouter } from "./modules/users/user.routes.js";
 
 export function createApp(): express.Express {
@@ -68,6 +70,8 @@ export function createApp(): express.Express {
   app.use(`${env.API_PREFIX}/stock-take/categories`, categoryRouter);
   app.use(`${env.API_PREFIX}/stock-take/locations`, locationRouter);
   app.use(`${env.API_PREFIX}/stock-take/users`, userRouter);
+  app.use(`${env.API_PREFIX}/stock-take/reports`, reportRouter);
+  app.use(`${env.API_PREFIX}/stock-take/soh`, sohRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

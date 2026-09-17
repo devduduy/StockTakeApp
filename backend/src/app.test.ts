@@ -657,6 +657,30 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(response.body.error.code).toBe("FORBIDDEN");
   });
 
+  it("lets store manager view and generate SOH for their schedule", async () => {
+    const loginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    const token = loginResponse.body.data.accessToken as string;
+
+    const summaryResponse = await request(app)
+      .get("/api/stock-take/soh/1")
+      .set("authorization", `Bearer ${token}`);
+    expect(summaryResponse.status).toBe(200);
+    expect(summaryResponse.body.data.scheduleNo).toBeTruthy();
+    expect(summaryResponse.body.data.validSourceRowCount).toBe(0);
+
+    const generateResponse = await request(app)
+      .post("/api/stock-take/soh/1/generate")
+      .set("authorization", `Bearer ${token}`)
+      .send({});
+    expect(generateResponse.status).toBe(200);
+    expect(generateResponse.body.data.insertedRowCount).toBeGreaterThan(0);
+    expect(generateResponse.body.data.replacedRowCount).toBeGreaterThanOrEqual(0);
+    expect(generateResponse.body.data.lastGeneratedBy).toBe("store_manager01");
+  });
+
   it("protects stock-take endpoints", async () => {
     const response = await request(app).get(
       "/api/stock-take/schedules/active",

@@ -87,6 +87,7 @@ Tabel aplikasi yang dikelola sistem:
 - `dbo.MST_USERS`
 - `dbo.MST_RACK`
 - `dbo.MST_SOH`
+- `dbo.TR_SOH_GENERATE_LOG`
 - `dbo.TR_STOCK_SCHEDULE`
 - `dbo.TR_STOCK_SCHEDULE_RACK`
 - `dbo.TR_STOCK_TAKE_SCAN`

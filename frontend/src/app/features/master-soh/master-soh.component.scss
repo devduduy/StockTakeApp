@@ -1,0 +1,200 @@
+:host {
+  display: block;
+}
+
+.master-soh-page {
+  display: grid;
+  gap: 20px;
+}
+
+.soh-filter-card {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(170px, .55fr) minmax(170px, .55fr) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 18px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  background: var(--surface-lowest);
+}
+
+.filter-field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.filter-field span {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.filter-field b {
+  color: var(--secondary);
+}
+
+.filter-field input,
+.filter-field select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  outline: none;
+  padding: 0 12px;
+}
+
+.filter-field input::placeholder {
+  color: #9ba1b1;
+  font-weight: 500;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(2, 21, 65, .07);
+}
+
+.filter-field--select {
+  grid-column: 1 / -1;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 9px;
+}
+
+.filter-actions .primary-button,
+.filter-actions .secondary-button {
+  min-height: 44px;
+}
+
+.soh-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .8fr);
+  gap: 14px;
+}
+
+.schedule-card {
+  overflow: hidden;
+}
+
+.schedule-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.schedule-detail-grid div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.schedule-detail-grid span,
+.soh-status-card span {
+  color: var(--text-subtle);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.schedule-detail-grid strong,
+.soh-status-card strong {
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soh-action-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+}
+
+.soh-action-card__copy {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.soh-action-card__copy > .material-symbols-outlined {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.soh-action-card h2 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.soh-action-card p {
+  margin: 7px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.soh-action-card .primary-button {
+  min-height: 46px;
+}
+
+.soh-status-card {
+  display: grid;
+  grid-template-columns: minmax(190px, .55fr) minmax(170px, .45fr) minmax(160px, .45fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.soh-status-card div {
+  display: grid;
+  gap: 5px;
+}
+
+@media (max-width: 1180px) {
+  .soh-filter-card,
+  .soh-layout,
+  .soh-status-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions,
+  .filter-field--select {
+    grid-column: 1 / -1;
+  }
+
+  .schedule-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .soh-filter-card,
+  .soh-layout,
+  .schedule-detail-grid,
+  .soh-status-card {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions {
+    flex-direction: column;
+  }
+}
