@@ -2,9 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, EMPTY, forkJoin, interval, of, switchMap, take, tap, debounceTime, distinctUntilChanged } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, EMPTY, filter, forkJoin, interval, map, merge, of, switchMap, take, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
+import { StockTakeRealtimeEvent, StockTakeRealtimeService } from '../../core/api/stock-take-realtime.service';
 import { apiErrorMessage } from '../../core/api/api-error';
 import { ActiveSchedule, ItemSearchResult, Rack, RackMaster, RackScan, ScheduleLocation, UserOption } from '../../core/models/api.models';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,6 +19,7 @@ import { AuthService } from '../../core/auth/auth.service';
 })
 export class RackMonitoringComponent {
   private readonly api = inject(StockTakeApiService);
+  private readonly realtime = inject(StockTakeRealtimeService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
@@ -63,6 +65,8 @@ export class RackMonitoringComponent {
   readonly itemSearch = signal('');
   readonly statusFilter = signal<'ALL' | 'EMPTY' | 'SUBMITTED' | 'PRINTED' | 'CONFIRMED' | 'REJECTED'>('ALL');
   readonly lastUpdated = signal<Date | null>(null);
+  readonly realtimeStatus = signal<'connecting' | 'live' | 'fallback'>('connecting');
+  readonly lastRealtimeEvent = signal<StockTakeRealtimeEvent | null>(null);
   readonly finalQtyDrafts = signal<Record<string, string>>({});
   readonly dirtyFinalQtyDrafts = signal<Set<string>>(new Set());
   readonly recheckers = signal<UserOption[]>([]);
@@ -162,7 +166,29 @@ export class RackMonitoringComponent {
   });
 
   constructor() {
-    interval(10_000)
+    const realtimeRefresh$ = this.realtime.stockTakeEvents().pipe(
+      tap((event) => {
+        if (event.type === 'stream.error') {
+          this.realtimeStatus.set('fallback');
+          return;
+        }
+        this.realtimeStatus.set('live');
+        this.lastRealtimeEvent.set(event);
+      }),
+      filter((event) => this.isRelevantRealtimeEvent(event)),
+      debounceTime(600),
+      map(() => undefined),
+      catchError(() => {
+        this.realtimeStatus.set('fallback');
+        return EMPTY;
+      })
+    );
+    const fallbackRefresh$ = interval(60_000).pipe(
+      filter(() => this.realtimeStatus() !== 'live'),
+      map(() => undefined)
+    );
+
+    merge(realtimeRefresh$, fallbackRefresh$)
       .pipe(
         switchMap(() => this.fetchPage(false)),
         takeUntilDestroyed(this.destroyRef)
@@ -456,6 +482,14 @@ export class RackMonitoringComponent {
   rackPercent(count: number): number {
     const total = this.racks().length;
     return total <= 0 ? 0 : Math.round((count / total) * 100);
+  }
+
+  realtimeStatusLabel(): string {
+    return {
+      connecting: 'SSE menghubungkan',
+      live: 'SSE live',
+      fallback: 'Fallback 60 detik',
+    }[this.realtimeStatus()];
   }
 
   canBulkConfirmRack(rack: Rack): boolean {
@@ -940,6 +974,17 @@ export class RackMonitoringComponent {
         return EMPTY;
       })
     );
+  }
+
+  private isRelevantRealtimeEvent(event: StockTakeRealtimeEvent): boolean {
+    if (event.type === 'connected' || event.type === 'stream.error') {
+      return false;
+    }
+    if (event.scheduleId?.toString() === this.scheduleId) {
+      return true;
+    }
+    const locCode = this.scheduleLocation()?.locCode || this.schedule()?.locCode;
+    return Boolean(locCode && event.locCode === locCode);
   }
 
   private loadRackScans(rackId: string, showLoading = true): void {

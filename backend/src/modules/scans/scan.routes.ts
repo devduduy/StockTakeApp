@@ -5,6 +5,7 @@ import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
 import { lookupItemByBarcode } from "../items/item.repository.js";
+import { broadcastStockTakeEvent } from "../realtime/stock-take-events.js";
 import { findRackById, isRackInScheduleScope } from "../racks/rack.repository.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
@@ -218,6 +219,17 @@ scanRouter.post(
       username: request.auth?.username ?? "mobile",
       lines: canonicalLines,
     });
+    broadcastStockTakeEvent({
+      type: "rack.scanned",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: {
+        acceptedLines: result.acceptedLines,
+        submittedQuantity: result.submittedQuantity,
+      },
+    });
 
     response.status(200).json({ data: result });
   }),
@@ -257,6 +269,18 @@ scanRouter.post(
       scheduleId,
       rackId,
       username: request.auth?.username ?? "web",
+    });
+    broadcastStockTakeEvent({
+      type: "rack.printed",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: {
+        printNo: result.printNo,
+        printedLineCount: result.printedLineCount,
+        printedQuantity: result.printedQuantity,
+      },
     });
     response.status(200).json({ data: result });
   }),
@@ -307,6 +331,14 @@ scanRouter.patch(
       recheckUser: body.recheckUser,
       lines: body.lines,
     });
+    broadcastStockTakeEvent({
+      type: "rack.corrected",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: { changedLines: body.lines.length },
+    });
     response.status(200).json({ data: { scans } });
   }),
 );
@@ -349,6 +381,14 @@ scanRouter.post(
       recheckUser: body.recheckUser,
       lines: body.lines,
     });
+    broadcastStockTakeEvent({
+      type: "rack.confirmed",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: { confirmedLines: body.lines.length },
+    });
     response.status(200).json({ data: { scans } });
   }),
 );
@@ -388,6 +428,13 @@ scanRouter.post(
       rackId,
       username: request.auth?.username ?? "web",
     });
+    broadcastStockTakeEvent({
+      type: "rack.rejected",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+    });
     response.status(200).json({ data: { rejected: true } });
   }),
 );
@@ -402,9 +449,17 @@ scanRouter.delete(
     const { scheduleId, rackId } = paramsSchema.parse(request.params);
     const scanId = z.coerce.number().int().positive().parse(request.params.scanId);
 
-    await resolveScheduleRackContext(request.auth, scheduleId, rackId);
+    const { schedule } = await resolveScheduleRackContext(request.auth, scheduleId, rackId);
 
     const scans = await deleteRackScan({ scheduleId, rackId, scanId });
+    broadcastStockTakeEvent({
+      type: "rack.scan_deleted",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: { scanId },
+    });
     response.status(200).json({ data: { scans } });
   }),
 );
@@ -453,6 +508,14 @@ scanRouter.post(
       username: request.auth?.username ?? "web",
       scheduleNo: schedule.scheduleNo,
       rackCode: rack.rackCode,
+    });
+    broadcastStockTakeEvent({
+      type: "rack.manual_scanned",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: { barcode, qty },
     });
     response.status(200).json({ data: { scans } });
   }),

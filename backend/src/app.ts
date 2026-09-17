@@ -11,6 +11,7 @@ import { categoryRouter } from "./modules/categories/category.routes.js";
 import { itemRouter } from "./modules/items/item.routes.js";
 import { locationRouter } from "./modules/locations/location.routes.js";
 import { rackMasterRouter, rackRouter } from "./modules/racks/rack.routes.js";
+import { stockTakeEventStream } from "./modules/realtime/stock-take-events.js";
 import { reportRouter } from "./modules/reports/report.routes.js";
 import { scheduleRouter } from "./modules/schedules/schedule.routes.js";
 import { scanRouter } from "./modules/scans/scan.routes.js";
@@ -62,6 +63,7 @@ export function createApp(): express.Express {
   });
 
   app.use(`${env.API_PREFIX}/auth`, authRouter);
+  app.get(`${env.API_PREFIX}/stock-take/events`, stockTakeEventStream);
   app.use(`${env.API_PREFIX}/stock-take/schedules`, scheduleRouter);
   app.use(`${env.API_PREFIX}/stock-take/schedules`, rackRouter);
   app.use(`${env.API_PREFIX}/stock-take/schedules`, scanRouter);

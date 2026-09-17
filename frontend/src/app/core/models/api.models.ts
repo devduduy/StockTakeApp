@@ -277,10 +277,41 @@ export interface PrintRackResponse {
 
 export interface DashboardSnapshot {
   schedules: ActiveSchedule[];
+  scheduleProgress: DashboardScheduleProgress[];
   totalRacks: number;
+  emptyRacks: number;
   submittedRacks: number;
+  printedRacks: number;
+  waitingConfirmRacks: number;
+  confirmedRacks: number;
+  rejectedRacks: number;
+  discrepancyRacks: number;
+  schedulesWithSoh: number;
+  schedulesWithoutSoh: number;
   totalLines: number;
   totalQuantity: number;
+  finalQuantity: number;
+  discrepancyQuantity: number;
+}
+
+export interface DashboardScheduleProgress {
+  schedule: ActiveSchedule;
+  sohReady: boolean;
+  sohRowCount: number;
+  totalRacks: number;
+  emptyRacks: number;
+  submittedRacks: number;
+  printedRacks: number;
+  waitingConfirmRacks: number;
+  confirmedRacks: number;
+  rejectedRacks: number;
+  discrepancyRacks: number;
+  totalLines: number;
+  totalQuantity: number;
+  finalQuantity: number;
+  discrepancyQuantity: number;
+  scanProgress: number;
+  confirmProgress: number;
 }
 
 export interface ReportScheduleInfo {

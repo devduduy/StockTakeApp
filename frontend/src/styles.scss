@@ -116,6 +116,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .card-header p { margin: 4px 0 0; color: var(--text-muted); font-size: 11px; }
 .live-indicator { display: flex; align-items: center; gap: 6px; color: #087c48; font-size: 10px; font-weight: 800; letter-spacing: .05em; }
 .live-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(17,167,98,.12); }
+.live-indicator--fallback { color: #96610a; }
+.live-indicator--fallback i { background: #d9901f; box-shadow: 0 0 0 4px rgba(217,144,31,.14); }
 
 .status-chip { display: inline-flex; width: fit-content; align-items: center; padding: 3px 6px; border-radius: 100px; background: #f0f1f4; color: var(--text-muted); font-size: 10px; font-style: normal; font-weight: 700; }
 .status-chip--active { background: #e7f8ef; color: #087c48; }

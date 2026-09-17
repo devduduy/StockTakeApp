@@ -16,7 +16,11 @@
     </p>
   </div>
   <div class="page-heading__actions">
-    @if (lastUpdated()) { <span class="last-updated">Auto-refresh 10 detik &middot; {{ lastUpdated() | date:'HH:mm:ss' }}</span> }
+    @if (lastUpdated()) {
+      <span class="last-updated live-indicator" [class.live-indicator--fallback]="realtimeStatus() === 'fallback'">
+        <i></i> {{ realtimeStatusLabel() }} &middot; {{ lastUpdated() | date:'HH:mm:ss' }}
+      </span>
+    }
     @if (canAddRackToSchedule()) {
       <button class="secondary-button" type="button" (click)="openAddRack()">
         <span class="material-symbols-outlined">add</span> Tambah Rack

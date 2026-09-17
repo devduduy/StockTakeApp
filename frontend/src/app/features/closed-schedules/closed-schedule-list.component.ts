@@ -2,9 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, EMPTY, interval, of, switchMap, tap } from 'rxjs';
+import { catchError, debounceTime, EMPTY, filter, interval, map, merge, of, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
+import { StockTakeRealtimeEvent, StockTakeRealtimeService } from '../../core/api/stock-take-realtime.service';
 import { apiErrorMessage } from '../../core/api/api-error';
 import { ActiveSchedule } from '../../core/models/api.models';
 
@@ -17,6 +18,7 @@ import { ActiveSchedule } from '../../core/models/api.models';
 })
 export class ClosedScheduleListComponent {
   private readonly api = inject(StockTakeApiService);
+  private readonly realtime = inject(StockTakeRealtimeService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly schedules = signal<ActiveSchedule[]>([]);
@@ -25,6 +27,8 @@ export class ClosedScheduleListComponent {
   readonly errorMessage = signal('');
   readonly search = signal('');
   readonly typeFilter = signal<'ALL' | 'PARTIAL' | ''>('');
+  readonly realtimeStatus = signal<'connecting' | 'live' | 'fallback'>('connecting');
+  readonly lastRealtimeEvent = signal<StockTakeRealtimeEvent | null>(null);
 
   readonly closedSchedules = computed(() =>
     this.schedules().filter((schedule) => ['CLOSED', 'COMPLETED'].includes(schedule.status))
@@ -49,7 +53,29 @@ export class ClosedScheduleListComponent {
 
   constructor() {
     this.fetchSchedules(true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
-    interval(30_000)
+    const realtimeRefresh$ = this.realtime.stockTakeEvents().pipe(
+      tap((event) => {
+        if (event.type === 'stream.error') {
+          this.realtimeStatus.set('fallback');
+          return;
+        }
+        this.realtimeStatus.set('live');
+        this.lastRealtimeEvent.set(event);
+      }),
+      filter((event) => event.type !== 'connected' && event.type !== 'stream.error'),
+      debounceTime(600),
+      map(() => undefined),
+      catchError(() => {
+        this.realtimeStatus.set('fallback');
+        return EMPTY;
+      })
+    );
+    const fallbackRefresh$ = interval(60_000).pipe(
+      filter(() => this.realtimeStatus() !== 'live'),
+      map(() => undefined)
+    );
+
+    merge(realtimeRefresh$, fallbackRefresh$)
       .pipe(
         switchMap(() => this.fetchSchedules(false)),
         takeUntilDestroyed(this.destroyRef)

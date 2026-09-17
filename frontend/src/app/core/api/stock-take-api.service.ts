@@ -1,6 +1,6 @@
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import {
   ActiveSchedule,
   ApiEnvelope,
@@ -243,24 +243,86 @@ export class StockTakeApiService {
     return this.getActiveSchedules().pipe(
       switchMap((schedules) => {
         if (schedules.length === 0) {
-          return of({ schedules, totalRacks: 0, submittedRacks: 0, totalLines: 0, totalQuantity: 0 });
-        }
-        return forkJoin(schedules.map((schedule) => this.getRacks(schedule.id))).pipe(
-          map((responses) => ({
+          return of({
             schedules,
-            totalRacks: responses.reduce((sum, response) => sum + response.racks.length, 0),
-            submittedRacks: responses.reduce(
-              (sum, response) => sum + response.racks.filter((rack) => rack.submittedLineCount > 0).length,
-              0
-            ),
-            totalLines: responses.reduce(
-              (sum, response) => sum + response.racks.reduce((rackSum, rack) => rackSum + rack.submittedLineCount, 0),
-              0
-            ),
-            totalQuantity: responses.reduce(
-              (sum, response) => sum + response.racks.reduce((rackSum, rack) => rackSum + rack.submittedQuantity, 0),
-              0
+            scheduleProgress: [],
+            totalRacks: 0,
+            emptyRacks: 0,
+            submittedRacks: 0,
+            printedRacks: 0,
+            waitingConfirmRacks: 0,
+            confirmedRacks: 0,
+            rejectedRacks: 0,
+            discrepancyRacks: 0,
+            schedulesWithSoh: 0,
+            schedulesWithoutSoh: 0,
+            totalLines: 0,
+            totalQuantity: 0,
+            finalQuantity: 0,
+            discrepancyQuantity: 0
+          });
+        }
+        return forkJoin(
+          schedules.map((schedule) =>
+            forkJoin({
+              racks: this.getRacks(schedule.id),
+              soh: this.getSohSummary(schedule.id).pipe(catchError(() => of(null)))
+            }).pipe(
+              map(({ racks, soh }) => {
+                const totalRacks = racks.racks.length;
+                const emptyRacks = racks.racks.filter((rack) => rack.rackStatus === 'EMPTY').length;
+                const submittedRacks = racks.racks.filter((rack) => rack.submittedLineCount > 0).length;
+                const printedRacks = racks.racks.filter((rack) => rack.printedLineCount > 0).length;
+                const confirmedRacks = racks.racks.filter((rack) => rack.rackStatus === 'CONFIRMED').length;
+                const rejectedRacks = racks.racks.filter((rack) => rack.rackStatus === 'REJECTED').length;
+                const waitingConfirmRacks = racks.racks.filter((rack) =>
+                  rack.printedLineCount > 0 && !['CONFIRMED', 'REJECTED'].includes(rack.rackStatus)
+                ).length;
+                const discrepancyRacks = racks.racks.filter((rack) => rack.discrepancyQuantity !== 0).length;
+                const totalLines = racks.racks.reduce((sum, rack) => sum + rack.submittedLineCount, 0);
+                const totalQuantity = racks.racks.reduce((sum, rack) => sum + rack.submittedQuantity, 0);
+                const finalQuantity = racks.racks.reduce((sum, rack) => sum + rack.finalQuantity, 0);
+                const discrepancyQuantity = racks.racks.reduce((sum, rack) => sum + rack.discrepancyQuantity, 0);
+                return {
+                  schedule,
+                  sohReady: (soh?.sohRowCount ?? 0) > 0,
+                  sohRowCount: soh?.sohRowCount ?? 0,
+                  totalRacks,
+                  emptyRacks,
+                  submittedRacks,
+                  printedRacks,
+                  waitingConfirmRacks,
+                  confirmedRacks,
+                  rejectedRacks,
+                  discrepancyRacks,
+                  totalLines,
+                  totalQuantity,
+                  finalQuantity,
+                  discrepancyQuantity,
+                  scanProgress: totalRacks === 0 ? 0 : Math.round((submittedRacks / totalRacks) * 100),
+                  confirmProgress: totalRacks === 0 ? 0 : Math.round((confirmedRacks / totalRacks) * 100)
+                };
+              })
             )
+          )
+        ).pipe(
+          map((scheduleProgress) => ({
+            schedules,
+            scheduleProgress,
+            totalRacks: scheduleProgress.reduce((sum, item) => sum + item.totalRacks, 0),
+            emptyRacks: scheduleProgress.reduce((sum, item) => sum + item.emptyRacks, 0),
+            submittedRacks: scheduleProgress.reduce((sum, item) => sum + item.submittedRacks, 0),
+            printedRacks: scheduleProgress.reduce((sum, item) => sum + item.printedRacks, 0),
+            waitingConfirmRacks: scheduleProgress.reduce((sum, item) => sum + item.waitingConfirmRacks, 0),
+            confirmedRacks: scheduleProgress.reduce((sum, item) => sum + item.confirmedRacks, 0),
+            rejectedRacks: scheduleProgress.reduce((sum, item) => sum + item.rejectedRacks, 0),
+            discrepancyRacks: scheduleProgress.reduce((sum, item) => sum + item.discrepancyRacks, 0),
+            schedulesWithSoh: scheduleProgress.filter((item) => item.sohReady).length,
+            schedulesWithoutSoh: scheduleProgress.filter((item) => !item.sohReady).length,
+            totalLines: scheduleProgress.reduce((sum, item) => sum + item.totalLines, 0),
+            totalQuantity: scheduleProgress.reduce((sum, item) => sum + item.totalQuantity, 0),
+            finalQuantity: scheduleProgress.reduce((sum, item) => sum + item.finalQuantity, 0),
+            discrepancyQuantity: scheduleProgress.reduce((sum, item) => sum + item.discrepancyQuantity, 0)
           }))
         );
       })

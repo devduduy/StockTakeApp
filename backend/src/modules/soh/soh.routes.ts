@@ -4,6 +4,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { assertCanAccessLocation } from "../../shared/location-access.js";
+import { broadcastStockTakeEvent } from "../realtime/stock-take-events.js";
 import { findScheduleLocation } from "../schedules/schedule.repository.js";
 import { generateSohFromStockCard, getSohScheduleSummary } from "./soh.repository.js";
 
@@ -26,12 +27,13 @@ function assertCanManageSoh(roleCode: string | undefined): void {
 async function assertCanAccessSohSchedule(
   scheduleId: number,
   auth: Express.Request["auth"],
-): Promise<void> {
+): Promise<{ locCode: string }> {
   const schedule = await findScheduleLocation(scheduleId);
   if (!schedule) {
     throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
   }
   assertCanAccessLocation(auth, schedule.locCode, "User tidak memiliki akses ke lokasi schedule ini.");
+  return { locCode: schedule.locCode };
 }
 
 sohRouter.get(
@@ -51,11 +53,21 @@ sohRouter.post(
   asyncHandler(async (request, response) => {
     assertCanManageSoh(request.auth?.roleCode);
     const { scheduleId } = paramsSchema.parse(request.params);
-    await assertCanAccessSohSchedule(scheduleId, request.auth);
+    const schedule = await assertCanAccessSohSchedule(scheduleId, request.auth);
     const result = await generateSohFromStockCard(
       scheduleId,
       request.auth?.username ?? "SYSTEM",
     );
+    broadcastStockTakeEvent({
+      type: "soh.generated",
+      scheduleId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: {
+        insertedRowCount: result.insertedRowCount,
+        sohRowCount: result.sohRowCount,
+      },
+    });
     response.status(200).json({ data: result });
   }),
 );

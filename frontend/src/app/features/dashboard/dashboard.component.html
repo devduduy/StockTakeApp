@@ -2,7 +2,7 @@
   <div>
     <p class="eyebrow">CONTROL TOWER</p>
     <h1>Dashboard Operasional</h1>
-    <p>Pantau schedule dan progres stock take dari data backend secara langsung.</p>
+    <p>Pantau kesiapan SOH, progres scan, print, confirm, dan selisih rack dari schedule aktif.</p>
   </div>
   <div class="page-heading__actions">
     @if (lastUpdated()) {
@@ -34,83 +34,172 @@
   <div class="skeleton skeleton--panel"></div>
 } @else {
   @if (snapshot(); as data) {
-  <div class="kpi-grid">
-    <article class="kpi-card">
-      <div class="kpi-card__top"><span>Schedule Aktif</span><i class="material-symbols-outlined">calendar_month</i></div>
-      <strong>{{ data.schedules.length }}</strong>
-      <small>{{ data.schedules.length ? 'Sedang berjalan di sistem' : 'Belum ada schedule aktif' }}</small>
-    </article>
-    <article class="kpi-card">
-      <div class="kpi-card__top"><span>Lokasi Berjalan</span><i class="material-symbols-outlined">storefront</i></div>
-      <strong>{{ locationCount() }}</strong>
-      <small>Lokasi sesuai akses user</small>
-    </article>
-    <article class="kpi-card">
-      <div class="kpi-card__top"><span>Rack Disubmit</span><i class="material-symbols-outlined">inventory_2</i></div>
-      <strong>{{ data.submittedRacks }}<em>/{{ data.totalRacks }}</em></strong>
-      <div class="mini-progress"><span [style.width.%]="overallProgress()"></span></div>
-      <small>{{ overallProgress() }}% rack sudah memiliki scan</small>
-    </article>
-    <article class="kpi-card kpi-card--accent">
-      <div class="kpi-card__top"><span>Total Data Scan</span><i class="material-symbols-outlined">barcode_scanner</i></div>
-      <strong>{{ data.totalLines | number }}</strong>
-      <small>{{ data.totalQuantity | number }} total quantity tersubmit</small>
-    </article>
-  </div>
+    <div class="kpi-grid">
+      <article class="kpi-card">
+        <div class="kpi-card__top"><span>Schedule Aktif</span><i class="material-symbols-outlined">calendar_month</i></div>
+        <strong>{{ data.schedules.length }}</strong>
+        <small>{{ locationCount() }} lokasi berjalan · {{ data.schedulesWithSoh }} SOH siap</small>
+      </article>
 
-  <div class="dashboard-grid">
-    <section class="content-card progress-panel">
-      <header class="card-header">
-        <div><h2>Progres Schedule Aktif</h2><p>Perbandingan rack yang sudah disubmit.</p></div>
-        <span class="live-indicator"><i></i> LIVE · 15 DETIK</span>
-      </header>
+      <article class="kpi-card" [class.kpi-card--warning]="data.schedulesWithoutSoh > 0">
+        <div class="kpi-card__top"><span>Kesiapan SOH</span><i class="material-symbols-outlined">database</i></div>
+        <strong>{{ data.schedulesWithSoh }}<em>/{{ data.schedules.length }}</em></strong>
+        <small>{{ data.schedulesWithoutSoh }} schedule belum punya SOH</small>
+      </article>
 
-      @if (data.schedules.length === 0) {
-        <div class="empty-state compact">
-          <span class="material-symbols-outlined">event_busy</span>
-          <h3>Belum ada schedule aktif</h3>
-          <p>Schedule OPEN atau IN_PROGRESS akan muncul otomatis.</p>
-        </div>
-      } @else {
-        <div class="schedule-bars">
-          @for (schedule of data.schedules; track schedule.id) {
-            <a class="schedule-bar" [routerLink]="['/schedules', schedule.id, 'racks']">
-              <div class="schedule-bar__meta">
-                <div>
-                  <strong>{{ schedule.scheduleNo }}</strong>
-                  <span>{{ schedule.location.name }}</span>
+      <article class="kpi-card">
+        <div class="kpi-card__top"><span>Progress Scan</span><i class="material-symbols-outlined">barcode_scanner</i></div>
+        <strong>{{ scanProgress() }}<em>%</em></strong>
+        <div class="mini-progress"><span [style.width.%]="scanProgress()"></span></div>
+        <small>{{ data.submittedRacks }} dari {{ data.totalRacks }} rack sudah scan</small>
+      </article>
+
+      <article class="kpi-card kpi-card--accent">
+        <div class="kpi-card__top"><span>Progress Confirm</span><i class="material-symbols-outlined">verified</i></div>
+        <strong>{{ confirmProgress() }}<em>%</em></strong>
+        <div class="mini-progress mini-progress--red"><span [style.width.%]="confirmProgress()"></span></div>
+        <small>{{ data.confirmedRacks }} confirmed · {{ data.waitingConfirmRacks }} menunggu</small>
+      </article>
+    </div>
+
+    <section class="status-strip" aria-label="Status rack aktif">
+      <article>
+        <span class="material-symbols-outlined">shelves</span>
+        <div><strong>{{ data.totalRacks | number }}</strong><small>Total rack</small></div>
+      </article>
+      <article>
+        <span class="material-symbols-outlined">pending_actions</span>
+        <div><strong>{{ data.emptyRacks | number }}</strong><small>Belum scan</small></div>
+      </article>
+      <article>
+        <span class="material-symbols-outlined">assignment_turned_in</span>
+        <div><strong>{{ data.submittedRacks | number }}</strong><small>Submitted</small></div>
+      </article>
+      <article>
+        <span class="material-symbols-outlined">print</span>
+        <div><strong>{{ data.printedRacks | number }}</strong><small>Printed</small></div>
+      </article>
+      <article>
+        <span class="material-symbols-outlined">fact_check</span>
+        <div><strong>{{ data.confirmedRacks | number }}</strong><small>Confirmed</small></div>
+      </article>
+      <article [class.status-strip__danger]="data.discrepancyRacks > 0">
+        <span class="material-symbols-outlined">difference</span>
+        <div><strong>{{ data.discrepancyRacks | number }}</strong><small>Rack selisih</small></div>
+      </article>
+      <article [class.status-strip__danger]="data.rejectedRacks > 0">
+        <span class="material-symbols-outlined">block</span>
+        <div><strong>{{ data.rejectedRacks | number }}</strong><small>Rejected</small></div>
+      </article>
+    </section>
+
+    <div class="dashboard-grid">
+      <section class="content-card progress-panel">
+        <header class="card-header">
+          <div>
+            <h2>Progress Schedule Aktif</h2>
+            <p>Scan menunjukkan rack sudah punya hasil scan. Confirm menunjukkan rack selesai recheck.</p>
+          </div>
+          <span class="live-indicator" [class.live-indicator--fallback]="realtimeStatus() === 'fallback'"><i></i> {{ realtimeStatusLabel() }}</span>
+        </header>
+
+        @if (data.scheduleProgress.length === 0) {
+          <div class="empty-state compact">
+            <span class="material-symbols-outlined">event_busy</span>
+            <h3>Belum ada schedule aktif</h3>
+            <p>Schedule OPEN atau IN_PROGRESS akan muncul otomatis.</p>
+          </div>
+        } @else {
+          <div class="schedule-progress-list">
+            @for (item of data.scheduleProgress; track item.schedule.id) {
+              <a class="schedule-progress-card" [routerLink]="['/schedules', item.schedule.id, 'racks']">
+                <div class="schedule-progress-card__header">
+                  <div>
+                    <strong>{{ item.schedule.scheduleNo }}</strong>
+                    <span>{{ item.schedule.scheduleDesc }}</span>
+                  </div>
+                  <div class="schedule-progress-card__badges">
+                    <i class="status-chip" [class.status-chip--active]="item.sohReady">{{ item.sohReady ? 'SOH Ready' : 'Belum SOH' }}</i>
+                    <i class="status-chip status-chip--active">{{ statusLabel(item.schedule.status) }}</i>
+                    <i class="status-chip">{{ stockTypeLabel(item.schedule.stockType.code) }}</i>
+                  </div>
                 </div>
-                <b>{{ schedule.progress.percentage }}%</b>
+
+                <div class="schedule-progress-card__meta">
+                  <span><i class="material-symbols-outlined">storefront</i>{{ item.schedule.location.name }} ({{ item.schedule.locCode }})</span>
+                  <span><i class="material-symbols-outlined">date_range</i>{{ scheduleDateRange(item.schedule) }}</span>
+                  <span><i class="material-symbols-outlined">database</i>{{ item.sohRowCount | number }} SOH</span>
+                </div>
+
+                <div class="dual-progress">
+                  <div>
+                    <div class="dual-progress__label"><span>Scan</span><b>{{ item.scanProgress }}%</b></div>
+                    <div class="progress-track"><span [style.width.%]="item.scanProgress"></span></div>
+                  </div>
+                  <div>
+                    <div class="dual-progress__label"><span>Confirm</span><b>{{ item.confirmProgress }}%</b></div>
+                    <div class="progress-track progress-track--red"><span [style.width.%]="item.confirmProgress"></span></div>
+                  </div>
+                </div>
+
+                <div class="schedule-metrics">
+                  <span><b>{{ item.totalRacks }}</b>Total</span>
+                  <span><b>{{ item.emptyRacks }}</b>Belum scan</span>
+                  <span><b>{{ item.submittedRacks }}</b>Submitted</span>
+                  <span><b>{{ item.printedRacks }}</b>Printed</span>
+                  <span><b>{{ item.waitingConfirmRacks }}</b>Menunggu</span>
+                  <span><b>{{ item.confirmedRacks }}</b>Confirmed</span>
+                  <span [class.metric-danger]="item.discrepancyRacks > 0"><b>{{ item.discrepancyRacks }}</b>Selisih</span>
+                </div>
+              </a>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="content-card activity-panel">
+        <header class="card-header">
+          <div>
+            <h2>Perlu Perhatian</h2>
+            <p>Prioritas yang bisa menghambat closing.</p>
+          </div>
+        </header>
+
+        <div class="attention-list">
+          @for (item of attentionSchedules(); track item.schedule.id) {
+            <a [routerLink]="['/schedules', item.schedule.id, 'racks']" class="attention-item">
+              <span
+                class="attention-item__icon material-symbols-outlined"
+                [class.attention-item__icon--danger]="item.rejectedRacks > 0 || item.discrepancyRacks > 0"
+                [class.attention-item__icon--warning]="!item.sohReady || item.waitingConfirmRacks > 0"
+              >
+                {{ item.rejectedRacks > 0 || item.discrepancyRacks > 0 ? 'priority_high' : (!item.sohReady ? 'database_off' : 'pending_actions') }}
+              </span>
+              <div>
+                <strong>{{ attentionLabel(item) }}</strong>
+                <span>{{ item.schedule.scheduleNo }} · {{ item.schedule.location.name }}</span>
+                <small>{{ item.submittedRacks }}/{{ item.totalRacks }} rack scan · {{ item.confirmedRacks }} confirmed</small>
               </div>
-              <div class="progress-track"><span [style.width.%]="schedule.progress.percentage"></span></div>
-              <small>{{ schedule.progress.rackWithSubmittedScan }} dari {{ schedule.progress.totalRack }} rack disubmit</small>
+              <span class="material-symbols-outlined">chevron_right</span>
             </a>
+          } @empty {
+            <div class="empty-state compact">
+              <span class="material-symbols-outlined">task_alt</span>
+              <h3>Semua schedule terkendali</h3>
+              <p>Tidak ada SOH kosong, selisih, rejected, atau rack yang menunggu confirm.</p>
+            </div>
           }
         </div>
-      }
-    </section>
 
-    <section class="content-card activity-panel">
-      <header class="card-header"><div><h2>Schedule Terbaru</h2><p>Scope operasional saat ini.</p></div></header>
-      <div class="activity-list">
-        @for (schedule of data.schedules.slice(0, 5); track schedule.id) {
-          <a [routerLink]="['/schedules', schedule.id, 'racks']" class="activity-item">
-            <span class="activity-item__icon material-symbols-outlined">event_available</span>
-            <div>
-              <strong>{{ schedule.scheduleDesc }}</strong>
-              <span>{{ schedule.location.name }} · {{ schedule.scheduleDate | date:'dd MMM yyyy' }}</span>
-              <div>
-                <i class="status-chip status-chip--active">{{ statusLabel(schedule.status) }}</i>
-                <i class="status-chip">{{ stockTypeLabel(schedule.stockType.code) }}</i>
-              </div>
-            </div>
-            <span class="material-symbols-outlined">chevron_right</span>
-          </a>
-        } @empty {
-          <div class="empty-state compact"><p>Tidak ada schedule untuk ditampilkan.</p></div>
-        }
-      </div>
-    </section>
-  </div>
+        <div class="quantity-summary">
+          <div><span>Total line scan</span><strong>{{ data.totalLines | number }}</strong></div>
+          <div><span>Qty scanner</span><strong>{{ data.totalQuantity | number }}</strong></div>
+          <div><span>Qty final</span><strong>{{ data.finalQuantity | number }}</strong></div>
+          <div [class.quantity-summary__danger]="data.discrepancyQuantity !== 0">
+            <span>Qty selisih</span><strong>{{ data.discrepancyQuantity | number }}</strong>
+          </div>
+        </div>
+      </section>
+    </div>
   }
 }

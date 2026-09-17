@@ -4,6 +4,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { assertCanAccessLocation, resolveReadableLocCodes, resolveWritableLocCode as resolveMappedWritableLocCode } from "../../shared/location-access.js";
+import { broadcastStockTakeEvent } from "../realtime/stock-take-events.js";
 import { listAssignedScheduleIdsForUser, listScheduleUserCandidates, listScheduleUsers, replaceScheduleUsers } from "../schedule-users/schedule-user.repository.js";
 import {
   closeSchedule,
@@ -227,6 +228,12 @@ scheduleRouter.post(
     }
     assertCanAccessLocation(request.auth, scheduleLocation.locCode, "Schedule hanya boleh di-close untuk lokasi yang dimapping ke user.");
     const schedule = await closeSchedule(params.scheduleId, request.auth?.username ?? "SYSTEM");
+    broadcastStockTakeEvent({
+      type: "schedule.closed",
+      scheduleId: params.scheduleId,
+      locCode: scheduleLocation.locCode,
+      username: request.auth?.username,
+    });
     response.status(200).json({ data: schedule });
   }),
 );
@@ -281,6 +288,13 @@ scheduleRouter.put(
       body.userIds,
       request.auth?.username ?? "SYSTEM",
     );
+    const schedule = await findScheduleLocation(params.scheduleId);
+    broadcastStockTakeEvent({
+      type: "schedule.team.updated",
+      scheduleId: params.scheduleId,
+      locCode: schedule?.locCode,
+      username: request.auth?.username,
+    });
     response.status(200).json({ data: users });
   }),
 );
@@ -298,6 +312,12 @@ scheduleRouter.post(
       startTime: body.startTime ?? null,
       endTime: body.endTime ?? null,
       username: request.auth?.username ?? "SYSTEM",
+    });
+    broadcastStockTakeEvent({
+      type: "schedule.created",
+      scheduleId: Number(schedule.id),
+      locCode: schedule.locCode,
+      username: request.auth?.username,
     });
     response.status(201).json({ data: schedule });
   }),
@@ -317,6 +337,12 @@ scheduleRouter.put(
       startTime: body.startTime ?? null,
       endTime: body.endTime ?? null,
       username: request.auth?.username ?? "SYSTEM",
+    });
+    broadcastStockTakeEvent({
+      type: "schedule.updated",
+      scheduleId: params.scheduleId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
     });
     response.status(200).json({ data: schedule });
   }),

@@ -6,6 +6,7 @@ import { AppError } from "../../shared/app-error.js";
 import { asyncHandler } from "../../shared/async-handler.js";
 import { assertCanAccessLocation, resolveReadableLocCodes, resolveWritableLocCode as resolveMappedWritableLocCode } from "../../shared/location-access.js";
 import { assertCanAccessSchedule } from "../../shared/schedule-access.js";
+import { broadcastStockTakeEvent } from "../realtime/stock-take-events.js";
 import { addRackToScheduleScope, createRackMaster, createRackMastersBulk, deleteRackMaster, findRackById, listActiveRacksByLocation, listRackMastersByLocation, updateRackMaster } from "./rack.repository.js";
 
 const paramsSchema = z.object({
@@ -92,6 +93,12 @@ rackMasterRouter.post(
       locCode,
       username: request.auth?.username ?? "SYSTEM",
     });
+    broadcastStockTakeEvent({
+      type: "rack.master.created",
+      rackId: Number(rack.id),
+      locCode,
+      username: request.auth?.username,
+    });
     response.status(201).json({ data: rack });
   }),
 );
@@ -107,6 +114,12 @@ rackMasterRouter.post(
       ...body,
       locCode,
       username: request.auth?.username ?? "SYSTEM",
+    });
+    broadcastStockTakeEvent({
+      type: "rack.master.created",
+      locCode,
+      username: request.auth?.username,
+      metadata: { count: racks.length },
     });
     response.status(201).json({ data: racks });
   }),
@@ -129,6 +142,12 @@ rackMasterRouter.put(
       ...body,
       username: request.auth?.username ?? "SYSTEM",
     });
+    broadcastStockTakeEvent({
+      type: "rack.master.updated",
+      rackId,
+      locCode: currentRack.locCode,
+      username: request.auth?.username,
+    });
     response.status(200).json({ data: rack });
   }),
 );
@@ -146,6 +165,12 @@ rackMasterRouter.delete(
     assertCanAccessLocation(request.auth, currentRack.locCode, "Rack hanya boleh dikelola untuk lokasi user.");
 
     await deleteRackMaster(rackId);
+    broadcastStockTakeEvent({
+      type: "rack.master.deleted",
+      rackId,
+      locCode: currentRack.locCode,
+      username: request.auth?.username,
+    });
     response.status(204).end();
   }),
 );
@@ -211,6 +236,14 @@ rackRouter.post(
       rackId,
       request.auth?.username ?? "SYSTEM",
     );
+    broadcastStockTakeEvent({
+      type: "rack.scope.updated",
+      scheduleId,
+      rackId,
+      locCode: schedule.locCode,
+      username: request.auth?.username,
+      metadata: { added: result.added },
+    });
     response.status(result.added ? 201 : 200).json({ data: result });
   }),
 );
