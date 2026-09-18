@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import { ensureReportingProcedures } from "./reporting-procedures.js";
 import { getSqlPool } from "./sql.js";
 
 export interface MigrationResult {
@@ -17,6 +18,7 @@ export interface MigrationResult {
   ensuredScheduleRackTable: boolean;
   droppedUserLocationAccessTable: boolean;
   ensuredScheduleUserTable: boolean;
+  ensuredReportingProcedures: boolean;
 }
 
 export async function ensureDatabaseSchema(): Promise<MigrationResult> {
@@ -36,6 +38,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       ensuredScheduleRackTable: false,
       droppedUserLocationAccessTable: false,
       ensuredScheduleUserTable: false,
+      ensuredReportingProcedures: false,
     };
   }
 
@@ -579,6 +582,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
   `);
 
   const row = result.recordset[0];
+  await ensureReportingProcedures(pool);
   const migrationResult: MigrationResult = {
     mode: "sql",
     addedScheduleCategoryColumn: row?.added_schedule_category_column === 1,
@@ -594,6 +598,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     ensuredScheduleRackTable: row?.ensured_schedule_rack_table === 1,
     droppedUserLocationAccessTable: row?.dropped_user_location_access_table === 1,
     ensuredScheduleUserTable: row?.ensured_schedule_user_table === 1,
+    ensuredReportingProcedures: true,
   };
   logger.info({ migration: migrationResult }, "Database schema checked");
   return migrationResult;

@@ -69,6 +69,42 @@ interface ScheduleReportRow {
   scan_row_count: number | string;
 }
 
+interface VarianceProcedureRow {
+  stock_take_request_number: string;
+  stock_take_request_name: string;
+  store: string;
+  start_date: Date | string;
+  end_date: Date | string;
+  stock_take_submission_date: Date | string;
+  stock_take_submission_type: string;
+  status: string;
+  division: string;
+  department: string;
+  category: string;
+  article: string;
+  item_barcode: string;
+  article_description: string;
+  soh_qty: number | string;
+  qty_counted: number | string;
+  stock_take_variance_qty: number | string;
+  stock_take_variance_value: number | string;
+  total_stock_take_variance_value_by_category: number | string;
+  grand_total: number | string;
+}
+
+interface CategorySummaryProcedureRow {
+  no: number | string;
+  entry_date: Date | string;
+  category_code: string;
+  category_description: string;
+  cost: number | string;
+  soh_qty: number | string;
+  counted_qty: number | string;
+  soh_value: number | string;
+  diff_qty: number | string;
+  diff_value: number | string;
+}
+
 function isoDate(value: Date | string | null | undefined): string {
   if (!value) {
     return "";
@@ -134,6 +170,74 @@ function mapScheduleSnapshot(row: ScheduleReportRow): ReportScheduleInfo {
     cutOffDate: isoDate(row.cut_off_date),
     stockTypeName: row.stock_type_name?.trim() || "-",
     status: row.status?.trim() || "-",
+  };
+}
+
+function mapAddressRow(row: AddressRow): AddressReportRow {
+  return {
+    date: isoDate(row.scan_date),
+    branch: row.branch?.trim() || "-",
+    skuCode: row.sku_code?.trim() || "-",
+    skuName: row.sku_name?.trim() || "-",
+    address: row.address?.trim() || "-",
+    scannedQty: numeric(row.scanned_qty),
+  };
+}
+
+function mapVarianceProcedureRow(row: VarianceProcedureRow): VarianceReportRow {
+  return {
+    stockTakeRequestNumber: row.stock_take_request_number?.trim() || "-",
+    stockTakeRequestName: row.stock_take_request_name?.trim() || "-",
+    store: row.store?.trim() || "-",
+    startDate: isoDateTime(row.start_date),
+    endDate: isoDateTime(row.end_date),
+    stockTakeSubmissionDate: isoDateTime(row.stock_take_submission_date),
+    stockTakeSubmissionType: row.stock_take_submission_type?.trim() || "-",
+    status: row.status?.trim() || "-",
+    division: row.division?.trim() || "-",
+    department: row.department?.trim() || "-",
+    category: row.category?.trim() || "-",
+    article: row.article?.trim() || "-",
+    itemBarcode: row.item_barcode?.trim() || "",
+    articleDescription: row.article_description?.trim() || "-",
+    sohQty: numeric(row.soh_qty),
+    qtyCounted: numeric(row.qty_counted),
+    stockTakeVarianceQty: numeric(row.stock_take_variance_qty),
+    stockTakeVarianceValue: numeric(row.stock_take_variance_value),
+    totalStockTakeVarianceValueByCategory: numeric(row.total_stock_take_variance_value_by_category),
+    grandTotal: numeric(row.grand_total),
+  };
+}
+
+function mapCategorySummaryProcedureRow(row: CategorySummaryProcedureRow): CategorySummaryReportRow {
+  return {
+    no: numeric(row.no),
+    entryDate: isoDate(row.entry_date),
+    categoryCode: row.category_code?.trim() || "-",
+    categoryDescription: row.category_description?.trim() || "-",
+    cost: numeric(row.cost),
+    sohQty: numeric(row.soh_qty),
+    countedQty: numeric(row.counted_qty),
+    sohValue: numeric(row.soh_value),
+    diffQty: numeric(row.diff_qty),
+    diffValue: numeric(row.diff_value),
+  };
+}
+
+function mapTopBottomProcedureRow(row: VarianceProcedureRow, index: number): Top30ByCategoryReportRow {
+  return {
+    no: index + 1,
+    category: row.category?.trim() || "-",
+    productNo: row.article?.trim() || "-",
+    productName: row.article_description?.trim() || "-",
+    itemBarcode: row.item_barcode?.trim() || "",
+    locationQty: "",
+    uom: "EA",
+    stockBefore: numeric(row.soh_qty),
+    sohQty: numeric(row.soh_qty),
+    countedQty: numeric(row.qty_counted),
+    diffQty: numeric(row.stock_take_variance_qty),
+    diffValue: numeric(row.stock_take_variance_value),
   };
 }
 
@@ -401,7 +505,7 @@ function buildMockBundle(scheduleId: number, categoryId?: string): StockTakeRepo
   };
 }
 
-export async function buildStockTakeReportBundle(
+async function buildStockTakeReportBundleLegacy(
   scheduleId: number,
   categoryId?: string,
   section: "ALL" | "ADDRESS" | "VARIANCE" | "CATEGORY" | "TOP_BOTTOM" = "ALL",
@@ -745,6 +849,86 @@ export async function buildStockTakeReportBundle(
   return {
     schedule,
     readiness: buildReadiness(scheduleSnapshot, includeReportRows ? reportRows.length : addressRows.length, categoryId),
+    summary: buildSummary(addressRows, varianceRows),
+    addressRows,
+    varianceRows,
+    categorySummaryRows,
+    top30Rows,
+  };
+}
+
+export async function buildStockTakeReportBundle(
+  scheduleId: number,
+  categoryId?: string,
+  section: "ALL" | "ADDRESS" | "VARIANCE" | "CATEGORY" | "TOP_BOTTOM" = "ALL",
+): Promise<StockTakeReportBundle> {
+  if (env.SQL_MODE === "mock") {
+    return buildMockBundle(scheduleId, categoryId);
+  }
+
+  const pool = await getSqlPool();
+  const includeAddress = section === "ALL" || section === "ADDRESS";
+  const includeVarianceRows = section === "ALL" || section === "VARIANCE" || section === "TOP_BOTTOM";
+  const includeCategoryRows = section === "ALL" || section === "CATEGORY";
+  const includeTop30Rows = section === "ALL";
+
+  const scheduleResult = await pool
+    .request()
+    .input("ScheduleId", sql.BigInt, scheduleId)
+    .execute<ScheduleReportRow>("dbo.usp_StockTake_ReportScheduleSnapshot");
+  const scheduleSnapshot = scheduleResult.recordset[0];
+  if (!scheduleSnapshot) {
+    throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
+  }
+
+  const addressRows = includeAddress
+    ? (await pool
+        .request()
+        .input("ScheduleId", sql.BigInt, scheduleId)
+        .input("CategoryId", sql.VarChar(30), categoryId ?? null)
+        .execute<AddressRow>("dbo.usp_StockTake_ReportAddress")).recordset.map(mapAddressRow)
+    : [];
+
+  const varianceProcedure = section === "TOP_BOTTOM"
+    ? "dbo.usp_StockTake_ReportTopBottom30"
+    : "dbo.usp_StockTake_ReportVariance";
+  const varianceRows = includeVarianceRows
+    ? (await pool
+        .request()
+        .input("ScheduleId", sql.BigInt, scheduleId)
+        .input("CategoryId", sql.VarChar(30), categoryId ?? null)
+        .execute<VarianceProcedureRow>(varianceProcedure)).recordset.map(mapVarianceProcedureRow)
+    : [];
+
+  const categorySummaryRows = includeCategoryRows
+    ? (await pool
+        .request()
+        .input("ScheduleId", sql.BigInt, scheduleId)
+        .input("CategoryId", sql.VarChar(30), categoryId ?? null)
+        .execute<CategorySummaryProcedureRow>("dbo.usp_StockTake_ReportCategorySummary"))
+        .recordset.map(mapCategorySummaryProcedureRow)
+    : [];
+
+  const top30Rows = includeTop30Rows
+    ? (await pool
+        .request()
+        .input("ScheduleId", sql.BigInt, scheduleId)
+        .input("CategoryId", sql.VarChar(30), categoryId ?? null)
+        .execute<VarianceProcedureRow>("dbo.usp_StockTake_ReportTopBottom30"))
+        .recordset.map(mapTopBottomProcedureRow)
+    : [];
+
+  const schedule = mapScheduleSnapshot(scheduleSnapshot);
+  const filteredReportRowCount = Math.max(
+    addressRows.length,
+    varianceRows.length,
+    categorySummaryRows.length,
+    top30Rows.length,
+  );
+
+  return {
+    schedule,
+    readiness: buildReadiness(scheduleSnapshot, filteredReportRowCount, categoryId),
     summary: buildSummary(addressRows, varianceRows),
     addressRows,
     varianceRows,
