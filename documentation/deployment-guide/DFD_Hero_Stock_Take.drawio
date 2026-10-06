@@ -1,0 +1,582 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram name="DFD konteks Hero Stock Take" id="page1">
+    <mxGraphModel dx="842" dy="595" grid="1" page="1" pageWidth="842" pageHeight="595">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="edge0" value="" edge="1" parent="1" source="e1" target="p0" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.3181818181818182;entryX=0.0;entryY=0.25;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="206" y="186" />
+            <mxPoint as="targetPoint" x="321" y="294" />
+            <Array as="points">
+              <mxPoint x="261" y="186" />
+              <mxPoint x="261" y="294" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label0" value="Identitas, barcode,&#10;qty, hasil cek" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="214" y="125" width="75.46582031249999" height="28" />
+        </mxCell>
+        <mxCell id="edge1" value="" edge="1" parent="1" source="p0" target="e1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.53125;entryX=1.0;entryY=0.7575757575757576;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="321" y="321" />
+            <mxPoint as="targetPoint" x="206" y="215" />
+            <Array as="points">
+              <mxPoint x="228" y="321" />
+              <mxPoint x="228" y="215" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label1" value="Schedule, item, status&#10;dan kertas recheck" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="44" y="265" width="88.67470703125" height="28" />
+        </mxCell>
+        <mxCell id="edge2" value="" edge="1" parent="1" source="e2" target="p0" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.30303030303030304;entryX=0.0;entryY=0.7916666666666666;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="206" y="410" />
+            <mxPoint as="targetPoint" x="321" y="346" />
+            <Array as="points">
+              <mxPoint x="276" y="410" />
+              <mxPoint x="276" y="346" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label2" value="Pengaturan, filter,&#10;print, koreksi, keputusan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="38" y="335" width="96.87871093749999" height="28" />
+        </mxCell>
+        <mxCell id="edge3" value="" edge="1" parent="1" source="p0" target="e2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.4;exitY=1.0;entryX=0.5058823529411764;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="401" y="366" />
+            <mxPoint as="targetPoint" x="122" y="456" />
+            <Array as="points">
+              <mxPoint x="401" y="473" />
+              <mxPoint x="122" y="473" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label3" value="Status, monitoring dan laporan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="215" y="478" width="119.68095703124999" height="14" />
+        </mxCell>
+        <mxCell id="edge4" value="" edge="1" parent="1" source="p0" target="e3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.25;entryX=0.0;entryY=0.3181818181818182;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="521" y="294" />
+            <mxPoint as="targetPoint" x="636" y="186" />
+            <Array as="points">
+              <mxPoint x="586" y="294" />
+              <mxPoint x="586" y="186" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label4" value="Kriteria lookup&#10;master" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="520" y="125" width="60.41513671874999" height="28" />
+        </mxCell>
+        <mxCell id="edge5" value="" edge="1" parent="1" source="e3" target="p0" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.7575757575757576;entryX=1.0;entryY=0.5416666666666666;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="636" y="215" />
+            <mxPoint as="targetPoint" x="521" y="322" />
+            <Array as="points">
+              <mxPoint x="610" y="215" />
+              <mxPoint x="610" y="322" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label5" value="Barcode, PLU, lokasi,&#10;hierarki category" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="615" y="264" width="86.84892578124999" height="28" />
+        </mxCell>
+        <mxCell id="edge6" value="" edge="1" parent="1" source="p0" target="e4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.7916666666666666;entryX=0.0;entryY=0.30303030303030304;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="521" y="346" />
+            <mxPoint as="targetPoint" x="636" y="410" />
+            <Array as="points">
+              <mxPoint x="588" y="346" />
+              <mxPoint x="588" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="Lokasi dan cut-off" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="614" y="334" width="72.72714843749999" height="14" />
+        </mxCell>
+        <mxCell id="edge7" value="" edge="1" parent="1" source="e4" target="p0" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.4823529411764706;exitY=1.0;entryX=0.635;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="718" y="456" />
+            <mxPoint as="targetPoint" x="448" y="366" />
+            <Array as="points">
+              <mxPoint x="718" y="473" />
+              <mxPoint x="448" y="473" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label7" value="Stok dan MAV StockCard" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="515" y="478" width="100.97470703124999" height="14" />
+        </mxCell>
+        <mxCell id="e1" value="E1  Scanner dan&#10;petugas recheck" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="165" width="170" height="66" />
+        </mxCell>
+        <mxCell id="e2" value="E2  Operator web&#10;dan pembaca report" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="390" width="170" height="66" />
+        </mxCell>
+        <mxCell id="p0" value="0  Hero Stock Take&#10;Web · HHT · Backend API" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="321" y="270" width="200" height="96" />
+        </mxCell>
+        <mxCell id="e3" value="E3  MasterData&#10;Master perusahaan" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="636" y="165" width="170" height="66" />
+        </mxCell>
+        <mxCell id="e4" value="E4  SalesTxn&#10;StockCard" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="636" y="390" width="170" height="66" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="DFD level satu identitas dan persiapan" id="page2">
+    <mxGraphModel dx="842" dy="595" grid="1" page="1" pageWidth="842" pageHeight="595">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="edge0" value="" edge="1" parent="1" source="e1" target="p1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.3090909090909091;entryX=0.0;entryY=0.3090909090909091;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="152" />
+            <mxPoint as="targetPoint" x="316" y="152" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label0" value="Login / data user" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="198" y="116" width="69.08759765624998" height="14" />
+        </mxCell>
+        <mxCell id="edge1" value="" edge="1" parent="1" source="p1" target="e1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.7818181818181819;entryX=1.0;entryY=0.7818181818181819;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="178" />
+            <mxPoint as="targetPoint" x="191" y="178" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label1" value="Sesi dan hasil" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="208" y="184" width="59.05380859374999" height="14" />
+        </mxCell>
+        <mxCell id="edge2" value="" edge="1" parent="1" source="p1" target="d1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2909090909090909;entryX=0.0;entryY=0.2909090909090909;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="151" />
+            <mxPoint as="targetPoint" x="628" y="151" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label2" value="User / metadata login" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="495" y="113" width="85.94003906249999" height="14" />
+        </mxCell>
+        <mxCell id="edge3" value="" edge="1" parent="1" source="d1" target="p1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.7818181818181819;entryX=1.0;entryY=0.7818181818181819;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="628" y="178" />
+            <mxPoint as="targetPoint" x="491" y="178" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label3" value="Identitas, role, lokasi" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="496" y="184" width="82.74892578125" height="14" />
+        </mxCell>
+        <mxCell id="edge4" value="" edge="1" parent="1" source="e2" target="p2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2909090909090909;entryX=0.0;entryY=0.2909090909090909;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="321" />
+            <mxPoint as="targetPoint" x="316" y="321" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label4" value="Periode, scope, tim" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="199" y="278" width="78.18847656249999" height="14" />
+        </mxCell>
+        <mxCell id="edge5" value="" edge="1" parent="1" source="p2" target="e2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8;entryX=1.0;entryY=0.8;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="349" />
+            <mxPoint as="targetPoint" x="191" y="349" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label5" value="Schedule / hasil simpan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="194" y="359" width="94.60449218749999" height="14" />
+        </mxCell>
+        <mxCell id="edge6" value="" edge="1" parent="1" source="p2" target="d2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2727272727272727;entryX=0.0;entryY=0.2727272727272727;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="320" />
+            <mxPoint as="targetPoint" x="628" y="320" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="Konfigurasi tersimpan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="495" y="279" width="87.30537109374998" height="14" />
+        </mxCell>
+        <mxCell id="edge7" value="" edge="1" parent="1" source="d2" target="p2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.7636363636363637;entryX=1.0;entryY=0.7636363636363637;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="628" y="347" />
+            <mxPoint as="targetPoint" x="491" y="347" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label7" value="Daftar dan scope" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="515" y="359" width="70.44892578124998" height="14" />
+        </mxCell>
+        <mxCell id="edge8" value="" edge="1" parent="1" source="p2" target="e3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.28;exitY=1.0;entryX=0.28;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="365" y="360" />
+            <mxPoint as="targetPoint" x="365" y="435" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label8" value="Kriteria baca" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="258" y="395" width="54.03291015625" height="14" />
+        </mxCell>
+        <mxCell id="edge9" value="" edge="1" parent="1" source="e3" target="p2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.72;exitY=0.0;entryX=0.72;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="442" y="435" />
+            <mxPoint as="targetPoint" x="442" y="360" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label9" value="Master pilihan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="459" y="395" width="59.045800781249994" height="14" />
+        </mxCell>
+        <mxCell id="e1" value="E1 dan E2&#10;Pengguna" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="135" width="155" height="55" />
+        </mxCell>
+        <mxCell id="p1" value="1.0  Autentikasi&#10;dan kelola user" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="135" width="175" height="55" />
+        </mxCell>
+        <mxCell id="d1" value="D1  User dan role" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="628" y="135" width="175" height="55" />
+        </mxCell>
+        <mxCell id="e2" value="E2  Operator web" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="305" width="155" height="55" />
+        </mxCell>
+        <mxCell id="p2" value="2.0  Kelola schedule&#10;rack dan tim" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="305" width="175" height="55" />
+        </mxCell>
+        <mxCell id="d2" value="D2  Schedule dan scope&#10;D3  Master rack" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="628" y="305" width="175" height="55" />
+        </mxCell>
+        <mxCell id="e3" value="E3  MasterData&#10;Lokasi dan category" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="316" y="435" width="175" height="55" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="DFD level satu scan dan recheck" id="page3">
+    <mxGraphModel dx="842" dy="595" grid="1" page="1" pageWidth="842" pageHeight="595">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="edge0" value="" edge="1" parent="1" source="e1" target="p3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.26;entryX=0.0;entryY=0.26;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="158" />
+            <mxPoint as="targetPoint" x="316" y="158" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label0" value="Barcode dan qty" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="210" y="123" width="67.71826171875" height="14" />
+        </mxCell>
+        <mxCell id="edge1" value="" edge="1" parent="1" source="p3" target="e1" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8;entryX=1.0;entryY=0.8;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="185" />
+            <mxPoint as="targetPoint" x="191" y="185" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label1" value="Item / hasil submit" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="199" y="199" width="74.07646484374999" height="14" />
+        </mxCell>
+        <mxCell id="edge2" value="" edge="1" parent="1" source="p3" target="d6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.10285714285714286;exitY=1.0;entryX=0.41935483870967744;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="334" y="195" />
+            <mxPoint as="targetPoint" x="101" y="270" />
+            <Array as="points">
+              <mxPoint x="334" y="234" />
+              <mxPoint x="101" y="234" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label2" value="Draft baru" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="128" y="229" width="44.4595703125" height="14" />
+        </mxCell>
+        <mxCell id="edge3" value="" edge="1" parent="1" source="d6" target="p3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.8709677419354839;exitY=0.0;entryX=0.34285714285714286;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="171" y="270" />
+            <mxPoint as="targetPoint" x="376" y="195" />
+            <Array as="points">
+              <mxPoint x="171" y="223" />
+              <mxPoint x="376" y="223" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label3" value="Draft untuk submit" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="189" y="211" width="74.53691406249999" height="14" />
+        </mxCell>
+        <mxCell id="edge4" value="" edge="1" parent="1" source="p3" target="e3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.26857142857142857;exitY=1.0;entryX=0.26857142857142857;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="363" y="195" />
+            <mxPoint as="targetPoint" x="363" y="270" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label4" value="Lookup" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="316" y="246" width="34.902246093749994" height="14" />
+        </mxCell>
+        <mxCell id="edge5" value="" edge="1" parent="1" source="e3" target="p3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.7542857142857143;exitY=0.0;entryX=0.7542857142857143;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="448" y="270" />
+            <mxPoint as="targetPoint" x="448" y="195" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label5" value="Item valid" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="462" y="231" width="43.090234374999994" height="14" />
+        </mxCell>
+        <mxCell id="edge6" value="" edge="1" parent="1" source="d2" target="p3" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.5;entryX=1.0;entryY=0.5;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="626" y="170" />
+            <mxPoint as="targetPoint" x="491" y="170" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="Scope dan status" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="512" y="135" width="71.36582031249999" height="14" />
+        </mxCell>
+        <mxCell id="edge7" value="" edge="1" parent="1" source="p3" target="d4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.82;entryX=0.0;entryY=0.29310344827586204;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="186" />
+            <mxPoint as="targetPoint" x="626" y="287" />
+            <Array as="points">
+              <mxPoint x="559" y="186" />
+              <mxPoint x="559" y="287" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label7" value="Submit tervalidasi" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="504" y="212" width="72.71513671874999" height="14" />
+        </mxCell>
+        <mxCell id="edge8" value="" edge="1" parent="1" source="e2" target="p4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2727272727272727;entryX=0.0;entryY=0.2727272727272727;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="450" />
+            <mxPoint as="targetPoint" x="316" y="450" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label8" value="Print / Final Qty&#10;keputusan" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="202" y="400" width="64.50312499999998" height="28" />
+        </mxCell>
+        <mxCell id="edge9" value="" edge="1" parent="1" source="p4" target="e2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8;entryX=1.0;entryY=0.8;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="479" />
+            <mxPoint as="targetPoint" x="191" y="479" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label9" value="Kertas / status" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="211" y="491" width="60.41113281249999" height="14" />
+        </mxCell>
+        <mxCell id="edge10" value="" edge="1" parent="1" source="d4" target="p4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.15555555555555556;exitY=1.0;entryX=0.8685714285714285;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="654" y="328" />
+            <mxPoint as="targetPoint" x="468" y="435" />
+            <Array as="points">
+              <mxPoint x="654" y="394" />
+              <mxPoint x="468" y="394" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label10" value="Scan dan metadata" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="480" y="359" width="79.1173828125" height="14" />
+        </mxCell>
+        <mxCell id="edge11" value="" edge="1" parent="1" source="p4" target="d4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.45454545454545453;entryX=0.5611111111111111;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="460" />
+            <mxPoint as="targetPoint" x="727" y="328" />
+            <Array as="points">
+              <mxPoint x="727" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label11" value="Print, koreksi,&#10;confirm / reject" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="616" y="468" width="61.768457031249994" height="28" />
+        </mxCell>
+        <mxCell id="edge12" value="" edge="1" parent="1" source="p4" target="d2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.8909090909090909;entryX=0.9166666666666666;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="484" />
+            <mxPoint as="targetPoint" x="791" y="195" />
+            <Array as="points">
+              <mxPoint x="816" y="484" />
+              <mxPoint x="816" y="216" />
+              <mxPoint x="791" y="216" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label12" value="Close" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="750" y="198" width="28.964453125" height="14" />
+        </mxCell>
+        <mxCell id="e1" value="E1  Scanner HHT" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="145" width="155" height="50" />
+        </mxCell>
+        <mxCell id="p3" value="3.0  Validasi dan&#10;pencatatan scan" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="145" width="175" height="50" />
+        </mxCell>
+        <mxCell id="d4" value="D4  Data scan&#10;aktif dan rejected" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="626" y="270" width="180" height="58" />
+        </mxCell>
+        <mxCell id="d6" value="D6  Draft lokal HHT" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="270" width="155" height="55" />
+        </mxCell>
+        <mxCell id="e3" value="E3  MasterData&#10;Barcode dan PLU" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="316" y="270" width="175" height="55" />
+        </mxCell>
+        <mxCell id="d2" value="D2  Schedule / scope" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="626" y="145" width="180" height="50" />
+        </mxCell>
+        <mxCell id="e2" value="E2  Operator web" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="435" width="155" height="55" />
+        </mxCell>
+        <mxCell id="p4" value="4.0  Print, recheck&#10;confirm, reject, close" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="435" width="175" height="55" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="DFD level satu SOH dan reporting" id="page4">
+    <mxGraphModel dx="842" dy="595" grid="1" page="1" pageWidth="842" pageHeight="595">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="edge0" value="" edge="1" parent="1" source="e2" target="p5" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.34545454545454546;entryX=0.0;entryY=0.34545454545454546;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="154" />
+            <mxPoint as="targetPoint" x="316" y="154" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label0" value="Schedule terpilih" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="200" y="117" width="68.62714843749998" height="14" />
+        </mxCell>
+        <mxCell id="edge1" value="" edge="1" parent="1" source="p5" target="e2" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8181818181818182;entryX=1.0;entryY=0.8181818181818182;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="180" />
+            <mxPoint as="targetPoint" x="191" y="180" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label1" value="Hasil generate" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="211" y="192" width="60.87558593749999" height="14" />
+        </mxCell>
+        <mxCell id="edge2" value="" edge="1" parent="1" source="p5" target="e4" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.32727272727272727;entryX=0.0;entryY=0.32727272727272727;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="153" />
+            <mxPoint as="targetPoint" x="628" y="153" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label2" value="Lokasi / card_date" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="506" y="114" width="75.00937499999999" height="14" />
+        </mxCell>
+        <mxCell id="edge3" value="" edge="1" parent="1" source="e4" target="p5" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8;entryX=1.0;entryY=0.8;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="628" y="179" />
+            <mxPoint as="targetPoint" x="491" y="179" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label3" value="closing_stock / MAV" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="493" y="190" width="81.82802734375" height="14" />
+        </mxCell>
+        <mxCell id="edge4" value="" edge="1" parent="1" source="d2" target="p5" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2727272727272727;entryX=0.24;entryY=1.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="290" />
+            <mxPoint as="targetPoint" x="358" y="190" />
+            <Array as="points">
+              <mxPoint x="251" y="290" />
+              <mxPoint x="251" y="218" />
+              <mxPoint x="358" y="218" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label4" value="Konteks schedule" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="39" y="239" width="72.73115234375" height="14" />
+        </mxCell>
+        <mxCell id="edge5" value="" edge="1" parent="1" source="p5" target="d5" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.9818181818181818;entryX=0.0;entryY=0.41818181818181815;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="491" y="189" />
+            <mxPoint as="targetPoint" x="628" y="298" />
+            <Array as="points">
+              <mxPoint x="546" y="189" />
+              <mxPoint x="546" y="298" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label5" value="Snapshot dan log" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="509" y="238" width="71.83027343749998" height="14" />
+        </mxCell>
+        <mxCell id="edge6" value="" edge="1" parent="1" source="d5" target="p6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.11235955056179775;exitY=1.0;entryX=0.8571428571428571;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="648" y="330" />
+            <mxPoint as="targetPoint" x="466" y="435" />
+            <Array as="points">
+              <mxPoint x="648" y="385" />
+              <mxPoint x="466" y="385" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="SOH Qty / biaya" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="509" y="389" width="67.24179687499999" height="14" />
+        </mxCell>
+        <mxCell id="edge7" value="" edge="1" parent="1" source="q" target="p6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=1.0;exitY=0.2909090909090909;entryX=0.0;entryY=0.2909090909090909;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="191" y="451" />
+            <mxPoint as="targetPoint" x="316" y="451" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label7" value="Filter / pilihan export" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="192" y="407" width="81.83203124999999" height="14" />
+        </mxCell>
+        <mxCell id="edge8" value="" edge="1" parent="1" source="p6" target="q" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.8;entryX=1.0;entryY=0.8;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="316" y="479" />
+            <mxPoint as="targetPoint" x="191" y="479" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label8" value="Status / CSV / PDF" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="201" y="491" width="78.17646484375" height="14" />
+        </mxCell>
+        <mxCell id="edge9" value="" edge="1" parent="1" source="d4" target="p6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.0;exitY=0.4727272727272727;entryX=1.0;entryY=0.4727272727272727;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="628" y="461" />
+            <mxPoint as="targetPoint" x="491" y="461" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label9" value="Final Qty / status" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="515" y="427" width="69.52001953125" height="14" />
+        </mxCell>
+        <mxCell id="edge10" value="" edge="1" parent="1" source="e3" target="p6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.49142857142857144;exitY=1.0;entryX=0.49142857142857144;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="402" y="355" />
+            <mxPoint as="targetPoint" x="402" y="435" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label10" value="Category produk" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="409" y="391" width="68.62314453124999" height="14" />
+        </mxCell>
+        <mxCell id="edge11" value="" edge="1" parent="1" source="d2" target="p6" style="endArrow=block;strokeColor=#526070;rounded=0;exitX=0.4967741935483871;exitY=1.0;entryX=0.17142857142857143;entryY=0.0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="113" y="330" />
+            <mxPoint as="targetPoint" x="346" y="435" />
+            <Array as="points">
+              <mxPoint x="113" y="375" />
+              <mxPoint x="346" y="375" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label11" value="Metadata dan scope" vertex="1" parent="1" style="text;whiteSpace=wrap;html=0;fontSize=9;align=left;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="145" y="358" width="82.30849609375" height="14" />
+        </mxCell>
+        <mxCell id="e2" value="E2  Operator web" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="135" width="155" height="55" />
+        </mxCell>
+        <mxCell id="p5" value="5.0  Generate&#10;snapshot SOH" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="135" width="175" height="55" />
+        </mxCell>
+        <mxCell id="e4" value="E4  StockCard" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="628" y="135" width="178" height="55" />
+        </mxCell>
+        <mxCell id="d2" value="D2  Schedule&#10;lokasi dan cut-off" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="275" width="155" height="55" />
+        </mxCell>
+        <mxCell id="d5" value="D5  SOH dan&#10;log generate" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="628" y="275" width="178" height="55" />
+        </mxCell>
+        <mxCell id="q" value="E2  Pembaca report&#10;dan dashboard" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="36" y="435" width="155" height="55" />
+        </mxCell>
+        <mxCell id="p6" value="6.0  Monitoring&#10;dan reporting" vertex="1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#eef2f7;">
+          <mxGeometry as="geometry" x="316" y="435" width="175" height="55" />
+        </mxCell>
+        <mxCell id="d4" value="D4  Scan aktif&#10;dan metadata rack" vertex="1" parent="1" style="shape=partialRectangle;top=1;bottom=1;left=0;right=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="628" y="435" width="178" height="55" />
+        </mxCell>
+        <mxCell id="e3" value="E3  MasterData&#10;Hierarki produk" vertex="1" parent="1" style="rounded=0;whiteSpace=wrap;html=0;fontFamily=Arial;fontSize=11;strokeColor=#0b1c44;fillColor=#ffffff;">
+          <mxGeometry as="geometry" x="316" y="300" width="175" height="55" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

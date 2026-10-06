@@ -27,3 +27,6 @@ notes Pak hafiz:
 2. fixing hht ketika scan produk jangan akumulasi jumlah qty
 3. add button tambah plu dan button delete di edit rack per sku (role inventory control)
 4. tambah label nama rechecker di kertas print rack, untuk rechecker nulis manual namanya siapa
+
+notes pak rachmat:
+1. buat mappingan role action (misal, user hafiz & rachmat beda)

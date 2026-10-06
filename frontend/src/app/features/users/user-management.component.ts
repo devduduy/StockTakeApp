@@ -284,6 +284,15 @@ export class UserManagementComponent {
 
     const roleCount = this.roles().length;
     const locCount = this.locations().length;
+    const defaultLocation = this.locations()[0];
+    const defaultLocationString = defaultLocation ? `${defaultLocation.name} (${defaultLocation.code})` : '';
+
+    sheet.addRow({
+      fullName: 'Scanner Bantuan 01',
+      password: '123456',
+      role: 'SCANNER',
+      location: defaultLocationString
+    });
 
     for (let i = 2; i <= 501; i++) {
       if (roleCount > 0) {
@@ -301,15 +310,6 @@ export class UserManagementComponent {
         };
       }
     }
-
-    const defaultLocation = this.locations()[0];
-    const defaultLocationString = defaultLocation ? `${defaultLocation.name} (${defaultLocation.code})` : '';
-    sheet.addRow({
-      fullName: 'Scanner Bantuan 01',
-      password: '1234',
-      role: 'SCANNER',
-      location: defaultLocationString
-    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
