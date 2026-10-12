@@ -48,7 +48,7 @@
 @if (printMessage()) {
   <div class="inline-alert inline-alert--success" role="status">
     <span class="material-symbols-outlined">check_circle</span>
-    <div><strong>Print berhasil</strong><span>{{ printMessage() }}</span></div>
+    <div><strong>Berhasil</strong><span>{{ printMessage() }}</span></div>
     <button type="button" (click)="printMessage.set('')">Tutup</button>
   </div>
 }
@@ -56,7 +56,7 @@
 @if (printErrorMessage() && !selectedRack()) {
   <div class="inline-alert" role="alert">
     <span class="material-symbols-outlined">error</span>
-    <div><strong>Aksi rack gagal</strong><span>{{ printErrorMessage() }}</span></div>
+    <div><strong>Gagal</strong><span>{{ printErrorMessage() }}</span></div>
     <button type="button" (click)="printErrorMessage.set('')">Tutup</button>
   </div>
 }

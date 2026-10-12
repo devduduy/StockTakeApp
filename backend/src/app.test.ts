@@ -123,6 +123,31 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(rackStatsResponse.body.data.racks[0].submittedLineCount).toBe(1);
     expect(rackStatsResponse.body.data.racks[0].submittedQuantity).toBe(3);
 
+    const managerLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    expect(managerLoginResponse.status).toBe(200);
+    const managerToken = managerLoginResponse.body.data.accessToken as string;
+    const editSubmittedScheduleResponse = await request(app)
+      .put(`/api/stock-take/schedules/${scheduleId}`)
+      .set("authorization", `Bearer ${managerToken}`)
+      .send({
+        scheduleDesc: "Should Be Blocked",
+        locCode: "6168",
+        startDate: "2026-07-29",
+        endDate: "2026-07-29",
+        cutOffDate: "2026-07-29",
+        startTime: "08:00",
+        endTime: null,
+        stockType: "ALL",
+        categoryIds: [],
+        rackIds: [],
+        status: "OPEN",
+      });
+    expect(editSubmittedScheduleResponse.status).toBe(409);
+    expect(editSubmittedScheduleResponse.body.error.code).toBe("SCHEDULE_HAS_SCANS");
+
     const mockData = await import("./shared/mock-data.js");
     const submittedScan = mockData.mockScanSubmissions.find(
       (scan) => scan.clientScanId === "test-client-scan-1",
@@ -285,6 +310,26 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.data.locCode).toBe("1001");
     expect(createResponse.body.data.endDate).toBe("2026-08-06");
+
+    const updateLocationResponse = await request(app)
+      .put(`/api/stock-take/schedules/${createResponse.body.data.id}`)
+      .set("authorization", `Bearer ${token}`)
+      .send({
+        scheduleDesc: "Inventory Control Move Store",
+        locCode: "6168",
+        startDate: "2026-08-04",
+        endDate: "2026-08-06",
+        cutOffDate: "2026-08-03",
+        startTime: "08:00",
+        endTime: "17:00",
+        stockType: "ALL",
+        categoryIds: [],
+        rackIds: [],
+        status: "OPEN",
+      });
+    expect(updateLocationResponse.status).toBe(200);
+    expect(updateLocationResponse.body.data.locCode).toBe("6168");
+    expect(updateLocationResponse.body.data.scheduleDesc).toBe("STOCK TAKE 6168 ALL 2026-08-03");
   });
 
   it("lets store manager manage users only for their base location", async () => {

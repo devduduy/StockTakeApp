@@ -991,10 +991,12 @@ export async function updateSchedule(
       throw new AppError(409, "Schedule sudah memiliki data scan.", "SCHEDULE_HAS_SCANS");
     }
     const schedule = mockSchedules.find((candidate) => Number(candidate.id) === scheduleId);
-    if (!schedule || schedule.locCode !== payload.locCode) {
+    if (!schedule) {
       throw new AppError(404, "Schedule tidak ditemukan.", "SCHEDULE_NOT_FOUND");
     }
     schedule.scheduleDesc = generatedScheduleDesc;
+    schedule.locCode = payload.locCode;
+    schedule.locationName = payload.locCode;
     schedule.scheduleDate = payload.startDate;
     schedule.endDate = payload.endDate;
     schedule.cutOffDate = payload.cutOffDate;
@@ -1015,15 +1017,14 @@ export async function updateSchedule(
   const result = await pool
     .request()
     .input("scheduleId", sql.BigInt, scheduleId)
-    .input("locCode", sql.Char(4), payload.locCode)
-    .query<{ scan_count: number }>(`
+    .query<{ scan_count?: number; id?: string }>(`
       SELECT COUNT(1) AS scan_count
       FROM dbo.TR_STOCK_TAKE_SCAN
       WHERE SCHEDULE_ID = @scheduleId;
 
       SELECT TOP (1) CAST(ID AS varchar(30)) AS id
       FROM dbo.TR_STOCK_SCHEDULE
-      WHERE ID = @scheduleId AND LOC_CODE = @locCode;
+      WHERE ID = @scheduleId;
     `);
 
   const scanCount = result.recordsets[0]?.[0]?.scan_count ?? 0;
@@ -1056,6 +1057,7 @@ export async function updateSchedule(
       .query(`
         UPDATE dbo.TR_STOCK_SCHEDULE
         SET SCHEDULE_DESC = @scheduleDesc,
+            LOC_CODE = @locCode,
             SCHEDULE_DATE = @scheduleDate,
             END_DATE = @endDate,
             CUT_OFF_SOH_DATE = @cutOffDate,
@@ -1067,8 +1069,7 @@ export async function updateSchedule(
             CATEGORY_ID = @categoryId,
             USER_MODIFIED = @username,
             DATE_MODIFIED = SYSUTCDATETIME()
-        WHERE ID = @scheduleId
-          AND LOC_CODE = @locCode;
+        WHERE ID = @scheduleId;
       `);
     await applySqlScheduleRackScope(transaction, scheduleId, payload);
     await transaction.commit();
