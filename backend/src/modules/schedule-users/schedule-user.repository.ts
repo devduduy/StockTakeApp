@@ -19,6 +19,43 @@ interface ScheduleUserRow {
   locked: number | boolean;
 }
 
+export const replaceScheduleUsersSql = `
+  UPDATE dbo.TR_STOCK_SCHEDULE_USER
+  SET STATUS = 'INACTIVE',
+      USER_MODIFIED = @username,
+      DATE_MODIFIED = SYSUTCDATETIME()
+  WHERE SCHEDULE_ID = @scheduleId
+    AND USER_ID NOT IN (
+      SELECT u.ID
+      FROM dbo.MST_USERS u
+      INNER JOIN dbo.TR_STOCK_SCHEDULE schedule ON schedule.ID = @scheduleId
+      INNER JOIN STRING_SPLIT(@userCsv, ',') selected
+        ON TRY_CONVERT(bigint, selected.value) = u.ID
+      WHERE u.LOC_CODE <> schedule.LOC_CODE
+    );
+
+  MERGE dbo.TR_STOCK_SCHEDULE_USER WITH (HOLDLOCK) AS target
+  USING (
+    SELECT DISTINCT u.ID AS USER_ID
+    FROM STRING_SPLIT(@userCsv, ',')
+    INNER JOIN dbo.MST_USERS u
+      ON u.ID = TRY_CONVERT(bigint, value)
+    INNER JOIN dbo.TR_STOCK_SCHEDULE schedule
+      ON schedule.ID = @scheduleId
+    WHERE u.LOC_CODE <> schedule.LOC_CODE
+  ) AS source
+    ON target.SCHEDULE_ID = @scheduleId
+   AND target.USER_ID = source.USER_ID
+  WHEN MATCHED THEN
+    UPDATE SET
+      STATUS = 'ACTIVE',
+      USER_MODIFIED = @username,
+      DATE_MODIFIED = SYSUTCDATETIME()
+  WHEN NOT MATCHED THEN
+    INSERT (SCHEDULE_ID, USER_ID, STATUS, USER_CREATED)
+    VALUES (@scheduleId, source.USER_ID, 'ACTIVE', @username);
+`;
+
 function uniqueUserIds(userIds: Array<string | number>): string[] {
   return [...new Set(
     userIds
@@ -265,42 +302,7 @@ export async function replaceScheduleUsers(
       .input("scheduleId", sql.BigInt, scheduleId)
       .input("userCsv", sql.VarChar(sql.MAX), userCsv)
       .input("username", sql.VarChar(100), usernameActor)
-      .query(`
-        UPDATE dbo.TR_STOCK_SCHEDULE_USER
-        SET STATUS = 'INACTIVE',
-            USER_MODIFIED = @username,
-            DATE_MODIFIED = SYSUTCDATETIME()
-        WHERE SCHEDULE_ID = @scheduleId
-          AND USER_ID NOT IN (
-            SELECT u.ID
-            FROM dbo.MST_USERS u
-            INNER JOIN dbo.TR_STOCK_SCHEDULE schedule ON schedule.ID = @scheduleId
-            INNER JOIN STRING_SPLIT(@userCsv, ',') selected
-              ON TRY_CONVERT(bigint, selected.value) = u.ID
-            WHERE u.LOC_CODE <> schedule.LOC_CODE
-          ));
-
-        MERGE dbo.TR_STOCK_SCHEDULE_USER WITH (HOLDLOCK) AS target
-        USING (
-          SELECT DISTINCT u.ID AS USER_ID
-          FROM STRING_SPLIT(@userCsv, ',')
-          INNER JOIN dbo.MST_USERS u
-            ON u.ID = TRY_CONVERT(bigint, value)
-          INNER JOIN dbo.TR_STOCK_SCHEDULE schedule
-            ON schedule.ID = @scheduleId
-          WHERE u.LOC_CODE <> schedule.LOC_CODE
-        ) AS source
-          ON target.SCHEDULE_ID = @scheduleId
-         AND target.USER_ID = source.USER_ID
-        WHEN MATCHED THEN
-          UPDATE SET
-            STATUS = 'ACTIVE',
-            USER_MODIFIED = @username,
-            DATE_MODIFIED = SYSUTCDATETIME()
-        WHEN NOT MATCHED THEN
-          INSERT (SCHEDULE_ID, USER_ID, STATUS, USER_CREATED)
-          VALUES (@scheduleId, source.USER_ID, 'ACTIVE', @username);
-      `);
+      .query(replaceScheduleUsersSql);
     await transaction.commit();
   } catch (error) {
     await transaction.rollback();

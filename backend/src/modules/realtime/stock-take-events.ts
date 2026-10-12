@@ -1,6 +1,8 @@
 import type { RequestHandler, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
+import { canAccessLocation } from "../../shared/location-access.js";
+import { isUserAssignedToSchedule } from "../schedule-users/schedule-user.repository.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 
 export type StockTakeEventType =
@@ -111,6 +113,22 @@ export const stockTakeEventStream: RequestHandler = (request, response) => {
   request.on("close", () => closeClient(clientId));
 };
 
+export async function canReceiveStockTakeEvent(
+  auth: AuthenticatedUser,
+  event: StockTakeEventPayload,
+): Promise<boolean> {
+  if (!event.locCode && !event.scheduleId) {
+    return true;
+  }
+  if (event.locCode && canAccessLocation(auth, event.locCode)) {
+    return true;
+  }
+  if (event.scheduleId) {
+    return isUserAssignedToSchedule(event.scheduleId, auth.userId, auth.username);
+  }
+  return false;
+}
+
 export function broadcastStockTakeEvent(event: StockTakeEventPayload): void {
   const payload: StockTakeEventPayload = {
     ...event,
@@ -118,11 +136,16 @@ export function broadcastStockTakeEvent(event: StockTakeEventPayload): void {
   };
 
   for (const client of clients.values()) {
-    try {
-      writeEvent(client.response, "stock-take", payload);
-    } catch {
-      closeClient(client.id);
-    }
+    void canReceiveStockTakeEvent(client.auth, payload)
+      .then((allowed) => {
+        if (!allowed) return;
+        try {
+          writeEvent(client.response, "stock-take", payload);
+        } catch {
+          closeClient(client.id);
+        }
+      })
+      .catch(() => undefined);
   }
 }
 

@@ -26,16 +26,19 @@ android {
         versionName = "0.1.0-prototype"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [usesCleartextTraffic: "true"]
     }
 
     buildTypes {
         debug {
             buildConfigField "boolean", "MOCK_MODE", "false"
             buildConfigField "String", "API_BASE_URL", "\"${stocktakeApiBaseUrl}\""
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
             buildConfigField "boolean", "MOCK_MODE", "false"
             buildConfigField "String", "API_BASE_URL", "\"https://stocktake-api.example.com/\""
+            manifestPlaceholders = [usesCleartextTraffic: "false"]
             minifyEnabled = false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }

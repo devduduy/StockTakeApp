@@ -18,6 +18,11 @@ import { scanRouter } from "./modules/scans/scan.routes.js";
 import { sohRouter } from "./modules/soh/soh.routes.js";
 import { userRouter } from "./modules/users/user.routes.js";
 
+function sanitizeRequestUrl(url?: string): string | undefined {
+  if (!url) return url;
+  return url.replace(/([?&]token=)[^&]*/gi, "$1[REDACTED]");
+}
+
 export function createApp(): express.Express {
   const app = express();
 
@@ -25,6 +30,18 @@ export function createApp(): express.Express {
   app.use(
     pinoHttp({
       logger,
+      serializers: {
+        req(request) {
+          return {
+            id: request.id,
+            method: request.method,
+            url: sanitizeRequestUrl(request.url),
+            headers: request.headers,
+            remoteAddress: request.remoteAddress,
+            remotePort: request.remotePort,
+          };
+        },
+      },
       genReqId(request, response) {
         const requestId = request.headers["x-request-id"];
         const resolved = Array.isArray(requestId) ? requestId[0] : requestId;

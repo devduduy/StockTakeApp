@@ -7,6 +7,28 @@ process.env.NODE_ENV = "test";
 
 let app: express.Express;
 
+function hasBalancedParentheses(sqlText: string): boolean {
+  let depth = 0;
+  let inSingleQuote = false;
+  for (let index = 0; index < sqlText.length; index += 1) {
+    const character = sqlText[index];
+    const nextCharacter = sqlText[index + 1];
+    if (character === "'" && inSingleQuote && nextCharacter === "'") {
+      index += 1;
+      continue;
+    }
+    if (character === "'") {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (inSingleQuote) continue;
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (depth < 0) return false;
+  }
+  return depth === 0 && !inSingleQuote;
+}
+
 beforeAll(async () => {
   const module = await import("./app.js");
   app = module.createApp();
@@ -17,6 +39,12 @@ describe("Hero Stock Take API (mock mode)", () => {
     const response = await request(app).get("/api/health");
     expect(response.status).toBe(200);
     expect(response.body.data.status).toBe("ok");
+  });
+
+  it("keeps the real SQL schedule team update query structurally valid", async () => {
+    const module = await import("./modules/schedule-users/schedule-user.repository.js");
+    expect(hasBalancedParentheses(module.replaceScheduleUsersSql)).toBe(true);
+    expect(module.replaceScheduleUsersSql).not.toContain("));");
   });
 
   it("rejects invalid credentials", async () => {
@@ -397,6 +425,19 @@ describe("Hero Stock Take API (mock mode)", () => {
       .set("authorization", `Bearer ${helperToken}`);
     expect(rackResponse.status).toBe(200);
     expect(rackResponse.body.data.racks.length).toBeGreaterThan(0);
+
+    const realtimeModule = await import("./modules/realtime/stock-take-events.js");
+    const helperAuth = helperLoginResponse.body.data.user;
+    expect(await realtimeModule.canReceiveStockTakeEvent(helperAuth, {
+      type: "rack.scanned",
+      scheduleId: Number(scheduleId),
+      locCode: "6168",
+    })).toBe(true);
+    expect(await realtimeModule.canReceiveStockTakeEvent(helperAuth, {
+      type: "rack.scanned",
+      scheduleId: 999_999,
+      locCode: "6168",
+    })).toBe(false);
   });
 
   it("prints submitted rack scans and locks further mobile submissions", async () => {
