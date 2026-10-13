@@ -7,6 +7,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { categoryTemplateRouter } from "./modules/category-templates/category-template.routes.js";
 import { categoryRouter } from "./modules/categories/category.routes.js";
 import { itemRouter } from "./modules/items/item.routes.js";
 import { locationRouter } from "./modules/locations/location.routes.js";
@@ -86,6 +87,7 @@ export function createApp(): express.Express {
   app.use(`${env.API_PREFIX}/stock-take/schedules`, scanRouter);
   app.use(`${env.API_PREFIX}/stock-take/racks`, rackMasterRouter);
   app.use(`${env.API_PREFIX}/stock-take/items`, itemRouter);
+  app.use(`${env.API_PREFIX}/stock-take/category-templates`, categoryTemplateRouter);
   app.use(`${env.API_PREFIX}/stock-take/categories`, categoryRouter);
   app.use(`${env.API_PREFIX}/stock-take/locations`, locationRouter);
   app.use(`${env.API_PREFIX}/stock-take/users`, userRouter);

@@ -55,6 +55,24 @@ export interface Category {
   division: { id: string; name: string };
 }
 
+export interface CategoryTemplate {
+  id: string;
+  templateName: string;
+  description: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
+  categoryIds: string[];
+  categories: Category[];
+  categoryCount: number;
+  dateCreated: string | null;
+  dateModified: string | null;
+}
+
+export interface CategoryTemplatePayload {
+  templateName: string;
+  description: string | null;
+  categoryIds: string[];
+}
+
 export interface Location {
   code: string;
   name: string;

@@ -5,6 +5,8 @@ import {
   ActiveSchedule,
   ApiEnvelope,
   Category,
+  CategoryTemplate,
+  CategoryTemplatePayload,
   DashboardSnapshot,
   Location,
   ManagedUser,
@@ -109,6 +111,36 @@ export class StockTakeApiService {
   getCategories(): Observable<Category[]> {
     return this.http
       .get<ApiEnvelope<Category[]>>('/api/stock-take/categories')
+      .pipe(map(({ data }) => data));
+  }
+
+  getCategoryTemplates(): Observable<CategoryTemplate[]> {
+    return this.http
+      .get<ApiEnvelope<CategoryTemplate[]>>('/api/stock-take/category-templates')
+      .pipe(map(({ data }) => data));
+  }
+
+  createCategoryTemplate(payload: CategoryTemplatePayload): Observable<CategoryTemplate> {
+    return this.http
+      .post<ApiEnvelope<CategoryTemplate>>('/api/stock-take/category-templates', payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  updateCategoryTemplate(templateId: string, payload: CategoryTemplatePayload): Observable<CategoryTemplate> {
+    return this.http
+      .put<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}`, payload)
+      .pipe(map(({ data }) => data));
+  }
+
+  deactivateCategoryTemplate(templateId: string): Observable<CategoryTemplate> {
+    return this.http
+      .delete<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}`)
+      .pipe(map(({ data }) => data));
+  }
+
+  activateCategoryTemplate(templateId: string): Observable<CategoryTemplate> {
+    return this.http
+      .post<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}/activate`, {})
       .pipe(map(({ data }) => data));
   }
 

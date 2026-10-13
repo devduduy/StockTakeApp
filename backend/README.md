@@ -17,6 +17,7 @@ Backend Express.js + TypeScript untuk mobile HHT dan web Hero Stock Take. Backen
   - `END_DATE` wajib tersedia lewat migration.
   - Stock type hanya `ALL` dan `PARTIAL`.
   - `CATEGORY_ID` menyimpan multi category untuk schedule PARTIAL.
+  - Template category PARTIAL disimpan di `dbo.MST_CATEGORY_TEMPLATE` dan `dbo.MST_CATEGORY_TEMPLATE_DETAIL`.
   - User bantuan dari toko lain bisa ditugaskan langsung di schedule tanpa mengubah lokasi asli user.
 - Rack:
   - Master rack di `dbo.MST_RACK`.
@@ -48,6 +49,18 @@ Health check:
 ```text
 GET http://127.0.0.1:3000/api/health
 ```
+
+Endpoint template category:
+
+```text
+GET    /api/stock-take/category-templates
+GET    /api/stock-take/category-templates/:id
+POST   /api/stock-take/category-templates
+PUT    /api/stock-take/category-templates/:id
+DELETE /api/stock-take/category-templates/:id
+```
+
+Create, update, dan delete template hanya untuk role `INVENTORY_CONTROL`.
 
 ## Konfigurasi SQL Server
 
@@ -166,6 +179,8 @@ Tabel aplikasi yang dihapus oleh reset:
 - `dbo.TR_STOCK_SCHEDULE`
 - `dbo.MST_SOH`
 - `dbo.MST_RACK`
+- `dbo.MST_CATEGORY_TEMPLATE_DETAIL`
+- `dbo.MST_CATEGORY_TEMPLATE`
 - `dbo.MST_USERS`
 - `dbo.MST_STOCK_TYPE`
 - `dbo.MST_ROLE`

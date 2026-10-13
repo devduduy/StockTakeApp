@@ -130,6 +130,20 @@ export interface MockScheduleUser {
 
 export const mockScheduleUsers: MockScheduleUser[] = [];
 
+export interface MockCategoryTemplate {
+  id: string;
+  templateName: string;
+  description: string | null;
+  status: string;
+  categoryIds: string[];
+  userCreated?: string;
+  dateCreated?: string;
+  userModified?: string;
+  dateModified?: string | null;
+}
+
+export const mockCategoryTemplates: MockCategoryTemplate[] = [];
+
 export const mockItems = [
   {
     barcode: "383800000013",

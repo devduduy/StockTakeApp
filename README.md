@@ -23,6 +23,7 @@ StockTakeApp
 - Login JWT berbasis `dbo.MST_USERS` dan `dbo.MST_ROLE`.
 - Mapping akses lokasi via `MST_USERS.LOC_CODE`; Inventory Control dapat akses semua lokasi.
 - Schedule ALL/PARTIAL dengan `CATEGORY_ID` multi-value dari `MasterData.dbo.MFCATEGORY`.
+- Manage Category untuk template scope category schedule PARTIAL.
 - Periode schedule memakai `startDate` dan `endDate`.
 - Rack scope per schedule melalui `dbo.TR_STOCK_SCHEDULE_RACK`.
 - Master rack web dengan create manual dan bulk generator kode `RCK-{2 huruf}-{3 angka}`.
@@ -86,6 +87,8 @@ Tabel aplikasi yang dikelola sistem:
 - `dbo.MST_STOCK_TYPE`
 - `dbo.MST_USERS`
 - `dbo.MST_RACK`
+- `dbo.MST_CATEGORY_TEMPLATE`
+- `dbo.MST_CATEGORY_TEMPLATE_DETAIL`
 - `dbo.MST_SOH`
 - `dbo.TR_SOH_GENERATE_LOG`
 - `dbo.TR_STOCK_SCHEDULE`

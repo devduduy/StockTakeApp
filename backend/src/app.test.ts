@@ -332,6 +332,99 @@ describe("Hero Stock Take API (mock mode)", () => {
     expect(updateLocationResponse.body.data.scheduleDesc).toBe("STOCK TAKE 6168 ALL 2026-08-03");
   });
 
+  it("lets only inventory control manage category templates", async () => {
+    const managerLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "store_manager01",
+      password: "prototype",
+    });
+    expect(managerLoginResponse.status).toBe(200);
+    const managerToken = managerLoginResponse.body.data.accessToken as string;
+
+    const forbiddenResponse = await request(app)
+      .post("/api/stock-take/category-templates")
+      .set("authorization", `Bearer ${managerToken}`)
+      .send({
+        templateName: "Fresh Template Forbidden",
+        description: null,
+        categoryIds: ["40601"],
+      });
+    expect(forbiddenResponse.status).toBe(403);
+
+    const inventoryLoginResponse = await request(app).post("/api/auth/login").send({
+      username: "inventory_control01",
+      password: "prototype",
+    });
+    expect(inventoryLoginResponse.status).toBe(200);
+    const inventoryToken = inventoryLoginResponse.body.data.accessToken as string;
+
+    const invalidCategoryResponse = await request(app)
+      .post("/api/stock-take/category-templates")
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({
+        templateName: "Invalid Category Template",
+        description: null,
+        categoryIds: ["UNKNOWN_CATEGORY"],
+      });
+    expect(invalidCategoryResponse.status).toBe(400);
+    expect(invalidCategoryResponse.body.error.code).toBe("CATEGORY_TEMPLATE_CATEGORY_NOT_FOUND");
+
+    const createResponse = await request(app)
+      .post("/api/stock-take/category-templates")
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({
+        templateName: "Fresh Partial",
+        description: "Default category fresh",
+        categoryIds: ["40601"],
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.data.templateName).toBe("Fresh Partial");
+    expect(createResponse.body.data.categoryIds).toEqual(["40601"]);
+    expect(createResponse.body.data.categories[0].name).toBe("SEAFOOD");
+
+    const duplicateResponse = await request(app)
+      .post("/api/stock-take/category-templates")
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({
+        templateName: "Fresh Partial",
+        description: null,
+        categoryIds: ["10101"],
+      });
+    expect(duplicateResponse.status).toBe(409);
+    expect(duplicateResponse.body.error.code).toBe("CATEGORY_TEMPLATE_NAME_EXISTS");
+
+    const templateId = createResponse.body.data.id as string;
+    const updateResponse = await request(app)
+      .put(`/api/stock-take/category-templates/${templateId}`)
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({
+        templateName: "Fresh Grocery Partial",
+        description: "Fresh plus grocery",
+        categoryIds: ["40601", "10101"],
+      });
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.data.categoryIds).toEqual(["40601", "10101"]);
+    expect(updateResponse.body.data.categoryCount).toBe(2);
+
+    const listResponse = await request(app)
+      .get("/api/stock-take/category-templates")
+      .set("authorization", `Bearer ${inventoryToken}`);
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.data.some((template: { id: string }) => template.id === templateId)).toBe(true);
+
+    const deleteResponse = await request(app)
+      .delete(`/api/stock-take/category-templates/${templateId}`)
+      .set("authorization", `Bearer ${inventoryToken}`);
+    expect(deleteResponse.status).toBe(200);
+    expect(deleteResponse.body.data.status).toBe("INACTIVE");
+
+    const activateResponse = await request(app)
+      .post(`/api/stock-take/category-templates/${templateId}/activate`)
+      .set("authorization", `Bearer ${inventoryToken}`)
+      .send({});
+    expect(activateResponse.status).toBe(200);
+    expect(activateResponse.body.data.status).toBe("ACTIVE");
+  });
+
   it("lets store manager manage users only for their base location", async () => {
     const loginResponse = await request(app).post("/api/auth/login").send({
       username: "store_manager01",

@@ -1,0 +1,276 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">MASTER TEMPLATE</p>
+    <h1>Manage Category</h1>
+    <p>Kelola template category untuk schedule PARTIAL agar scope opname bisa dipakai konsisten.</p>
+  </div>
+  <div class="page-heading__actions">
+    <button class="secondary-button" type="button" (click)="refresh()" [disabled]="refreshing()">
+      <span class="material-symbols-outlined" [class.spin]="refreshing()">refresh</span>
+      Perbarui
+    </button>
+    <button class="primary-button" type="button" (click)="openCreateForm()" [disabled]="!canManage()">
+      <span class="material-symbols-outlined">add</span>
+      Tambah Template
+    </button>
+  </div>
+</section>
+
+@if (!canManage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">lock</span>
+    <div><strong>Akses terbatas</strong><span>Template category hanya bisa dikelola oleh Inventory Control.</span></div>
+  </div>
+}
+
+@if (successMessage()) {
+  <div class="inline-alert inline-alert--success" role="status">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>Berhasil</strong><span>{{ successMessage() }}</span></div>
+    <button type="button" (click)="successMessage.set('')">Tutup</button>
+  </div>
+}
+
+@if (errorMessage()) {
+  <div class="inline-alert" role="alert">
+    <span class="material-symbols-outlined">error</span>
+    <div><strong>Manage category bermasalah</strong><span>{{ errorMessage() }}</span></div>
+    <button type="button" (click)="refresh()">Coba lagi</button>
+  </div>
+}
+
+<section class="category-metrics">
+  <article>
+    <span class="material-symbols-outlined">category</span>
+    <div><strong>{{ templates().length | number }}</strong><small>Total template</small></div>
+  </article>
+  <article>
+    <span class="material-symbols-outlined">check_circle</span>
+    <div><strong>{{ activeCount() | number }}</strong><small>Template aktif</small></div>
+  </article>
+  <article>
+    <span class="material-symbols-outlined">block</span>
+    <div><strong>{{ inactiveCount() | number }}</strong><small>Inactive</small></div>
+  </article>
+</section>
+
+<section class="content-card template-panel">
+  <div class="template-toolbar">
+    <label class="search-control">
+      <span class="material-symbols-outlined">search</span>
+      <input
+        type="search"
+        placeholder="Cari nama template atau category..."
+        [value]="search()"
+        (input)="search.set($any($event.target).value); page.set(1)"
+      />
+      @if (search()) {
+        <button type="button" aria-label="Hapus pencarian" (click)="search.set(''); page.set(1)">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      }
+    </label>
+    <span class="result-count">{{ filteredTemplates().length | number }} template</span>
+  </div>
+
+  @if (loading()) {
+    <div class="template-grid">
+      @for (item of [1,2,3,4,5,6]; track item) {
+        <article class="template-card"><div class="skeleton skeleton--scan"></div></article>
+      }
+    </div>
+  } @else {
+    <div class="template-grid">
+      @for (template of paginatedTemplates(); track template.id) {
+        <article class="template-card" [class.template-card--inactive]="template.status !== 'ACTIVE'">
+          <header>
+            <div>
+              <span class="status-pill" [class.status-pill--inactive]="template.status !== 'ACTIVE'">{{ template.status }}</span>
+              <h2>{{ template.templateName }}</h2>
+            </div>
+            <div class="action-group">
+              <button type="button" aria-label="Edit template" (click)="openEditForm(template)" [disabled]="!canManage()">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button type="button" aria-label="Nonaktifkan template" (click)="deactivateTemplate(template)" [disabled]="!canManage() || template.status !== 'ACTIVE'">
+                <span class="material-symbols-outlined">block</span>
+              </button>
+              <button type="button" aria-label="Aktifkan template" (click)="activateTemplate(template)" [disabled]="!canManage() || template.status === 'ACTIVE'">
+                <span class="material-symbols-outlined">check_circle</span>
+              </button>
+            </div>
+          </header>
+          <p>{{ template.description || 'Tidak ada deskripsi.' }}</p>
+          <div class="template-card__meta">
+            <span><i class="material-symbols-outlined">sell</i>{{ template.categoryCount }} category</span>
+            <span><i class="material-symbols-outlined">update</i>{{ updatedAt(template) }}</span>
+          </div>
+          <div class="template-card__summary">{{ categorySummary(template) }}</div>
+        </article>
+      } @empty {
+        <div class="empty-state compact">
+          <span class="material-symbols-outlined">category</span>
+          <h3>Template tidak ditemukan</h3>
+          <p>Buat template category baru atau ubah kata pencarian.</p>
+        </div>
+      }
+    </div>
+
+    @if (filteredTemplates().length > 0) {
+      <div class="pagination-footer">
+        <span class="pagination-info">Menampilkan {{ paginatedTemplates().length }} dari {{ filteredTemplates().length }} data</span>
+        <div class="pagination-controls">
+          <button type="button" (click)="prevPage()" [disabled]="page() === 1">
+            <span class="material-symbols-outlined">chevron_left</span> Prev
+          </button>
+          <span>Halaman {{ page() }} dari {{ totalPages() }}</span>
+          <button type="button" (click)="nextPage()" [disabled]="page() === totalPages()">
+            Next <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    }
+  }
+</section>
+
+@if (formOpen()) {
+  <button class="modal-backdrop" type="button" aria-label="Tutup form template" (click)="closeForm()"></button>
+  <section class="template-modal" role="dialog" aria-modal="true" aria-labelledby="template-modal-title">
+    <form [formGroup]="templateForm" (ngSubmit)="saveTemplate()" novalidate>
+      <header>
+        <div>
+          <p class="eyebrow">CATEGORY TEMPLATE</p>
+          <h2 id="template-modal-title">
+            @if (selectedTemplate()) { Edit Template } @else { Tambah Template }
+          </h2>
+          <span>Template dipakai sebagai scope category saat membuat schedule PARTIAL.</span>
+        </div>
+        <button type="button" aria-label="Tutup" (click)="closeForm()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </header>
+
+      <div class="modal-body">
+        @if (formErrorMessage()) {
+          <div class="form-alert" role="alert">
+            <span class="material-symbols-outlined">error</span>
+            <strong>{{ formErrorMessage() }}</strong>
+          </div>
+        }
+
+        <div class="form-grid form-grid--single">
+          <label class="form-field">
+            <span>Nama Template <b>*</b></span>
+            <input type="text" formControlName="templateName" placeholder="Contoh: Fresh Only" />
+            @if (templateForm.controls.templateName.touched && templateForm.controls.templateName.invalid) {
+              <small>Nama template wajib diisi minimal 2 karakter.</small>
+            }
+          </label>
+        </div>
+
+        <label class="form-field">
+          <span>Deskripsi</span>
+          <textarea formControlName="description" rows="3" placeholder="Catatan singkat fungsi template ini."></textarea>
+        </label>
+
+        <section class="category-panel">
+          <div class="category-panel__header">
+            <div>
+              <strong>Category <b>*</b></strong>
+              <span>{{ selectedCategoryIds().length }} dipilih</span>
+            </div>
+            <button type="button" (click)="clearCategories()">Kosongkan</button>
+          </div>
+
+          @if (selectedCategories().length > 0) {
+            <div class="selected-category-list" aria-label="Category terpilih">
+              @for (category of selectedCategories(); track category.id) {
+                <button type="button" (click)="removeCategory(category.id)">
+                  <span>{{ category.id }}</span>
+                  {{ category.name }}
+                  <i class="material-symbols-outlined">close</i>
+                </button>
+              }
+            </div>
+          }
+
+          <label class="search-control category-search">
+            <span class="material-symbols-outlined">search</span>
+            <input
+              type="search"
+              placeholder="Cari division, department, category..."
+              [value]="categorySearch()"
+              (input)="categorySearch.set($any($event.target).value)"
+            />
+          </label>
+
+          <div class="category-tree">
+            @for (group of filteredCategoryGroups(); track group.divisionId) {
+              <section class="division-group" [class.division-group--open]="divisionExpanded(group.divisionId)">
+                <div class="division-group__header">
+                  <label>
+                    <input
+                      type="checkbox"
+                      [checked]="checkedState(divisionCategories(group)) === 'all'"
+                      [indeterminate]="checkedState(divisionCategories(group)) === 'partial'"
+                      (change)="toggleCategoryGroup(divisionCategories(group), $any($event.target).checked)"
+                    />
+                    <span>{{ group.divisionName }}</span>
+                  </label>
+                  <button type="button" (click)="toggleDivision(group.divisionId)" [attr.aria-expanded]="divisionExpanded(group.divisionId)">
+                    <small>{{ divisionCategories(group).length }} category</small>
+                    <i class="material-symbols-outlined">expand_more</i>
+                  </button>
+                </div>
+                @if (divisionExpanded(group.divisionId)) {
+                  @for (department of group.departments; track department.departmentId) {
+                    <div class="department-group">
+                      <div class="department-group__title">
+                        <label>
+                          <input
+                            type="checkbox"
+                            [checked]="checkedState(department.categories) === 'all'"
+                            [indeterminate]="checkedState(department.categories) === 'partial'"
+                            (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
+                          />
+                          <span>{{ department.departmentName }}</span>
+                        </label>
+                      </div>
+                      <div class="category-options">
+                        @for (category of department.categories; track category.id) {
+                          <label>
+                            <input
+                              type="checkbox"
+                              [checked]="categoryChecked(category.id)"
+                              (change)="toggleCategory(category.id, $any($event.target).checked)"
+                            />
+                            <span>{{ category.id }}</span>
+                            {{ category.name }}
+                          </label>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+              </section>
+            } @empty {
+              <div class="empty-state compact">
+                <span class="material-symbols-outlined">search_off</span>
+                <h3>Category tidak ditemukan</h3>
+                <p>Coba kata pencarian lain.</p>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+
+      <footer class="drawer-footer">
+        <button class="secondary-button" type="button" (click)="closeForm()" [disabled]="saving()">Batal</button>
+        <button class="primary-button" type="submit" [disabled]="saving() || !canManage()">
+          @if (saving()) { <span class="spinner"></span> Menyimpan... }
+          @else { <span class="material-symbols-outlined">save</span> Simpan Template }
+        </button>
+      </footer>
+    </form>
+  </section>
+}

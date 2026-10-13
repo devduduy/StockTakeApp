@@ -29,6 +29,7 @@ export class AppShellComponent {
     { label: 'Schedule', icon: 'event_note', route: '/schedules' },
     { label: 'Schedule Close', icon: 'event_available', route: '/closed-schedules' },
     { label: 'Master Rack', icon: 'inventory_2', route: '/master-racks' },
+    { label: 'Manage Category', icon: 'category', route: '/manage-category' },
     { label: 'Master SOH', icon: 'database', route: '/master-soh' },
     { label: 'Manage User', icon: 'manage_accounts', route: '/users' },
     {

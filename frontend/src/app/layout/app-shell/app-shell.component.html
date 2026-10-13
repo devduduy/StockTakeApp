@@ -33,7 +33,7 @@
               type="button"
               (click)="toggleNavigationGroup(item)"
               [attr.aria-expanded]="isNavigationGroupExpanded(item)"
-              [title]="desktopMenuCollapsed() ? item.label : null"
+              [attr.title]="desktopMenuCollapsed() ? item.label : null"
             >
               <span class="material-symbols-outlined">{{ item.icon }}</span>
               <span>{{ item.label }}</span>
@@ -63,14 +63,14 @@
             routerLinkActive="main-nav__item--active"
             [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
             (click)="closeMenu()"
-            [title]="desktopMenuCollapsed() ? item.label : null"
+            [attr.title]="desktopMenuCollapsed() ? item.label : null"
           >
             <span class="material-symbols-outlined">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
             @if (item.hint) { <small>{{ item.hint }}</small> }
           </a>
         } @else {
-          <div class="main-nav__item main-nav__item--disabled" [title]="item.hint">
+          <div class="main-nav__item main-nav__item--disabled" [attr.title]="item.hint || null">
             <span class="material-symbols-outlined">{{ item.icon }}</span>
             <span>{{ item.label }}</span>
             <small>Segera</small>

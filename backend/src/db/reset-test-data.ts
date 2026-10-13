@@ -19,6 +19,8 @@ const RESET_TABLES = [
   "MST_SOH",
   "TR_STOCK_SCHEDULE",
   "MST_RACK",
+  "MST_CATEGORY_TEMPLATE_DETAIL",
+  "MST_CATEGORY_TEMPLATE",
   "MST_USERS",
   "MST_STOCK_TYPE",
   "MST_ROLE",
@@ -80,9 +82,11 @@ export async function resetTestData(): Promise<ResetTestDataResult> {
         ('MST_SOH', 50),
         ('TR_STOCK_SCHEDULE', 60),
         ('MST_RACK', 70),
-        ('MST_USERS', 80),
-        ('MST_STOCK_TYPE', 90),
-        ('MST_ROLE', 100);
+        ('MST_CATEGORY_TEMPLATE_DETAIL', 80),
+        ('MST_CATEGORY_TEMPLATE', 90),
+        ('MST_USERS', 100),
+        ('MST_STOCK_TYPE', 110),
+        ('MST_ROLE', 120);
 
       SELECT
         target.table_name,

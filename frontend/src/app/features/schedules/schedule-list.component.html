@@ -255,21 +255,81 @@
 
         @if (locationReady() && scheduleForm.controls.stockType.value === 'PARTIAL') {
           <section class="category-panel">
+            <div class="category-scope-mode">
+              <label class="form-field scope-mode-field">
+                <span>Scope Category<b>*</b></span>
+                <select [value]="categoryScopeMode()" (change)="onCategoryScopeModeChange($any($event.target).value)">
+                  <option value="CUSTOM">Custom - pilih category manual</option>
+                  <option value="TEMPLATE">Template - pilih template category</option>
+                </select>
+                <!-- <small>
+                  @if (categoryScopeMode() === 'TEMPLATE') {
+                    Category akan terkunci mengikuti template yang dipilih.
+                  } @else {
+                    Pilih category bebas seperti flow sebelumnya.
+                  }
+                </small> -->
+              </label>
+
+              @if (categoryScopeMode() === 'TEMPLATE') {
+                <div class="category-template-picker">
+                  <label class="form-field">
+                    <span>Template Category <b>*</b></span>
+                    <div class="template-combobox" [class.template-combobox--open]="categoryTemplateDropdownOpen()">
+                      <div class="template-combobox__field">
+                        <input
+                          type="text"
+                          placeholder="Cari dan pilih template..."
+                          [value]="categoryTemplateSearch()"
+                          (focus)="onCategoryTemplateFocus()"
+                          (input)="onCategoryTemplateInput($any($event.target).value)"
+                          (blur)="onCategoryTemplateBlur()"
+                        />
+                        <button type="button" tabindex="-1" (mousedown)="$event.preventDefault(); categoryTemplateDropdownOpen.set(!categoryTemplateDropdownOpen())">
+                          <span class="material-symbols-outlined">expand_more</span>
+                        </button>
+                      </div>
+                      @if (categoryTemplateDropdownOpen()) {
+                        <div class="template-combobox__panel">
+                          @for (template of filteredCategoryTemplates(); track template.id) {
+                            <button type="button" (mousedown)="$event.preventDefault(); applyCategoryTemplate(template)">
+                              <strong>{{ template.templateName }}</strong>
+                              <small>{{ template.categoryCount }} category</small>
+                            </button>
+                          } @empty {
+                            <div class="template-combobox__empty">Template tidak ditemukan.</div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </label>
+                  @if (selectedCategoryTemplate()) {
+                    <div class="template-lock-note">
+                      <span class="material-symbols-outlined">lock</span>
+                      Category dikunci mengikuti template {{ selectedCategoryTemplate()?.templateName }}. Pindah ke Custom untuk mengubah manual.
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
             <div class="category-panel__header">
               <div>
                 <strong>Category <b>*</b></strong>
                 <span>{{ selectedCategoryIds().length }} dipilih</span>
               </div>
-              <button type="button" (click)="clearCategories()">Kosongkan</button>
+              <button type="button" (click)="clearCategories()" [disabled]="categoryTreeLocked()">Kosongkan</button>
             </div>
 
             @if (selectedCategories().length > 0) {
               <div class="selected-category-list" aria-label="Category terpilih">
                 @for (category of selectedCategories(); track category.id) {
-                  <button type="button" (click)="removeCategory(category.id)">
+                  <button type="button" (click)="removeCategory(category.id)" [disabled]="categoryTreeLocked()">
                     <span>{{ category.id }}</span>
                     {{ category.name }}
-                    <i class="material-symbols-outlined">close</i>
+                    @if (!categoryTreeLocked()) {
+                      <i class="material-symbols-outlined">close</i>
+                    }
                   </button>
                 }
               </div>
@@ -291,6 +351,7 @@
                     <label>
                       <input
                         type="checkbox"
+                        [disabled]="categoryTreeLocked()"
                         [checked]="checkedState(divisionCategories(group)) === 'all'"
                         [indeterminate]="checkedState(divisionCategories(group)) === 'partial'"
                         (change)="toggleCategoryGroup(divisionCategories(group), $any($event.target).checked)"
@@ -307,11 +368,12 @@
                       <div class="department-group">
                         <div class="department-group__title">
                           <label>
-                            <input
-                              type="checkbox"
-                              [checked]="checkedState(department.categories) === 'all'"
-                              [indeterminate]="checkedState(department.categories) === 'partial'"
-                              (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
+                              <input
+                                type="checkbox"
+                                [disabled]="categoryTreeLocked()"
+                                [checked]="checkedState(department.categories) === 'all'"
+                                [indeterminate]="checkedState(department.categories) === 'partial'"
+                                (change)="toggleCategoryGroup(department.categories, $any($event.target).checked)"
                             />
                             <span>{{ department.departmentName }}</span>
                           </label>
@@ -321,6 +383,7 @@
                             <label>
                               <input
                                 type="checkbox"
+                                [disabled]="categoryTreeLocked()"
                                 [checked]="categoryChecked(category.id)"
                                 (change)="toggleCategory(category.id, $any($event.target).checked)"
                               />

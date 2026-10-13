@@ -223,7 +223,49 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .status-pill--inactive { background: #f1f2f5; color: var(--text-muted); }
 .action { width: 90px; text-align: right; }
 .action-group { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.action button, .action-group button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--outline-variant); border-radius: 9px; background: #fff; color: var(--primary); cursor: pointer; }
+.action button, .action-group button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--outline-variant);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  transition: background 130ms ease, border-color 130ms ease, color 130ms ease, transform 80ms ease, box-shadow 130ms ease;
+}
+.action button:hover:not(:disabled),
+.action-group button:hover:not(:disabled) {
+  border-color: #c5cce0;
+  background: var(--primary-soft);
+  color: var(--primary);
+  box-shadow: 0 6px 14px rgba(2,21,65,.08);
+}
+.action button:active:not(:disabled),
+.action-group button:active:not(:disabled) { transform: translateY(1px); }
+.action button:disabled,
+.action-group button:disabled { cursor: not-allowed; opacity: .45; box-shadow: none; }
+.action button[aria-label*="Edit"],
+.action-group button[aria-label*="Edit"] { border-color: #c7d4ef; background: #f2f6ff; color: #173d82; }
+.action button[aria-label*="Edit"]:hover:not(:disabled),
+.action-group button[aria-label*="Edit"]:hover:not(:disabled) { border-color: #8ea9df; background: #e4edff; color: #0c2d70; }
+.action button[aria-label*="Delete"],
+.action-group button[aria-label*="Delete"],
+.action button[aria-label*="Hapus"],
+.action-group button[aria-label*="Hapus"],
+.action button[aria-label*="Nonaktif"],
+.action-group button[aria-label*="Nonaktif"] { border-color: #f2c5c9; background: #fff3f4; color: var(--secondary); }
+.action button[aria-label*="Delete"]:hover:not(:disabled),
+.action-group button[aria-label*="Delete"]:hover:not(:disabled),
+.action button[aria-label*="Hapus"]:hover:not(:disabled),
+.action-group button[aria-label*="Hapus"]:hover:not(:disabled),
+.action button[aria-label*="Nonaktif"]:hover:not(:disabled),
+.action-group button[aria-label*="Nonaktif"]:hover:not(:disabled) { border-color: #e48d96; background: var(--secondary-soft); color: #9f0014; }
+.action button[aria-label*="Aktif"],
+.action-group button[aria-label*="Aktif"] { border-color: #b8dfc7; background: #effaf3; color: #14743c; }
+.action button[aria-label*="Aktif"]:hover:not(:disabled),
+.action-group button[aria-label*="Aktif"]:hover:not(:disabled) { border-color: #84c79d; background: #def6e7; color: #075c2a; }
 
 /* Form Action */
 .form-action { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--outline-variant); }

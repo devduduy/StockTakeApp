@@ -425,6 +425,123 @@
   margin-top: 14px;
 }
 
+.category-scope-mode {
+  display: grid;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.scope-mode-field {
+  max-width: 440px;
+  margin-bottom: 0;
+}
+
+.category-template-picker {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #dce2f1;
+  border-radius: 10px;
+  background: #f8faff;
+  padding: 12px;
+}
+
+.template-combobox {
+  position: relative;
+}
+
+.template-combobox__field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.template-combobox__field input {
+  min-width: 0;
+  border: 0;
+  padding: 11px 12px;
+  font: inherit;
+  outline: 0;
+}
+
+.template-combobox__field button {
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--outline-variant);
+  color: var(--primary);
+}
+
+.template-combobox__field button .material-symbols-outlined {
+  transition: transform 140ms ease;
+}
+
+.template-combobox--open .template-combobox__field button .material-symbols-outlined {
+  transform: rotate(180deg);
+}
+
+.template-combobox__panel {
+  position: absolute;
+  z-index: 9;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 16px 32px rgba(2, 21, 65, .14);
+  padding: 6px;
+}
+
+.template-combobox__panel button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.template-combobox__panel button:hover {
+  background: var(--primary-soft);
+}
+
+.template-combobox__panel strong {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.template-combobox__panel small,
+.template-combobox__empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.template-combobox__empty {
+  padding: 10px;
+}
+
+.template-lock-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.template-lock-note .material-symbols-outlined {
+  color: var(--primary);
+  font-size: 17px;
+}
+
 .rack-scope-panel {
   display: grid;
   gap: 12px;

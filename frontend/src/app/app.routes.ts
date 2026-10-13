@@ -38,6 +38,12 @@ export const routes: Routes = [
           import('./features/master-racks/master-rack.component').then((component) => component.MasterRackComponent)
       },
       {
+        path: 'manage-category',
+        title: 'Manage Category | Hero Stock Take',
+        loadComponent: () =>
+          import('./features/manage-category/manage-category.component').then((component) => component.ManageCategoryComponent)
+      },
+      {
         path: 'master-soh',
         title: 'Master SOH | Hero Stock Take',
         loadComponent: () =>

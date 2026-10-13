@@ -7,7 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { StockTakeRealtimeEvent, StockTakeRealtimeService } from '../../core/api/stock-take-realtime.service';
 import { apiErrorMessage } from '../../core/api/api-error';
-import { ActiveSchedule, Category, Location, RackMaster, SchedulePayload, ScheduleUser } from '../../core/models/api.models';
+import { ActiveSchedule, Category, CategoryTemplate, Location, RackMaster, SchedulePayload, ScheduleUser } from '../../core/models/api.models';
 
 interface CategoryGroup {
   divisionId: string;
@@ -34,6 +34,7 @@ export class ScheduleListComponent {
 
   readonly schedules = signal<ActiveSchedule[]>([]);
   readonly categories = signal<Category[]>([]);
+  readonly categoryTemplates = signal<CategoryTemplate[]>([]);
   readonly locations = signal<Location[]>([]);
   readonly rackMasters = signal<RackMaster[]>([]);
   readonly loading = signal(true);
@@ -48,6 +49,10 @@ export class ScheduleListComponent {
   readonly successMessage = signal('');
   readonly search = signal('');
   readonly categorySearch = signal('');
+  readonly categoryScopeMode = signal<'CUSTOM' | 'TEMPLATE'>('CUSTOM');
+  readonly selectedCategoryTemplateId = signal('');
+  readonly categoryTemplateSearch = signal('');
+  readonly categoryTemplateDropdownOpen = signal(false);
   readonly rackRangeLetterCode = signal('');
   readonly rackRangeLetterSearch = signal('');
   readonly rackRangeLetterDropdownOpen = signal(false);
@@ -138,6 +143,17 @@ export class ScheduleListComponent {
       grouped.set(divisionKey, group);
     }
     return [...grouped.values()];
+  });
+  readonly activeCategoryTemplates = computed(() =>
+    this.categoryTemplates().filter((template) => template.status === 'ACTIVE')
+  );
+  readonly filteredCategoryTemplates = computed(() => {
+    const keyword = this.categoryTemplateSearch().trim().toLowerCase();
+    return this.activeCategoryTemplates().filter((template) => !keyword || [
+      template.templateName,
+      template.description ?? '',
+      template.categories.map((category) => category.name).join(' ')
+    ].some((value) => value.toLowerCase().includes(keyword)));
   });
   readonly filteredRackMasters = computed(() => {
     const letterCode = this.rackRangeLetterCode();
@@ -252,12 +268,14 @@ export class ScheduleListComponent {
       .subscribe();
     forkJoin({
       categories: this.api.getCategories(),
+      categoryTemplates: this.api.getCategoryTemplates(),
       locations: this.api.getLocations(),
       schedules: this.fetchSchedules(true)
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ categories, locations }) => {
+      .subscribe(({ categories, categoryTemplates, locations }) => {
         this.categories.set(categories);
+        this.categoryTemplates.set(categoryTemplates);
         this.locations.set(locations);
         this.expandedDivisions.set(new Set(categories.slice(0, 1).map((category) => category.division.id)));
         if (locations.length === 1) this.selectLocation(locations[0], false);
@@ -273,6 +291,19 @@ export class ScheduleListComponent {
           this.rackRangeLetterSearch.set('');
           this.rackRangeLetterDropdownOpen.set(false);
           this.loadRackMasters();
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+
+    this.scheduleForm.controls.stockType.valueChanges
+      .pipe(
+        distinctUntilChanged(),
+        tap((stockType) => {
+          if (stockType === 'ALL') {
+            this.setCategoryScopeMode('CUSTOM');
+            this.scheduleForm.controls.categoryIds.setValue([]);
+          }
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -298,6 +329,7 @@ export class ScheduleListComponent {
     this.rackRangeLetterDropdownOpen.set(false);
     this.rackRangeFrom.set('001');
     this.rackRangeTo.set('010');
+    this.setCategoryScopeMode('CUSTOM');
     this.rackFormErrorMessage.set('');
     this.rackFormOpen.set(false);
     this.scheduleForm.reset({
@@ -328,6 +360,7 @@ export class ScheduleListComponent {
     this.rackRangeLetterDropdownOpen.set(false);
     this.rackRangeFrom.set('001');
     this.rackRangeTo.set('010');
+    this.setCategoryScopeMode('CUSTOM');
     this.rackFormErrorMessage.set('');
     this.rackFormOpen.set(false);
     this.scheduleForm.reset({
@@ -459,6 +492,66 @@ export class ScheduleListComponent {
     return this.scheduleForm.controls.categoryIds.value;
   }
 
+  categoryTreeLocked(): boolean {
+    return this.scheduleForm.controls.stockType.value === 'PARTIAL' && this.categoryScopeMode() === 'TEMPLATE';
+  }
+
+  selectedCategoryTemplate(): CategoryTemplate | null {
+    const templateId = this.selectedCategoryTemplateId();
+    return this.activeCategoryTemplates().find((template) => template.id === templateId) ?? null;
+  }
+
+  setCategoryScopeMode(mode: 'CUSTOM' | 'TEMPLATE'): void {
+    this.categoryScopeMode.set(mode);
+    if (mode === 'CUSTOM') {
+      this.selectedCategoryTemplateId.set('');
+      this.categoryTemplateSearch.set('');
+      this.categoryTemplateDropdownOpen.set(false);
+    }
+  }
+
+  onCategoryScopeModeChange(value: string): void {
+    this.setCategoryScopeMode(value === 'TEMPLATE' ? 'TEMPLATE' : 'CUSTOM');
+  }
+
+  onCategoryTemplateFocus(): void {
+    if (this.categoryScopeMode() === 'TEMPLATE') {
+      this.categoryTemplateDropdownOpen.set(true);
+    }
+  }
+
+  onCategoryTemplateInput(value: string): void {
+    this.categoryTemplateSearch.set(value);
+    this.categoryTemplateDropdownOpen.set(true);
+    const selected = this.selectedCategoryTemplate();
+    if (selected && value !== this.categoryTemplateDisplay(selected)) {
+      this.selectedCategoryTemplateId.set('');
+    }
+  }
+
+  onCategoryTemplateBlur(): void {
+    window.setTimeout(() => {
+      const selected = this.selectedCategoryTemplate();
+      if (selected) {
+        this.categoryTemplateSearch.set(this.categoryTemplateDisplay(selected));
+      }
+      this.categoryTemplateDropdownOpen.set(false);
+    }, 140);
+  }
+
+  applyCategoryTemplate(template: CategoryTemplate): void {
+    this.selectedCategoryTemplateId.set(template.id);
+    this.categoryTemplateSearch.set(this.categoryTemplateDisplay(template));
+    this.categoryTemplateDropdownOpen.set(false);
+    this.scheduleForm.controls.categoryIds.setValue([...template.categoryIds]);
+    this.scheduleForm.controls.categoryIds.markAsDirty();
+    this.expandSelectedCategoryDivisions(template.categoryIds);
+  }
+
+  categoryTemplateDisplay(template: CategoryTemplate): string {
+    return `${template.templateName} (${template.categoryCount} category)`;
+  }
+
   locationReady(): boolean {
     return this.scheduleForm.controls.locCode.valid
       && Boolean(this.scheduleForm.controls.locCode.value)
@@ -532,6 +625,7 @@ export class ScheduleListComponent {
   }
 
   toggleCategory(categoryId: string, checked: boolean): void {
+    if (this.categoryTreeLocked()) return;
     const current = new Set(this.selectedCategoryIds());
     checked ? current.add(categoryId) : current.delete(categoryId);
     this.scheduleForm.controls.categoryIds.setValue([...current]);
@@ -556,6 +650,7 @@ export class ScheduleListComponent {
   }
 
   toggleCategoryGroup(categories: Category[], checked: boolean): void {
+    if (this.categoryTreeLocked()) return;
     const current = new Set(this.selectedCategoryIds());
     for (const category of categories) {
       checked ? current.add(category.id) : current.delete(category.id);
@@ -565,10 +660,12 @@ export class ScheduleListComponent {
   }
 
   clearCategories(): void {
+    if (this.categoryTreeLocked()) return;
     this.scheduleForm.controls.categoryIds.setValue([]);
   }
 
   removeCategory(categoryId: string): void {
+    if (this.categoryTreeLocked()) return;
     this.toggleCategory(categoryId, false);
   }
 
@@ -822,6 +919,10 @@ export class ScheduleListComponent {
       this.formErrorMessage.set('Jam selesai tidak boleh lebih kecil dari jam mulai untuk tanggal yang sama.');
       return;
     }
+    if (payload.stockType === 'PARTIAL' && this.categoryScopeMode() === 'TEMPLATE' && !this.selectedCategoryTemplateId()) {
+      this.formErrorMessage.set('Pilih template category untuk schedule PARTIAL, atau gunakan mode Custom.');
+      return;
+    }
     if (payload.stockType === 'PARTIAL' && payload.categoryIds.length === 0) {
       this.formErrorMessage.set('Pilih minimal satu category untuk schedule PARTIAL.');
       return;
@@ -945,6 +1046,16 @@ export class ScheduleListComponent {
       rackIds: raw.stockType === 'ALL' ? [] : raw.rackIds,
       status: raw.status
     };
+  }
+
+  private expandSelectedCategoryDivisions(categoryIds: string[]): void {
+    const selected = new Set(categoryIds);
+    const divisions = this.categories()
+      .filter((category) => selected.has(category.id))
+      .map((category) => category.division.id);
+    if (divisions.length > 0) {
+      this.expandedDivisions.set(new Set(divisions));
+    }
   }
 
   private timeValue(value: string | null): string {

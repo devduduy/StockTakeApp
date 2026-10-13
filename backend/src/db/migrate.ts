@@ -18,6 +18,7 @@ export interface MigrationResult {
   ensuredScheduleRackTable: boolean;
   droppedUserLocationAccessTable: boolean;
   ensuredScheduleUserTable: boolean;
+  ensuredCategoryTemplateTables: boolean;
   ensuredReportingProcedures: boolean;
 }
 
@@ -38,6 +39,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       ensuredScheduleRackTable: false,
       droppedUserLocationAccessTable: false,
       ensuredScheduleUserTable: false,
+      ensuredCategoryTemplateTables: false,
       ensuredReportingProcedures: false,
     };
   }
@@ -57,6 +59,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     ensured_schedule_rack_table: number;
     dropped_user_location_access_table: number;
     ensured_schedule_user_table: number;
+    ensured_category_template_tables: number;
   }>(`
     SET NOCOUNT ON;
 
@@ -73,6 +76,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     DECLARE @ensured_schedule_rack_table bit = 0;
     DECLARE @dropped_user_location_access_table bit = 0;
     DECLARE @ensured_schedule_user_table bit = 0;
+    DECLARE @ensured_category_template_tables bit = 0;
 
     IF COL_LENGTH('dbo.TR_STOCK_SCHEDULE', 'CATEGORY_ID') IS NULL
     BEGIN
@@ -565,6 +569,79 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       SET @ensured_schedule_user_table = 1;
     END;
 
+    IF OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.MST_CATEGORY_TEMPLATE (
+        ID bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_MST_CATEGORY_TEMPLATE PRIMARY KEY,
+        TEMPLATE_NAME nvarchar(150) NOT NULL,
+        DESCRIPTION nvarchar(500) NULL,
+        STATUS varchar(20) NOT NULL CONSTRAINT DF_MST_CATEGORY_TEMPLATE_STATUS DEFAULT 'ACTIVE',
+        USER_CREATED varchar(100) NULL,
+        DATE_CREATED datetime2 NOT NULL CONSTRAINT DF_MST_CATEGORY_TEMPLATE_DATE_CREATED DEFAULT SYSUTCDATETIME(),
+        USER_MODIFIED varchar(100) NULL,
+        DATE_MODIFIED datetime2 NULL,
+        ROW_VERSION rowversion NOT NULL,
+        CONSTRAINT CK_MST_CATEGORY_TEMPLATE_STATUS CHECK (STATUS IN ('ACTIVE', 'INACTIVE'))
+      );
+      SET @ensured_category_template_tables = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE_DETAIL', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.MST_CATEGORY_TEMPLATE_DETAIL (
+        ID bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_MST_CATEGORY_TEMPLATE_DETAIL PRIMARY KEY,
+        TEMPLATE_ID bigint NOT NULL,
+        CATEGORY_ID varchar(30) NOT NULL,
+        USER_CREATED varchar(100) NULL,
+        DATE_CREATED datetime2 NOT NULL CONSTRAINT DF_MST_CATEGORY_TEMPLATE_DETAIL_DATE_CREATED DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT FK_MST_CATEGORY_TEMPLATE_DETAIL_TEMPLATE
+          FOREIGN KEY (TEMPLATE_ID)
+          REFERENCES dbo.MST_CATEGORY_TEMPLATE (ID)
+          ON DELETE CASCADE
+      );
+      SET @ensured_category_template_tables = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE', 'U') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE')
+          AND name = 'UX_MST_CATEGORY_TEMPLATE_ACTIVE_NAME'
+      )
+    BEGIN
+      CREATE UNIQUE INDEX UX_MST_CATEGORY_TEMPLATE_ACTIVE_NAME
+        ON dbo.MST_CATEGORY_TEMPLATE (TEMPLATE_NAME)
+        WHERE STATUS = 'ACTIVE';
+      SET @ensured_category_template_tables = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE_DETAIL', 'U') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE_DETAIL')
+          AND name = 'UX_MST_CATEGORY_TEMPLATE_DETAIL_TEMPLATE_CATEGORY'
+      )
+    BEGIN
+      CREATE UNIQUE INDEX UX_MST_CATEGORY_TEMPLATE_DETAIL_TEMPLATE_CATEGORY
+        ON dbo.MST_CATEGORY_TEMPLATE_DETAIL (TEMPLATE_ID, CATEGORY_ID);
+      SET @ensured_category_template_tables = 1;
+    END;
+
+    IF OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE_DETAIL', 'U') IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE object_id = OBJECT_ID('dbo.MST_CATEGORY_TEMPLATE_DETAIL')
+          AND name = 'IX_MST_CATEGORY_TEMPLATE_DETAIL_CATEGORY_ID'
+      )
+    BEGIN
+      CREATE INDEX IX_MST_CATEGORY_TEMPLATE_DETAIL_CATEGORY_ID
+        ON dbo.MST_CATEGORY_TEMPLATE_DETAIL (CATEGORY_ID);
+      SET @ensured_category_template_tables = 1;
+    END;
+
     SELECT
       CAST(@added_schedule_category_column AS int) AS added_schedule_category_column,
       CAST(@added_schedule_end_date_column AS int) AS added_schedule_end_date_column,
@@ -578,7 +655,8 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
       CAST(@removed_legacy_recheck_columns AS int) AS removed_legacy_recheck_columns,
       CAST(@ensured_schedule_rack_table AS int) AS ensured_schedule_rack_table,
       CAST(@dropped_user_location_access_table AS int) AS dropped_user_location_access_table,
-      CAST(@ensured_schedule_user_table AS int) AS ensured_schedule_user_table;
+      CAST(@ensured_schedule_user_table AS int) AS ensured_schedule_user_table,
+      CAST(@ensured_category_template_tables AS int) AS ensured_category_template_tables;
   `);
 
   const row = result.recordset[0];
@@ -598,6 +676,7 @@ export async function ensureDatabaseSchema(): Promise<MigrationResult> {
     ensuredScheduleRackTable: row?.ensured_schedule_rack_table === 1,
     droppedUserLocationAccessTable: row?.dropped_user_location_access_table === 1,
     ensuredScheduleUserTable: row?.ensured_schedule_user_table === 1,
+    ensuredCategoryTemplateTables: row?.ensured_category_template_tables === 1,
     ensuredReportingProcedures: true,
   };
   logger.info({ migration: migrationResult }, "Database schema checked");
