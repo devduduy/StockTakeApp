@@ -130,6 +130,7 @@
               <td>
                 <span class="rack-state" [class]="'rack-state rack-state--' + rackState(rack)"><i></i>{{ rackStateLabel(rack) }}</span>
                 @if (isCorrectedRack(rack)) { <span class="corrected-label">Sudah dikoreksi</span> }
+                @if (rack.discrepancyQuantity !== 0) { <span class="discrepancy-label">koreksi</span> }
               </td>
               <td class="number mono">{{ rack.submittedLineCount | number }}</td>
               <td class="number mono">{{ rack.finalQuantity | number }}</td>

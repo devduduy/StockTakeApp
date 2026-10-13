@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, finalize } from 'rxjs';
 import { StockTakeApiService } from '../../core/api/stock-take-api.service';
 import { apiErrorMessage } from '../../core/api/api-error';
@@ -15,6 +17,8 @@ import { ActiveSchedule, SohScheduleSummary } from '../../core/models/api.models
 })
 export class MasterSohComponent {
   private readonly api = inject(StockTakeApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly schedules = signal<ActiveSchedule[]>([]);
   readonly selectedScheduleId = signal('');
@@ -36,7 +40,22 @@ export class MasterSohComponent {
     Boolean(this.selectedScheduleId()) && !this.generating() && !this.loadingSchedules() && !this.loadingSummary()
   );
 
-  loadSchedules(): void {
+  constructor() {
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const scheduleId = params.get('scheduleId') ?? '';
+        const scheduleNo = params.get('scheduleNo') ?? '';
+        if (!scheduleId && !scheduleNo) return;
+
+        this.scheduleKeyword.set(scheduleNo);
+        this.dateFrom.set(params.get('dateFrom') ?? this.dateFrom());
+        this.dateTo.set(params.get('dateTo') ?? this.dateTo());
+        this.loadSchedules(scheduleId);
+      });
+  }
+
+  loadSchedules(preferredScheduleId = ''): void {
     if (!this.isDateRangeValid()) {
       this.errorMessage.set('Tanggal sampai tidak boleh lebih kecil dari tanggal mulai.');
       return;
@@ -64,7 +83,10 @@ export class MasterSohComponent {
       .subscribe((schedules) => {
         this.schedules.set(schedules);
         const selectedStillExists = schedules.some((schedule) => schedule.id === this.selectedScheduleId());
-        if (!selectedStillExists) {
+        const preferredScheduleExists = schedules.some((schedule) => schedule.id === preferredScheduleId);
+        if (preferredScheduleExists) {
+          this.selectedScheduleId.set(preferredScheduleId);
+        } else if (!selectedStillExists) {
           this.selectedScheduleId.set(schedules[0]?.id ?? '');
         }
         this.loadSummary();

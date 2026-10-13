@@ -81,6 +81,18 @@
   font-size: 10px;
   font-weight: 900;
 }
+.discrepancy-label {
+  display: inline-flex;
+  margin-top: 5px;
+  margin-right: 5px;
+  border-radius: 999px;
+  background: #fff0f1;
+  color: var(--secondary);
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  font-style: italic;
+}
 .bulk-action-bar {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 <section class="page-heading">
   <div>
-    <p class="eyebrow">CONTROL TOWER</p>
+    <p class="eyebrow">DASHBOARD</p>
     <h1>Dashboard Operasional</h1>
     <p>Pantau kesiapan SOH, progres scan, print, confirm, dan selisih rack dari schedule aktif.</p>
   </div>
@@ -33,7 +33,28 @@
   </div>
   <div class="skeleton skeleton--panel"></div>
 } @else {
-  @if (snapshot(); as data) {
+  @if (dashboardData(); as data) {
+    @if (snapshot(); as rawData) {
+      <section class="dashboard-filter" aria-label="Filter dashboard">
+        <div class="dashboard-filter__copy">
+          <span class="material-symbols-outlined">storefront</span>
+          <div>
+            <strong>Lokasi schedule aktif</strong>
+            <small>{{ rawData.schedules.length }} schedule aktif tersedia untuk dipantau.</small>
+          </div>
+        </div>
+        <label class="dashboard-filter__control">
+          <span>Lokasi</span>
+          <select [value]="selectedLocationCode()" (change)="setLocationFilter($any($event.target).value)">
+            <option value="ALL">Semua lokasi</option>
+            @for (location of locationOptions(); track location.code) {
+              <option [value]="location.code">{{ location.name }} ({{ location.code }})</option>
+            }
+          </select>
+        </label>
+      </section>
+    }
+
     <div class="kpi-grid">
       <article class="kpi-card">
         <div class="kpi-card__top"><span>Schedule Aktif</span><i class="material-symbols-outlined">calendar_month</i></div>
@@ -54,44 +75,22 @@
         <small>{{ data.submittedRacks }} dari {{ data.totalRacks }} rack sudah scan</small>
       </article>
 
-      <article class="kpi-card kpi-card--accent">
+      <article class="kpi-card kpi-card--accent" [class.kpi-card--confirm-complete]="data.totalRacks > 0 && confirmProgress() >= 100">
         <div class="kpi-card__top"><span>Progress Confirm</span><i class="material-symbols-outlined">verified</i></div>
         <strong>{{ confirmProgress() }}<em>%</em></strong>
-        <div class="mini-progress mini-progress--red"><span [style.width.%]="confirmProgress()"></span></div>
+        <div
+          class="mini-progress"
+          [class.mini-progress--red]="data.totalRacks === 0 || confirmProgress() < 100"
+          [class.mini-progress--green]="data.totalRacks > 0 && confirmProgress() >= 100"
+        ><span [style.width.%]="confirmProgress()"></span></div>
         <small>{{ data.confirmedRacks }} confirmed · {{ data.waitingConfirmRacks }} menunggu</small>
       </article>
     </div>
 
-    <section class="status-strip" aria-label="Status rack aktif">
-      <article>
-        <span class="material-symbols-outlined">shelves</span>
-        <div><strong>{{ data.totalRacks | number }}</strong><small>Total rack</small></div>
-      </article>
-      <article>
-        <span class="material-symbols-outlined">pending_actions</span>
-        <div><strong>{{ data.emptyRacks | number }}</strong><small>Belum scan</small></div>
-      </article>
-      <article>
-        <span class="material-symbols-outlined">assignment_turned_in</span>
-        <div><strong>{{ data.submittedRacks | number }}</strong><small>Submitted</small></div>
-      </article>
-      <article>
-        <span class="material-symbols-outlined">print</span>
-        <div><strong>{{ data.printedRacks | number }}</strong><small>Printed</small></div>
-      </article>
-      <article>
-        <span class="material-symbols-outlined">fact_check</span>
-        <div><strong>{{ data.confirmedRacks | number }}</strong><small>Confirmed</small></div>
-      </article>
-      <article [class.status-strip__danger]="data.discrepancyRacks > 0">
-        <span class="material-symbols-outlined">difference</span>
-        <div><strong>{{ data.discrepancyRacks | number }}</strong><small>Rack selisih</small></div>
-      </article>
-      <article [class.status-strip__danger]="data.rejectedRacks > 0">
-        <span class="material-symbols-outlined">block</span>
-        <div><strong>{{ data.rejectedRacks | number }}</strong><small>Rejected</small></div>
-      </article>
-    </section>
+    <!-- Status strip global disembunyikan. Status rack dipindah ke detail schedule supaya konteksnya per lokasi/schedule. -->
+    <!--
+      <section class="status-strip" aria-label="Status rack aktif"></section>
+    -->
 
     <div class="dashboard-grid">
       <section class="content-card progress-panel">
@@ -136,20 +135,24 @@
                     <div class="dual-progress__label"><span>Scan</span><b>{{ item.scanProgress }}%</b></div>
                     <div class="progress-track"><span [style.width.%]="item.scanProgress"></span></div>
                   </div>
-                  <div>
+                  <div [class.confirm-progress-complete]="isConfirmComplete(item)">
                     <div class="dual-progress__label"><span>Confirm</span><b>{{ item.confirmProgress }}%</b></div>
-                    <div class="progress-track progress-track--red"><span [style.width.%]="item.confirmProgress"></span></div>
+                    <div
+                      class="progress-track"
+                      [class.progress-track--red]="!isConfirmComplete(item)"
+                      [class.progress-track--green]="isConfirmComplete(item)"
+                    ><span [style.width.%]="item.confirmProgress"></span></div>
                   </div>
                 </div>
 
                 <div class="schedule-metrics">
-                  <span><b>{{ item.totalRacks }}</b>Total</span>
-                  <span><b>{{ item.emptyRacks }}</b>Belum scan</span>
-                  <span><b>{{ item.submittedRacks }}</b>Submitted</span>
-                  <span><b>{{ item.printedRacks }}</b>Printed</span>
-                  <span><b>{{ item.waitingConfirmRacks }}</b>Menunggu</span>
-                  <span><b>{{ item.confirmedRacks }}</b>Confirmed</span>
-                  <span [class.metric-danger]="item.discrepancyRacks > 0"><b>{{ item.discrepancyRacks }}</b>Selisih</span>
+                  <span><i class="material-symbols-outlined">shelves</i><b>{{ item.totalRacks }}</b>Total</span>
+                  <span><i class="material-symbols-outlined">pending_actions</i><b>{{ item.emptyRacks }}</b>Belum scan</span>
+                  <span><i class="material-symbols-outlined">assignment_turned_in</i><b>{{ item.submittedRacks }}</b>Submitted</span>
+                  <span><i class="material-symbols-outlined">print</i><b>{{ item.printedRacks }}</b>Printed</span>
+                  <span><i class="material-symbols-outlined">pending_actions</i><b>{{ item.waitingConfirmRacks }}</b>Menunggu</span>
+                  <span><i class="material-symbols-outlined">fact_check</i><b>{{ item.confirmedRacks }}</b>Confirmed</span>
+                  <span [class.metric-danger]="item.discrepancyRacks > 0"><i class="material-symbols-outlined">difference</i><b>{{ item.discrepancyRacks }}</b>Selisih</span>
                 </div>
               </a>
             }
@@ -161,13 +164,13 @@
         <header class="card-header">
           <div>
             <h2>Perlu Perhatian</h2>
-            <p>Prioritas yang bisa menghambat closing.</p>
+            <!-- <p>Prioritas yang bisa menghambat closing.</p> -->
           </div>
         </header>
 
         <div class="attention-list">
           @for (item of attentionSchedules(); track item.schedule.id) {
-            <a [routerLink]="['/schedules', item.schedule.id, 'racks']" class="attention-item">
+            <a [routerLink]="attentionRouterLink(item)" [queryParams]="attentionQueryParams(item)" class="attention-item">
               <span
                 class="attention-item__icon material-symbols-outlined"
                 [class.attention-item__icon--danger]="item.rejectedRacks > 0 || item.discrepancyRacks > 0"
@@ -192,7 +195,7 @@
         </div>
 
         <div class="quantity-summary">
-          <div><span>Total line scan</span><strong>{{ data.totalLines | number }}</strong></div>
+          <div><span>Total item scan</span><strong>{{ data.totalLines | number }}</strong></div>
           <div><span>Qty scanner</span><strong>{{ data.totalQuantity | number }}</strong></div>
           <div><span>Qty final</span><strong>{{ data.finalQuantity | number }}</strong></div>
           <div [class.quantity-summary__danger]="data.discrepancyQuantity !== 0">

@@ -1,8 +1,96 @@
+.dashboard-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff, #fbfcff);
+  box-shadow: 0 12px 28px rgba(20, 31, 58, .05);
+}
+
+.dashboard-filter__copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-filter__copy > .material-symbols-outlined {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 22px;
+}
+
+.dashboard-filter__copy div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.dashboard-filter__copy strong {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.dashboard-filter__copy small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.dashboard-filter__control {
+  display: grid;
+  width: min(360px, 100%);
+  gap: 6px;
+}
+
+.dashboard-filter__control span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.dashboard-filter__control select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 40px 0 13px;
+  border: 1px solid #bfc8db;
+  border-radius: 12px;
+  background-color: var(--surface-lowest);
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7.5L10 12.5L15 7.5' stroke='%236E7587' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px 18px;
+  box-shadow: inset 0 0 0 1px rgba(2, 21, 65, .05);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+  appearance: none;
+}
+
+.dashboard-filter__control select:focus {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(2, 21, 65, .08), 0 0 0 3px rgba(2, 21, 65, .08);
+}
+
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  margin: 24px 0 16px;
+  margin: 0 0 16px;
 }
 
 .kpi-card {
@@ -34,6 +122,22 @@
 
 .kpi-card--accent::after { background: #ffe8e9; }
 .kpi-card--accent strong { color: var(--secondary) !important; }
+
+.kpi-card--confirm-complete {
+  border-color: #bfe7cf;
+  background: #f7fff9;
+}
+
+.kpi-card--confirm-complete::after { background: #dff7e8; }
+
+.kpi-card--confirm-complete.kpi-card--accent strong {
+  color: #16844d !important;
+}
+
+.kpi-card--confirm-complete .kpi-card__top i {
+  background: #e4f8ec;
+  color: #16844d;
+}
 
 .kpi-card--warning {
   border-color: #f1d48c;
@@ -121,6 +225,11 @@
 .mini-progress--red span,
 .progress-track--red span {
   background: linear-gradient(90deg, var(--secondary), #f06b6f);
+}
+
+.mini-progress--green span,
+.progress-track--green span {
+  background: linear-gradient(90deg, #16844d, #48c079);
 }
 
 .status-strip {
@@ -304,6 +413,10 @@
   font-variant-numeric: tabular-nums;
 }
 
+.confirm-progress-complete .dual-progress__label b {
+  color: #16844d;
+}
+
 .progress-track {
   height: 8px;
 }
@@ -316,7 +429,9 @@
 
 .schedule-metrics span {
   display: grid;
-  gap: 2px;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
   padding: 9px 10px;
   border-radius: 10px;
   background: var(--surface-low);
@@ -324,6 +439,18 @@
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.schedule-metrics .material-symbols-outlined {
+  grid-row: span 2;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 16px;
 }
 
 .schedule-metrics b {
@@ -335,6 +462,11 @@
 .schedule-metrics .metric-danger {
   background: #fff2f2;
   color: #b4232a;
+}
+
+.schedule-metrics .metric-danger .material-symbols-outlined {
+  background: #ffe8e9;
+  color: var(--secondary);
 }
 
 .schedule-metrics .metric-danger b {
@@ -477,6 +609,15 @@
 }
 
 @media (max-width: 760px) {
+  .dashboard-filter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-filter__control {
+    width: 100%;
+  }
+
   .status-strip,
   .schedule-metrics,
   .dual-progress,
