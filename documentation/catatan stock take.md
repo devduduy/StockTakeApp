@@ -13,20 +13,27 @@ NOTES:
 -(DONE) tambah checkbox di list rack for easy selected bulk to confirm, button confirm diluar (confirm bulk dan confirm per rack), label sudah di koreksi untuk rack yang sudah dikoreksi
 -(DONE) modify dashboard rack di schedule dari kiri kekanan adalah card = total rack, belum scan, sudah submit, sudah print, sudah koreksi, confirm (semua itu berikut persenan nya jadi agar terlihat dari total rack 100% itu keliatan persenan-persenan lainnya ada proses apa aja)
 -(DONE) pencarian rack di partial, cari hal mudah agar user tidak klik banyak satu-satu
--schedule boleh di close ketika semua rack confirm & sudah print report berita acara stok take (buat close schedule nya dulu aja dan validasi rack sudah confirm semua, validasi report nya nanti aja karena report masih belum)
--buat menu baru yang isinya adalah list schedule yang udah selesai/close tujuannya dipisah karena schedule sekarang dalam bentuk card cocok untuk schedule yang aktif saja, dalam bentuk data table berikut filter dan pencariannya
+-(DONE) schedule boleh di close ketika semua rack confirm & sudah print report berita acara stok take (buat close schedule nya dulu aja dan validasi rack sudah confirm semua, validasi report nya nanti aja karena report masih belum)
+-(DONE) buat menu baru yang isinya adalah list schedule yang udah selesai/close tujuannya dipisah karena schedule sekarang dalam bentuk card cocok untuk schedule yang aktif saja, dalam bentuk data table berikut filter dan pencariannya
 
 --new requirement
--create master template category :
+-(DONE) create master template category :
 	fresh monthly => fresh exclude dairy & frozen, food service all, non trade all
 	custom => all category show
 
 ------------------------------------------------------------------------------------
 notes Pak hafiz:
-1. jam mulai & selesai prefer not display
-2. fixing hht ketika scan produk jangan akumulasi jumlah qty
-3. add button tambah plu dan button delete di edit rack per sku (role inventory control)
-4. tambah label nama rechecker di kertas print rack, untuk rechecker nulis manual namanya siapa
+1. (DONE) jam mulai & selesai prefer not display (tidak apa ditampilkan hanya sbg informasi)
+2. (DONE) fixing hht ketika scan produk jangan akumulasi jumlah qty
+3. (DONE) add button tambah plu dan button delete di edit rack per sku (role inventory control)
+4. (DONE) tambah label nama rechecker di kertas print rack, untuk rechecker nulis manual namanya siapa
+
+condition current:
+1.fresh, stock take calendar admin yang buat
 
 notes pak rachmat:
 1. buat mappingan role action (misal, user hafiz & rachmat beda)
+2. tombol confirm global untuk pak rachmat, khusus fresh confirm bisa dilakukan toko
+3. (DONE) rename penamaan stock take schedule report => stock take report by address
+4. report stock take by category dibuat 2 report, dipisah (outright/grocery,gms & fresh (include food service))
+5. report top/bottom 30, jika all category diprint per category 30/30 (nice to have)

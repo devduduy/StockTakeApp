@@ -37,8 +37,8 @@ export class AppShellComponent {
       icon: 'print',
       route: '/reports/address',
       children: [
-        { label: 'Stock Take Schedule Report', route: '/reports/address' },
-        { label: 'Stock Take Report by Category', route: '/reports/category' },
+        { label: 'Stock Take Report By Address', route: '/reports/address' },
+        { label: 'Stock Take Report By Category', route: '/reports/category' },
         { label: 'Stock Take Variance Report', route: '/reports/variance' },
         { label: 'Top / Bottom 30', route: '/reports/top-bottom-30' }
       ]
