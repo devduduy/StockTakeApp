@@ -37,8 +37,9 @@ android {
         }
         release {
             buildConfigField "boolean", "MOCK_MODE", "false"
-            buildConfigField "String", "API_BASE_URL", "\"https://stocktake-api.example.com/\""
+            buildConfigField "String", "API_BASE_URL", "\"${stocktakeApiBaseUrl}\""
             manifestPlaceholders = [usesCleartextTraffic: "false"]
+            signingConfig signingConfigs.debug
             minifyEnabled = false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
