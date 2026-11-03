@@ -14,6 +14,7 @@ export class AuthService {
   readonly user = computed(() => this.sessionSignal()?.user ?? null);
   readonly token = computed(() => this.sessionSignal()?.accessToken ?? null);
   readonly authenticated = computed(() => Boolean(this.token()));
+  readonly apiBaseUrl = 'api';
 
   constructor(
     private readonly http: HttpClient,
@@ -22,7 +23,7 @@ export class AuthService {
 
   login(username: string, password: string): Observable<ApiEnvelope<LoginResponse>> {
     return this.http
-      .post<ApiEnvelope<LoginResponse>>('/api/auth/login', { username, password })
+      .post<ApiEnvelope<LoginResponse>>(`${this.apiBaseUrl}/auth/login`, { username, password })
       .pipe(tap(({ data }) => this.storeSession(data)));
   }
 

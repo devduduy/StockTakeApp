@@ -36,13 +36,14 @@ export interface StockTakeRealtimeEvent {
 export class StockTakeRealtimeService {
   private readonly auth = inject(AuthService);
   private readonly zone = inject(NgZone);
+  private readonly apiBaseUrl = 'api';
 
   stockTakeEvents(): Observable<StockTakeRealtimeEvent> {
     const token = this.auth.token();
     if (!token) return EMPTY;
 
     return new Observable<StockTakeRealtimeEvent>((observer) => {
-      const source = new EventSource(`/api/stock-take/events?token=${encodeURIComponent(token)}`);
+      const source = new EventSource(`${this.apiBaseUrl}/stock-take/events?token=${encodeURIComponent(token)}`);
 
       source.addEventListener('stock-take', (event) => {
         this.zone.run(() => {

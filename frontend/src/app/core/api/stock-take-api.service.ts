@@ -45,11 +45,13 @@ export interface ScheduleQueryFilters {
 
 @Injectable({ providedIn: 'root' })
 export class StockTakeApiService {
+  private readonly apiBaseUrl = 'api';
+
   constructor(private readonly http: HttpClient) {}
 
   getActiveSchedules(): Observable<ActiveSchedule[]> {
     return this.http
-      .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules/active')
+      .get<ApiEnvelope<ActiveSchedule[]>>(`${this.apiBaseUrl}/stock-take/schedules/active`)
       .pipe(map(({ data }) => data));
   }
 
@@ -58,7 +60,7 @@ export class StockTakeApiService {
       Object.entries(filters ?? {}).filter(([, value]) => Boolean(value))
     ) as Record<string, string>;
     return this.http
-      .get<ApiEnvelope<ActiveSchedule[]>>('/api/stock-take/schedules', { params })
+      .get<ApiEnvelope<ActiveSchedule[]>>(`${this.apiBaseUrl}/stock-take/schedules`, { params })
       .pipe(map(({ data }) => data));
   }
 
@@ -68,169 +70,169 @@ export class StockTakeApiService {
         .filter(([, value]) => Boolean(value))
     ) as Record<string, string>;
     return this.http
-      .get<ApiEnvelope<PageResponse<ActiveSchedule>>>('/api/stock-take/schedules/page', { params })
+      .get<ApiEnvelope<PageResponse<ActiveSchedule>>>(`${this.apiBaseUrl}/stock-take/schedules/page`, { params })
       .pipe(map(({ data }) => data));
   }
 
   closeSchedule(scheduleId: string): Observable<ActiveSchedule> {
     return this.http
-      .post<ApiEnvelope<ActiveSchedule>>(`/api/stock-take/schedules/${scheduleId}/close`, {})
+      .post<ApiEnvelope<ActiveSchedule>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/close`, {})
       .pipe(map(({ data }) => data));
   }
 
   createSchedule(payload: SchedulePayload): Observable<ActiveSchedule> {
     return this.http
-      .post<ApiEnvelope<ActiveSchedule>>('/api/stock-take/schedules', payload)
+      .post<ApiEnvelope<ActiveSchedule>>(`${this.apiBaseUrl}/stock-take/schedules`, payload)
       .pipe(map(({ data }) => data));
   }
 
   updateSchedule(scheduleId: string, payload: SchedulePayload): Observable<ActiveSchedule> {
     return this.http
-      .put<ApiEnvelope<ActiveSchedule>>(`/api/stock-take/schedules/${scheduleId}`, payload)
+      .put<ApiEnvelope<ActiveSchedule>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}`, payload)
       .pipe(map(({ data }) => data));
   }
 
   getScheduleUsers(scheduleId: string): Observable<ScheduleUser[]> {
     return this.http
-      .get<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/users`)
+      .get<ApiEnvelope<ScheduleUser[]>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/users`)
       .pipe(map(({ data }) => data));
   }
 
   getScheduleUserCandidates(scheduleId: string): Observable<ScheduleUser[]> {
     return this.http
-      .get<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/user-candidates`)
+      .get<ApiEnvelope<ScheduleUser[]>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/user-candidates`)
       .pipe(map(({ data }) => data));
   }
 
   updateScheduleUsers(scheduleId: string, userIds: string[]): Observable<ScheduleUser[]> {
     return this.http
-      .put<ApiEnvelope<ScheduleUser[]>>(`/api/stock-take/schedules/${scheduleId}/users`, { userIds })
+      .put<ApiEnvelope<ScheduleUser[]>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/users`, { userIds })
       .pipe(map(({ data }) => data));
   }
 
   getCategories(): Observable<Category[]> {
     return this.http
-      .get<ApiEnvelope<Category[]>>('/api/stock-take/categories')
+      .get<ApiEnvelope<Category[]>>(`${this.apiBaseUrl}/stock-take/categories`)
       .pipe(map(({ data }) => data));
   }
 
   getCategoryTemplates(): Observable<CategoryTemplate[]> {
     return this.http
-      .get<ApiEnvelope<CategoryTemplate[]>>('/api/stock-take/category-templates')
+      .get<ApiEnvelope<CategoryTemplate[]>>(`${this.apiBaseUrl}/stock-take/category-templates`)
       .pipe(map(({ data }) => data));
   }
 
   createCategoryTemplate(payload: CategoryTemplatePayload): Observable<CategoryTemplate> {
     return this.http
-      .post<ApiEnvelope<CategoryTemplate>>('/api/stock-take/category-templates', payload)
+      .post<ApiEnvelope<CategoryTemplate>>(`${this.apiBaseUrl}/stock-take/category-templates`, payload)
       .pipe(map(({ data }) => data));
   }
 
   updateCategoryTemplate(templateId: string, payload: CategoryTemplatePayload): Observable<CategoryTemplate> {
     return this.http
-      .put<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}`, payload)
+      .put<ApiEnvelope<CategoryTemplate>>(`${this.apiBaseUrl}/stock-take/category-templates/${templateId}`, payload)
       .pipe(map(({ data }) => data));
   }
 
   deactivateCategoryTemplate(templateId: string): Observable<CategoryTemplate> {
     return this.http
-      .delete<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}`)
+      .delete<ApiEnvelope<CategoryTemplate>>(`${this.apiBaseUrl}/stock-take/category-templates/${templateId}`)
       .pipe(map(({ data }) => data));
   }
 
   activateCategoryTemplate(templateId: string): Observable<CategoryTemplate> {
     return this.http
-      .post<ApiEnvelope<CategoryTemplate>>(`/api/stock-take/category-templates/${templateId}/activate`, {})
+      .post<ApiEnvelope<CategoryTemplate>>(`${this.apiBaseUrl}/stock-take/category-templates/${templateId}/activate`, {})
       .pipe(map(({ data }) => data));
   }
 
   getLocations(): Observable<Location[]> {
     return this.http
-      .get<ApiEnvelope<Location[]>>('/api/stock-take/locations')
+      .get<ApiEnvelope<Location[]>>(`${this.apiBaseUrl}/stock-take/locations`)
       .pipe(map(({ data }) => data));
   }
 
   getRoles(): Observable<RoleOption[]> {
     return this.http
-      .get<ApiEnvelope<RoleOption[]>>('/api/stock-take/users/roles')
+      .get<ApiEnvelope<RoleOption[]>>(`${this.apiBaseUrl}/stock-take/users/roles`)
       .pipe(map(({ data }) => data));
   }
 
   getUsers(): Observable<ManagedUser[]> {
     return this.http
-      .get<ApiEnvelope<ManagedUser[]>>('/api/stock-take/users')
+      .get<ApiEnvelope<ManagedUser[]>>(`${this.apiBaseUrl}/stock-take/users`)
       .pipe(map(({ data }) => data));
   }
 
   createUser(payload: ManagedUserPayload): Observable<ManagedUser> {
     return this.http
-      .post<ApiEnvelope<ManagedUser>>('/api/stock-take/users', payload)
+      .post<ApiEnvelope<ManagedUser>>(`${this.apiBaseUrl}/stock-take/users`, payload)
       .pipe(map(({ data }) => data));
   }
 
   updateUser(userId: string, payload: ManagedUserPayload): Observable<ManagedUser> {
     return this.http
-      .put<ApiEnvelope<ManagedUser>>(`/api/stock-take/users/${userId}`, payload)
+      .put<ApiEnvelope<ManagedUser>>(`${this.apiBaseUrl}/stock-take/users/${userId}`, payload)
       .pipe(map(({ data }) => data));
   }
 
   importUsers(rows: UserImportRow[]): Observable<UserImportResult> {
     return this.http
-      .post<ApiEnvelope<UserImportResult>>('/api/stock-take/users/import', { rows })
+      .post<ApiEnvelope<UserImportResult>>(`${this.apiBaseUrl}/stock-take/users/import`, { rows })
       .pipe(map(({ data }) => data));
   }
 
   getRackMasters(locCode?: string): Observable<RackMaster[]> {
     const options = locCode ? { params: { locCode } } : undefined;
     return this.http
-      .get<ApiEnvelope<RackMaster[]>>('/api/stock-take/racks', options)
+      .get<ApiEnvelope<RackMaster[]>>(`${this.apiBaseUrl}/stock-take/racks`, options)
       .pipe(map(({ data }) => data));
   }
 
   createRack(payload: RackCreatePayload): Observable<RackMaster> {
     return this.http
-      .post<ApiEnvelope<RackMaster>>('/api/stock-take/racks', payload)
+      .post<ApiEnvelope<RackMaster>>(`${this.apiBaseUrl}/stock-take/racks`, payload)
       .pipe(map(({ data }) => data));
   }
 
   createRacksBulk(payload: RackBulkCreatePayload): Observable<RackMaster[]> {
     return this.http
-      .post<ApiEnvelope<RackMaster[]>>('/api/stock-take/racks/bulk', payload)
+      .post<ApiEnvelope<RackMaster[]>>(`${this.apiBaseUrl}/stock-take/racks/bulk`, payload)
       .pipe(map(({ data }) => data));
   }
 
   updateRack(rackId: string, payload: Pick<RackCreatePayload, 'rackCode' | 'rackName' | 'status'>): Observable<RackMaster> {
     return this.http
-      .put<ApiEnvelope<RackMaster>>(`/api/stock-take/racks/${rackId}`, payload)
+      .put<ApiEnvelope<RackMaster>>(`${this.apiBaseUrl}/stock-take/racks/${rackId}`, payload)
       .pipe(map(({ data }) => data));
   }
 
   deleteRack(rackId: string): Observable<void> {
-    return this.http.delete<void>(`/api/stock-take/racks/${rackId}`);
+    return this.http.delete<void>(`${this.apiBaseUrl}/stock-take/racks/${rackId}`);
   }
 
   addRackToSchedule(scheduleId: string, rackId: string): Observable<ScheduleRackScopeResponse> {
     return this.http
-      .post<ApiEnvelope<ScheduleRackScopeResponse>>(`/api/stock-take/schedules/${scheduleId}/racks/scope`, { rackId })
+      .post<ApiEnvelope<ScheduleRackScopeResponse>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/scope`, { rackId })
       .pipe(map(({ data }) => data));
   }
 
   getRecheckers(): Observable<UserOption[]> {
     return this.http
-      .get<ApiEnvelope<UserOption[]>>('/api/auth/recheckers')
+      .get<ApiEnvelope<UserOption[]>>(`${this.apiBaseUrl}/auth/recheckers`)
       .pipe(map(({ data }) => data));
   }
 
   getRacks(scheduleId: string): Observable<RackListResponse> {
     return this.http
-      .get<ApiEnvelope<RackListResponse>>(`/api/stock-take/schedules/${scheduleId}/racks`)
+      .get<ApiEnvelope<RackListResponse>>(`${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks`)
       .pipe(map(({ data }) => data));
   }
 
   getRackScans(scheduleId: string, rackId: string): Observable<RackScanListResponse> {
     return this.http
       .get<ApiEnvelope<RackScanListResponse>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans`
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/scans`
       )
       .pipe(map(({ data }) => data));
   }
@@ -238,7 +240,7 @@ export class StockTakeApiService {
   printRack(scheduleId: string, rackId: string): Observable<PrintRackResponse> {
     return this.http
       .post<ApiEnvelope<PrintRackResponse>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/print`,
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/print`,
         {}
       )
       .pipe(map(({ data }) => data));
@@ -247,7 +249,7 @@ export class StockTakeApiService {
   updateRackFinalQty(scheduleId: string, rackId: string, payload: RackFinalQtyPayload): Observable<RackScanListResponse> {
     return this.http
       .patch<ApiEnvelope<RackScanListResponse>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/final-qty`,
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/final-qty`,
         payload
       )
       .pipe(map(({ data }) => data));
@@ -256,7 +258,7 @@ export class StockTakeApiService {
   confirmRack(scheduleId: string, rackId: string, payload: RackFinalQtyPayload): Observable<RackScanListResponse> {
     return this.http
       .post<ApiEnvelope<RackScanListResponse>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/confirm`,
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/confirm`,
         payload
       )
       .pipe(map(({ data }) => data));
@@ -265,7 +267,7 @@ export class StockTakeApiService {
   rejectRack(scheduleId: string, rackId: string): Observable<{ rejected: boolean }> {
     return this.http
       .post<ApiEnvelope<{ rejected: boolean }>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/reject`,
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/reject`,
         {}
       )
       .pipe(map(({ data }) => data));
@@ -364,7 +366,7 @@ export class StockTakeApiService {
   addManualRackScan(scheduleId: string, rackId: string, barcode: string, qty: number): Observable<{ scans: RackScan[] }> {
     return this.http
       .post<ApiEnvelope<{ scans: RackScan[] }>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/manual`,
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/manual`,
         { barcode, qty }
       )
       .pipe(map(({ data }) => data));
@@ -373,7 +375,7 @@ export class StockTakeApiService {
   deleteRackScan(scheduleId: string, rackId: string, scanId: string): Observable<{ scans: RackScan[] }> {
     return this.http
       .delete<ApiEnvelope<{ scans: RackScan[] }>>(
-        `/api/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/${scanId}`
+        `${this.apiBaseUrl}/stock-take/schedules/${scheduleId}/racks/${rackId}/scans/${scanId}`
       )
       .pipe(map(({ data }) => data));
   }
@@ -382,7 +384,7 @@ export class StockTakeApiService {
     const params: Record<string, string> = { q: keyword };
     if (scheduleId) params['scheduleId'] = scheduleId;
     return this.http
-      .get<ApiEnvelope<ItemSearchResult[]>>('/api/stock-take/items/search', { params })
+      .get<ApiEnvelope<ItemSearchResult[]>>(`${this.apiBaseUrl}/stock-take/items/search`, { params })
       .pipe(map(({ data }) => data));
   }
 
@@ -391,7 +393,7 @@ export class StockTakeApiService {
     if (categoryId) params['categoryId'] = categoryId;
     if (section) params['section'] = section;
     return this.http
-      .get<ApiEnvelope<StockTakeReportBundle>>(`/api/stock-take/reports/${scheduleId}`, {
+      .get<ApiEnvelope<StockTakeReportBundle>>(`${this.apiBaseUrl}/stock-take/reports/${scheduleId}`, {
         params: Object.keys(params).length ? params : undefined
       })
       .pipe(map(({ data }) => data));
@@ -407,7 +409,7 @@ export class StockTakeApiService {
       scheduleIds: scheduleIds.join(',')
     };
     if (categoryId) params['categoryId'] = categoryId;
-    return this.http.get('/api/stock-take/reports/export/csv', {
+    return this.http.get(`${this.apiBaseUrl}/stock-take/reports/export/csv`, {
       params,
       observe: 'response',
       responseType: 'blob'
@@ -416,13 +418,13 @@ export class StockTakeApiService {
 
   getSohSummary(scheduleId: string): Observable<SohScheduleSummary> {
     return this.http
-      .get<ApiEnvelope<SohScheduleSummary>>(`/api/stock-take/soh/${scheduleId}`)
+      .get<ApiEnvelope<SohScheduleSummary>>(`${this.apiBaseUrl}/stock-take/soh/${scheduleId}`)
       .pipe(map(({ data }) => data));
   }
 
   generateSoh(scheduleId: string): Observable<SohGenerateResponse> {
     return this.http
-      .post<ApiEnvelope<SohGenerateResponse>>(`/api/stock-take/soh/${scheduleId}/generate`, {})
+      .post<ApiEnvelope<SohGenerateResponse>>(`${this.apiBaseUrl}/stock-take/soh/${scheduleId}/generate`, {})
       .pipe(map(({ data }) => data));
   }
 }
